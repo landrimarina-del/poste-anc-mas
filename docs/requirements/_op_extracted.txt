@@ -1,15 +1,9 @@
 BackOffice Automation Scrivania Digitale 
-
 Attivazione Nuova Carta 
-
 Manuale Utente per Operatore ANC 
-
 Filename: BOA_ScrivaniaDigitale-Attivazione_Nuova_Carta_Operatore_ANC(Manuale Utente) V1.0 
-
 Id: 
-
 Version: 1.1 
-
 Author: Lutech 
 
  
