@@ -1,9 +1,7 @@
 Attivazione nuova carta
 Scrivania Digitale
 POSTE ITALIANE
- 
-
-Glossario
+ Glossario
 Acronimi
 ANC: Attivazione Nuova Carta; il processo di business oggetto del backlog.
 BO: Back Office; il reparto operativo che effettua le verifiche documentali.
