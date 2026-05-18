@@ -1,0 +1,618 @@
+	
+
+
+
+
+Attivazione nuova carta
+Scrivania Digitale
+POSTE ITALIANE
+ 
+
+Glossario
+Acronimi
+ANC: Attivazione Nuova Carta; il processo di business oggetto del backlog.
+BO: Back Office; il reparto operativo che effettua le verifiche documentali.
+BOA: Back Office Automation; l'ambito tecnologico e metodologico in cui si inserisce il progetto.
+BPM: Business Process Management; il sistema esterno che orchestra il flusso di lavoro e invia le richieste alla Scrivania Digitale.
+Scrivania Digitale: Piattaforma di Case Management adottata da Poste Italiane, basata su tecnologia┬áAppian, per lÔÇÖautomazione e la gestione centralizzata dei flussi di Back Office.
+
+Termini Business (Dominio Operativo)
+Attivazione Nuova Carta: Processo che permette al cliente di attivare una carta sostitutiva a seguito di un blocco per furto o smarrimento.
+Checklist di Conformit├á: Insieme di controlli standardizzati (es. leggibilit├á, firme, timbri) che l'operatore deve eseguire sul Verbale di Denuncia o sulla Carta.
+Esito SD: Il risultato finale della lavorazione (OK o KO) determinato automaticamente dal sistema in base ai controlli effettuati.
+KO Multipli: Situazione in cui una pratica viene respinta per pi├╣ motivi di non conformit├á; tutti i motivi devono essere comunicati al sistema chiamante.
+Lista Attivit├á (Coda Lavorazioni): Sezione dell'interfaccia dove l'operatore visualizza i task che gli sono stati assegnati o che sono pronti per essere presi in carico.
+Presa in carico: Azione con cui un operatore seleziona un task dalla coda comune, rendendolo proprio e cambiando lo stato della pratica in "In Lavorazione".
+Task (Attivit├á): Singola unit├á di lavoro generata automaticamente dal sistema per ogni nuova pratica aperta.
+Tipizzazione Documento: L'azione manuale con cui l'operatore dichiara se il file allegato ├¿ un "Verbale di Denuncia" o una "Carta", abilitando i controlli corrispondenti.
+Verbale di Denuncia: Documento ufficiale di furto o smarrimento che deve essere verificato per approvare l'attivazione della nuova carta.
+Termini Tecnici e Integrazioni
+Data Lake: Sistema di archiviazione dati impattato dal processo per finalit├á di conservazione o analisi.
+ID_WORKITEM: Identificativo univoco inviato dal BPM per identificare una specifica richiesta di lavorazione.
+Idempotenza: Logica di controllo che impedisce la creazione di pratiche duplicate se viene ricevuto un ID_WORKITEM gi├á esistente nel sistema.
+Integration Story: Tipologia di requisito nel backlog che descrive uno scambio dati o una comunicazione tra sistemi diversi (es. SD e BPM).
+Interface Agreement (IA): Documento tecnico che definisce i contratti di interfaccia e le regole di comunicazione tra SD e BPM.
+PIX (Sinergia SAC-SBO): Sistema aziendale che subisce impatti funzionali a seguito dell'introduzione del nuovo processo ANC.
+Swagger: Riferimento alla documentazione tecnica delle API utilizzate per l'integrazione (es. servizio SubmitWorkItem).
+User Story: Descrizione di una funzionalit├á dal punto di vista dell'utente finale (Operatore o Supervisore)
+appianTicketID: Identificativo univoco della pratica generato al recepimento di una richiesta; funge da chiave primaria (Primary Key) per la riconciliazione dei dati tra i diversi sistemi (BPM, DataLake, Sinergia PIX).
+
+Premessa
+il sistema si configura come una piattaforma di Case Management orientata all'automazione dei processi di Back Office. Architetturalmente, ├¿ possibile identificare cinque macro-componenti funzionali che ne governano l'operativit├á:
+1. Modulo di Integrazione e Gateway Servizi
+Questo componente gestisce la comunicazione bidirezionale con i sistemi esterni, in particolare con il BPM.
+Ingresso: Espone i servizi per la ricezione delle richieste di apertura pratica, validando l'obbligatoriet├á degli allegati e gestendo l'idempotenza per prevenire duplicati.
+Uscita: Invia automaticamente gli esiti delle lavorazioni e i codici di KO multipli una volta conclusa l'istruttoria.
+2. Motore di Gestione Pratiche (Core Case Management)
+Rappresenta l'archivio centrale e il cuore logico che governa il ciclo di vita delle istanze.
+Repository: Gestisce la lista storica delle pratiche, permettendo ricerche e filtraggi complessi per stato, data o identificativo.
+State Model: Sincronizza i passaggi di stato (Aperta, In Lavorazione, In Attesa Conferma BPM, Chiusa) assicurando la coerenza del workflow.
+Audit Trail: Registra in modo granulare la cronologia delle attivit├á e lo storico degli utenti coinvolti.
+3. Orchestratore di Task e Workflow
+Questo componente si occupa della distribuzione del lavoro verso il reparto operativo.
+Workforce Management: Genera automaticamente i task nella lista attivit├á dell'operatore non appena viene creata una pratica.
+Dispatching Dinamico: Consente la presa in carico manuale da parte degli specialisti e permette ai supervisori di intervenire con la riassegnazione dei task tra gruppi o singoli utenti per bilanciare i carichi di lavoro.
+4. Sottosistema di Istruttoria e Verifica Documentale
+├ê l'interfaccia operativa dove avviene l'analisi dei documenti.
+Analisi Visuale: Include un visualizzatore integrato per l'anteprima dei verbali o delle carte tagliate, con funzioni di zoom e download manuale.
+Motore Checklist: Propone checklist interattive differenziate in base alla tipizzazione del documento selezionata manualmente dall'operatore.
+Business Logic Decisionale: Calcola in tempo reale l'esito della pratica (Approvata/Respinta) traducendo le risposte della checklist in decisioni di business automatizzate.
+5. Modulo di Governance, Reporting e Escalation
+Fornisce gli strumenti per il monitoraggio dei KPI e la gestione delle eccezioni.
+Reporting Statistici: Elabora dashboard grafiche (istogrammi) per analizzare volumi quotidiani, produttivit├á del team e distribuzione degli stati.
+Dashboard Segnalazioni (Gateway Sinergia): Gestisce l'invio e il monitoraggio di segnalazioni verso il sistema esterno Sinergia per la risoluzione di anomalie non gestibili internamente
+
+ 
+Overview dominio
+Dominio Applicativo
+Il sistema si inserisce nell'ambito della Back Office Automation (BOA) di Poste Italiane, specificamente all'interno del processo di gestione delle carte di pagamento. Il dominio riguarda la gestione delle richieste di Attivazione di una Nuova Carta in sostituzione di una carta precedentemente bloccata per furto o smarrimento.
+Obiettivo della Soluzione
+L'obiettivo principale ├¿ lo sviluppo di un'integrazione tra i sistemi BPM (Business Process Management) e la Scrivania Digitale (SD). Questa integrazione serve a:
+Effettuare controlli di Back-Office sulla veridicit├á del Verbale di Denuncia di smarrimento/furto.
+Verificare la conformit├á della carta bloccata (tramite immagine della carta tagliata).
+Permettere al cliente, una volta superati i controlli, di procedere con l'attivazione della nuova carta sostitutiva.
+Problema Business da Risolvere
+La soluzione mira a risolvere diverse necessit├á operative e criticit├á emerse:
+Automazione dei flussi di verifica: Il sistema automatizza il passaggio di dati tra il BPM (che riceve gli input dal cliente) e la Scrivania Digitale (dove l'operatore esegue le verifiche), assicurando che l'esito finale dei controlli sia comunicato correttamente per sbloccare l'attivazione della carta.
+Gestione delle mancanze del Front-End: Durante il collaudo ├¿ emerso che dal Front-End non arriva la tipizzazione automatica dei documenti caricati dal cliente. Il sistema risolve questo problema permettendo all'operatore di visualizzare gli allegati e selezionare manualmente la tipologia di documento (Verbale o Carta) per procedere con la checklist di controllo specifica.
+Standardizzazione dei controlli: Il sistema guida l'operatore attraverso una checklist di conformit├á (es. leggibilit├á del verbale, coerenza dei dati del cliente, corrispondenza del numero carta) per garantire che i controlli formali siano omogenei e tracciabili.
+Ottimizzazione della gestione dei task: Attraverso funzioni di visualizzazione lista attivit├á e riassegnazione (per i supervisori), il sistema risolve problemi di distribuzione del carico di lavoro all'interno del Back-Office
+
+Attori e Responsabilit├á
+Sulla base del documento fornito, gli attori coinvolti nel processo di attivazione di una nuova carta sono suddivisi tra figure operative umane e sistemi tecnologici integrati. Di seguito sono elencate le loro responsabilit├á operative:
+Attori Umani
+Operatore BO (Back Office) / Specialista: ├ê la figura principale incaricata della lavorazione manuale delle pratiche. Le sue responsabilit├á includono:
+Visualizzazione e Presa in Carico: Visualizza la lista delle pratiche e delle attivit├á in coda e prende in carico i task per iniziare la lavorazione.
+Tipizzazione Documentale: Seleziona manualmente la tipologia di documento da verificare (Verbale di Denuncia o Carta tagliata) dopo aver visualizzato gli allegati.
+Verifiche di Conformit├á: Esegue i controlli formali attraverso una checklist specifica (es. leggibilit├á del verbale, coerenza dei dati del cliente, corrispondenza del numero della carta).
+Gestione Allegati: Visualizza i documenti caricati dal cliente e, in caso di problemi tecnici, effettua il download manuale.
+Chiusura Pratica: Approva o respinge la pratica in base all'esito dei controlli, inserendo eventuali note esplicative in caso di rifiuto.
+Supervisore: Ha un ruolo di monitoraggio e coordinamento del team di Back Office. Le sue responsabilit├á sono:
+Monitoraggio: Visualizza tutte le attivit├á presenti a sistema per monitorarne l'avanzamento.
+Riassegnazione: Ha la facolt├á di riassegnare i task dalla coda di gruppo a un utente specifico o viceversa, per ottimizzare i carichi di lavoro.
+Cliente: Sebbene non interagisca direttamente con la Scrivania Digitale (SD), ├¿ l'attore che avvia il processo caricando i documenti necessari (verbale o carta tagliata) tramite il Front-End.
+Attori di Sistema (Entit├á Tecnologiche)
+Sistema (Scrivania Digitale - SD): Agisce come attore automatizzato che abilita il lavoro dell'operatore. Le sue responsabilit├á includono:
+Creazione Pratica e Task: Riceve i dati dal BPM, crea la pratica nello stato "Aperta" e genera automaticamente il task nella lista attivit├á dell'operatore.
+Automazione degli Esiti: Calcola automaticamente l'esito finale della pratica (OK/KO) sulla base delle risposte fornite dall'operatore nella checklist.
+Comunicazione: Invia gli esiti delle verifiche al sistema BPM al termine della lavorazione.
+BPM (Business Process Management): ├ê il sistema esterno chiamante che orchestra il flusso a monte e a valle della Scrivania Digitale. Le sue responsabilit├á sono:
+Invio Richieste: Invia a SD i dati e i documenti necessari per l'apertura della pratica.
+Ricezione Esiti e Chiusura: Riceve gli esiti del Back Office e invia una conferma di ricezione che permette al sistema di chiudere definitivamente la pratica (Stato "Chiusa OK" o "Chiusa KO")
+
+Capability funzionali ad alto livello
+Le funzionalit├á descritte nel backlog del progetto "Attivazione Nuova Carta" possono essere raggruppate in sei capability funzionali ad alto livello, che coprono l'intero ciclo di vita della pratica, dall'integrazione iniziale alla supervisione finale:
+Integrazione e Acquisizione Dati
+Questa capability gestisce l'interazione iniziale con i sistemi esterni (BPM) per l'avvio del processo.
+Ricezione Richieste: Esposizione di servizi per consentire al BPM di inviare i dati e i documenti (verbale di denuncia o immagine della carta) necessari per l'apertura della pratica.
+Robustezza del Servizio: Gestione dell'idempotenza per evitare duplicati e gestione dei messaggi di errore per indisponibilit├á dei servizi o mancanza di dati obbligatori.
+Gestione e Monitoraggio delle Pratiche
+Include le funzioni di amministrazione delle istanze di lavorazione create nel sistema.
+Ciclo di Vita della Pratica: Creazione automatica della pratica in stato "Aperta" a seguito della ricezione dati.
+Repository Pratiche: Visualizzazione della lista completa di tutte le pratiche censite, con possibilit├á di filtraggio per stato, data di apertura/chiusura ed esito.
+Dettaglio Pratica: Visualizzazione completa dei dati di testata, dati cliente, dati della carta bloccata e storico degli esiti.
+Gestione del Workflow Operativo (Task Management)
+Regola lo smistamento e l'organizzazione del lavoro per gli operatori di Back-Office.
+Coda Attivit├á: Generazione automatica di un task nella "Lista Attivit├á" non appena viene creata una pratica.
+Presa in Carico: Funzionalit├á che permette all'operatore di prelevare un'attivit├á dalla coda per lavorarla, cambiandone lo stato in "In Lavorazione".
+Ordinamento e Filtro: Strumenti per organizzare la propria coda di lavoro in base a priorit├á o criteri specifici.
+Esecuzione Verifiche di Conformit├á
+Rappresenta il cuore operativo del sistema, dove avviene il controllo documentale.
+Analisi Documentale: Visualizzazione integrata degli allegati (con opzione di download manuale) e selezione manuale della tipologia di documento (Verbale o Carta) da sottoporre a verifica.
+Checklist Guidata: Esecuzione di controlli formali e di coerenza tramite una checklist interattiva (es. leggibilit├á, firme, corrispondenza numero carta).
+Supporto alle Decisioni: Possibilit├á di salvare bozze della checklist e modificarle prima della chiusura definitiva.
+Automazione Esiti e Chiusura Processo
+Gestisce la finalizzazione della pratica e la comunicazione dei risultati.
+Motore di Calcolo Esiti: Determinazione automatica dell'esito della pratica (Approvata/Respinta) basata sulle risposte fornite nella checklist.
+Sincronizzazione con BPM: Invio automatico degli esiti (inclusi i codici di KO multipli) al sistema BPM chiamante.
+Chiusura Definitiva: Gestione della chiusura della pratica (Stato "Chiusa OK/KO") a valle della conferma di ricezione da parte del BPM.
+Supervisione e Governance
+Funzionalit├á dedicate alle figure di coordinamento per l'ottimizzazione dei carichi.
+Monitoraggio Team: Visualizzazione centralizzata di tutti i task da parte del supervisore.
+Riassegnazione Dinamica: Possibilit├á di spostare le attivit├á da una coda di gruppo a un utente specifico, o tra diversi utenti, per garantire l'efficienza operativa
+
+Processo operativo end-to-end
+Il processo operativo end-to-end per l'attivazione di una nuova carta, gestito tramite l'integrazione tra il sistema BPM e la Scrivania Digitale (SD), si articola nei seguenti passaggi:
+Ricezione della Richiesta e Apertura Pratica
+Il flusso ha inizio quando il sistema BPM invia una richiesta di apertura pratica alla Scrivania Digitale. Questa richiesta deve contenere obbligatoriamente i dati del cliente e l'oggetto "Documenti", che include l'immagine del verbale di denuncia o della carta tagliata. SD verifica la validit├á della richiesta (gestendo eventuali duplicati tramite l'idempotenza) e crea automaticamente la pratica in stato "Aperta".
+Generazione e Presa in Carico del Task
+Contemporaneamente alla creazione della pratica, il sistema genera un task specifico nella "Lista Attivit├á" degli operatori di Back Office. L'operatore visualizza la propria coda, seleziona l'attivit├á e ne effettua la presa in carico. In questo momento, lo stato della pratica passa da "Aperta" a "In Lavorazione".
+Tipizzazione e Visualizzazione Documentale
+Poich├® il Front-End non fornisce la tipologia automatica del documento caricato, l'operatore deve visualizzare gli allegati e selezionare manualmente se il documento da controllare ├¿ un "Verbale di Denuncia" o una "Carta". Se necessario, l'operatore pu├▓ scaricare i file localmente qualora la visualizzazione integrata non sia disponibile.
+Esecuzione delle Verifiche (Istruttoria)
+L'operatore procede alla compilazione di una checklist di conformit├á specifica per il tipo di documento selezionato. I controlli includono:
+Per il Verbale: Leggibilit├á, presenza di timbri/firme e corrispondenza del numero di carta (se presente).
+Per la Carta: Verifica della conformit├á dell'immagine della carta tagliata. L'operatore ha la possibilit├á di salvare la checklist in bozza e modificarla prima della chiusura definitiva.
+Calcolo dell'Esito e Chiusura Task
+Una volta completata la checklist, il sistema calcola automaticamente l'esito della pratica (Approvata o Respinta) in base alle risposte fornite.
+Se la pratica ├¿ Respinta, l'operatore pu├▓ inserire note facoltative e il sistema associa i codici di motivazione del KO da inviare al cliente.
+L'operatore clicca su "Chiudi Pratica", rimuovendo il task dalla propria lista attivit├á.
+Sincronizzazione Finale e Chiusura Pratica
+A valle della chiusura del task, lo stato della pratica diventa "In Attesa Conferma BPM" mentre SD invia l'esito delle verifiche al sistema BPM. Una volta che il BPM conferma la ricezione dell'esito, SD cambia definitivamente lo stato della pratica in "Chiusa OK" o "Chiusa KO", valorizzando la data di chiusura.
+Monitoraggio e Supervisione (Attivit├á Trasversale)
+Durante tutto il processo, un Supervisore pu├▓ monitorare l'avanzamento dei task e, se necessario, intervenire riassegnando le attivit├á tra i vari operatori o gruppi per ottimizzare il carico di lavoro
+
+Sistemi esterni, integrazioni, API e dipendenze applicative
+Sulla base del documento fornito, i sistemi esterni, le integrazioni e le dipendenze applicative coinvolte nel progetto "Attivazione Nuova Carta" sono i seguenti:
+Sistemi Principali e Piattaforme
+Scrivania Digitale (SD): Il sistema core oggetto dello sviluppo, utilizzato dal Back Office per la gestione delle pratiche e delle verifiche.
+BPM (Business Process Management): Il sistema esterno chiamante che orchestra il processo, invia le richieste di apertura pratica a SD e riceve gli esiti delle verifiche.
+Front End: Menzionato come il punto di origine da cui il cliente carica i documenti (verbale o carta), pur con la limitazione segnalata della mancanza di tipizzazione automatica dei file.
+Integrazioni e API specifiche
+Integrazione BPM - Apertura Pratica: Servizio esposto da SD per ricevere dati e documenti dal BPM per l'inizializzazione del flusso.
+Integrazione BPM - Invio Esito Verifiche BO: Servizio invocato da SD verso il BPM per comunicare l'esito (approvato/respinto) dei controlli effettuati dall'operatore.
+Swagger Servizio "SubmitWorkItem 1.1": Riferimento tecnico specifico per i servizi di invio dei task verso il BPM.
+Interface Agreement (IA): Il documento cita specificamente l' "Interface Agreement Servizi SD per BPM_ANC_ver1.4" come riferimento per i dettagli tecnici degli scambi dati.
+Dipendenze e Impatti Applicativi
+L'iniziativa ha impatti dichiarati su altri sistemi dell'ecosistema Poste Italiane:
+Sinergia SAC-SBO (PIX): Sistema su cui l'iniziativa produce impatti funzionali.
+Data Lake: Indicato come sistema impattato, probabilmente per la conservazione o l'analisi dei dati relativi alle pratiche gestite
+
+
+
+Regole business, validazioni e controlli operativi
+Regole di Business e Logiche di Processo
+Idempotenza: Il sistema deve verificare se un ID_WORKITEM inviato dal BPM ├¿ gi├á presente. In caso positivo, restituisce un errore specifico (codice "-5") per evitare duplicati.
+Vincolo Documentale: Ogni pratica pu├▓ contenere un solo tipo di documento da controllare: o l'immagine del Verbale di Denuncia o l'immagine della Carta tagliata.
+Selezione Irreversibile: Una volta che l'operatore ha confermato la tipologia di documento (Verbale o Carta), la scelta non ├¿ pi├╣ modificabile e la pratica passa automaticamente allo stato "In Lavorazione".
+Automazione degli Esiti: Il sistema calcola automaticamente l'esito finale della pratica (Approvata/Respinta) basandosi sulle risposte fornite dall'operatore nella checklist.
+Gestione KO Multipli: In caso di esito negativo dovuto a pi├╣ controlli falliti, il sistema deve inviare al BPM tutte le motivazioni di KO riscontrate.
+Stati di Chiusura: La pratica assume lo stato "In Attesa Conferma BPM" subito dopo la chiusura del task da parte dell'operatore, per poi passare a "Chiusa OK" o "Chiusa KO" solo dopo la conferma di ricezione da parte del sistema BPM.
+Validazioni Tecniche e di Integrazione
+Obbligatoriet├á Input: La richiesta di apertura pratica proveniente dal BPM deve contenere obbligatoriamente l'oggetto "DOCUMENTI", altrimenti il sistema non procede con la creazione.
+Controllo Contenuti: Il sistema riceve i file cos├¼ come inviati dal cliente; il BPM non effettua controlli preventivi sui contenuti caricati, che restano a carico del Back-Office.
+Disponibilit├á Servizio: Il sistema deve gestire e restituire messaggi di errore specifici in caso di indisponibilit├á dei servizi esterni o fallimento delle interrogazioni.
+Controlli Operativi (Checklist e Istruttoria)
+Presa in Carico Obbligatoria: Per poter lavorare una pratica e visualizzarne i dettagli, lo specialista deve prima effettuarne la presa in carico dalla "Lista Attivit├á".
+Controllo Presenza Verbale: L'operatore deve indicare se il verbale ├¿ presente. Se indica "No", tutti i successivi controlli di conformit├á vanno automaticamente in KO.
+Checklist di Conformit├á Verbale: Include verifiche sulla leggibilit├á, presenza di timbri/firme e coerenza dell'intestazione.
+Dettaglio KO Formale: Se il controllo "Il Verbale di Denuncia ├¿ idoneo al controllo formale?" fallisce, l'operatore deve specificare il motivo tra: Intestazione, Firme, Timbro o Carta Poste Italiane.
+Controllo Numero Carta: La verifica della corrispondenza tra il numero carta sul verbale e quello nei dati della pratica ├¿ facoltativa e va eseguita solo se il numero ├¿ effettivamente presente sul verbale.
+Gestione Note: In caso di respingimento della pratica, l'operatore pu├▓ inserire note facoltative per dettagliare ulteriormente il KO.
+Salvataggio Intermedio: Il sistema permette di salvare la checklist ("Salva e Prosegui") per abilitare la sezione di riepilogo, o di modificarla prima della chiusura definitiva.
+Continuit├á Operativa: In caso di problemi con il visualizzatore integrato, l'operatore dispone della funzione di download manuale dei documenti allegati
+
+Operatore (Specialista ANC)
+Workflow operativo dell'utente operatore (Specialista ANC)
+Il workflow operativo per l'utente operatore (Specialista ANC) all'interno della Scrivania Digitale (SD) si articola nei seguenti passaggi sequenziali:
+Accesso e Navigazione alla Lista Attivit├á
+Login: L'operatore accede alla Scrivania Digitale inserendo le proprie credenziali nella pagina di login.
+Apertura Tab Attivit├á: Dalla Home Page, l'utente seleziona il tab "Attivit├á" per visualizzare la lista delle pratiche in attesa di lavorazione o gi├á in carico.
+Ricerca e Selezione: L'operatore pu├▓ filtrare la lista (es. per Numero Pratica o Stato) e clicca sul link presente nella colonna "Attivit├á" per aprire l'istanza specifica.
+Presa in Carico della Pratica
+Accettazione del Task: Prima di poter operare, il sistema richiede all'utente di accettare l'attivit├á cliccando sul tasto "ACCETTA".
+Cambio Stato: Con questa azione, l'operatore prende formalmente in carico la pratica e lo stato della stessa passa da "Aperta" a "In Lavorazione".
+Tipizzazione del Documento
+Analisi Allegati: Poich├® il Front-End non fornisce la tipizzazione automatica, l'operatore visualizza l'anteprima del documento allegato nella colonna destra dell'interfaccia.
+Selezione Tipo: L'utente deve selezionare manualmente dal menu a tendina se il documento ├¿ un "Verbale di denuncia" o una "Carta".
+Conferma: Cliccando su "CONFERMA", il sistema abilita la checklist di controllo specifica per la tipologia scelta. Questa azione ├¿ irreversibile.
+Esecuzione dell'Istruttoria (Verifiche di Conformit├á)
+L'operatore naviga attraverso le milestone di lavorazione per eseguire i controlli:
+Verifica Dati: Consulta le sezioni "Dati Cliente" e "Dati Carta Bloccata" per verificare la coerenza con il documento allegato.
+Compilazione Checklist: Compila i campi della checklist di conformit├á (es. leggibilit├á, timbri, firme).
+Per il Verbale, deve indicare se il numero della carta nel verbale corrisponde ai dati della pratica (controllo facoltativo se il numero non ├¿ presente nel testo).
+In caso di non conformit├á del controllo formale, deve selezionare la causale specifica (es. Intestazione, Firme, ecc.).
+Supporto Documentale: Se il visualizzatore integrato ha problemi, l'utente pu├▓ effettuare il download manuale del documento.
+Salvataggio e Calcolo dell'Esito
+Salvataggio Intermedio: L'operatore pu├▓ cliccare su "SALVA E PROSEGUI" per salvare le verifiche effettuate e passare alla milestone successiva.
+Modifica: Se necessario, pu├▓ cliccare su "MODIFICA" per riaprire la checklist e correggere i dati inseriti.
+Automatismo Esito: Il sistema calcola automaticamente se la pratica ├¿ "Approvata" o "Respinta" in base alle risposte fornite nella checklist.
+Riepilogo e Chiusura della Pratica
+Visualizzazione Esito: Nella milestone "Riepilogo", l'operatore vede evidenziata la card corrispondente all'esito finale (Verde per Approvata, Rossa per Respinta).
+Inserimento Note: In caso di respingimento, l'utente pu├▓ inserire note interne facoltative per dettagliare i motivi del KO.
+Chiusura Definitiva: Cliccando su "CHIUDI PRATICA", il task viene rimosso dalla lista attivit├á dell'operatore e l'esito viene inviato al sistema BPM.
+Stato Finale: La pratica passa allo stato "In Attesa Conferma BPM" e, una volta ricevuta la conferma dal sistema esterno, si chiude definitivamente in "Chiusa OK" o "Chiusa KO"
+
+
+Schermate operative
+Schermate di Accesso e Navigazione Principale
+Pagina di Login: Rappresenta il punto di accesso al sistema dove l'utente deve inserire le proprie credenziali per autenticarsi,.
+Home Page: ├ê la pagina di atterraggio dopo il login che offre una panoramica operativa. Contiene i tab di navigazione principale (Home, Attivit├á, Pratiche), contatori in tempo reale sulle attivit├á e sulle pratiche (attive/chiuse), una sezione per le segnalazioni, i link favoriti e widget per l'accesso rapido ad altri strumenti come la posta elettronica,,.
+Tab Pratiche (Lista Pratiche): Ha lo scopo di permettere la consultazione dell'intero storico delle pratiche censite a sistema. Consente di ricercare e filtrare le pratiche per stato, data (apertura, chiusura, ultima modifica) ed esito finale,.
+Tab Attivit├á (Lista Attivit├á): ├ê la schermata dedicata alla gestione operativa quotidiana. Mostra l'elenco dei task in coda o in lavorazione associati allo specialista o al suo gruppo, permettendone il filtraggio e la presa in carico per iniziare l'istruttoria,,.
+Schermate di Dettaglio Pratica
+Dettaglio Pratica ÔÇô Riepilogo: Fornisce una vista d'insieme di una specifica pratica selezionata,. Mostra lo stato di avanzamento nel workflow (Raccolta input, Lavorazione, Chiusura) e permette di accedere alle diverse milestone di dati (Dati Pratica, Dati Lavorazione, Esito),.
+Dettaglio Pratica ÔÇô Cronologia: Visualizza lo storico temporale di tutte le attivit├á condotte sulla pratica, indicando l'utente che ha effettuato l'operazione e una descrizione dell'evento,.
+Dettaglio Pratica ÔÇô Stati: Mostra l'elenco sequenziale di tutti i cambiamenti di stato che hanno interessato la pratica durante il suo ciclo di vita.
+Dettaglio Pratica ÔÇô Azioni Correlate: Elenca eventuali azioni sussidiarie legate alla pratica specifica.
+Schermate del Workflow Operativo (Lavorazione)
+Schermata di Tipizzazione Documento: Compare subito dopo la presa in carico di un'attivit├á,. Lo scopo ├¿ permettere all'operatore di visualizzare l'allegato e dichiarare manualmente se si tratta di un "Verbale di denuncia" o di una "Carta", passaggio necessario per abilitare i controlli corretti,,.
+Milestone Dati Pratica (Lavorazione): Visualizza le informazioni anagrafiche e tecniche di base della pratica in corso di lavorazione, come la data di apertura e il canale di provenienza,.
+Milestone Verifica Documento: ├ê il cuore dell'attivit├á istruttoria,. Permette di visualizzare i dati del cliente e della carta bloccata a confronto con l'anteprima del documento allegato, consentendo la compilazione della checklist di conformit├á,,.
+Milestone Riepilogo (Lavorazione): Mostra l'esito finale calcolato dal sistema (Approvata o Respinta) sulla base delle verifiche effettuate,. Permette all'operatore di inserire note interne e di cliccare su "Chiudi Pratica" per finalizzare il task e inviare l'esito al BPM,.
+Gestione Segnalazioni
+Dashboard Segnalazioni: Divisa tra "Visualizza Le Segnalazioni Attive" e "Visualizza Segnalazioni", serve a gestire e monitorare l'invio di segnalazioni legate al processo ANC verso il sistema Sinergia
+Campi obbligatori, validazioni, controlli e vincoli operativi
+Schermate di Navigazione e Liste (Pratiche/Attivit├á)
+Link Favoriti (Home Page): Per aggiungere un nuovo link, i campi obbligatori sono Titolo Link, Link (URL) e Tipo Link (scelta tra Interno, Esterno o Legacy).
+Filtri Lista Attivit├á: Il campo Tipo Pratica ├¿ valorizzato di default con "Attivazione Nuova Carta" e risulta non editabile.
+Ordinamento Colonne: ├ê possibile ordinare quasi tutte le colonne nelle liste (Pratiche, Attivit├á, Segnalazioni), ad eccezione della colonna Assegnatari, che non ├¿ ordinabile.
+Presa in Carico e Tipizzazione
+Vincolo di Presa in Carico: Un operatore non pu├▓ lavorare un'attivit├á finch├® non clicca sul tasto "ACCETTA"; solo allora la pratica passa allo stato "In Lavorazione".
+Tipizzazione Obbligatoria: Una volta aperto il task, l'operatore deve selezionare obbligatoriamente il Tipo Documento (Verbale di denuncia o Carta).
+Vincolo di Irreversibilit├á: Dopo aver confermato il tipo di documento, la scelta non ├¿ pi├╣ modificabile per tutta la durata della pratica.
+Milestone di Verifica Documento (Istruttoria)
+Controllo Presenza Documento: Questo ├¿ il controllo primario (Radio button Si/No).
+Validazione: Se l'operatore seleziona "No", la colonna "Conformit├á" viene disabilitata e tutti i controlli della checklist vanno automaticamente in KO.
+Validazione: La colonna "Conformit├á" diventa attiva solo se la presenza del documento ├¿ confermata con "Si".
+Checklist Verbale di Denuncia:
+I controlli sulla leggibilit├á, idoneit├á formale e coerenza dati cliente sono obbligatori.
+Vincolo Condizionale: Se il controllo "Il Verbale di Denuncia ├¿ idoneo al controllo formale?" riceve esito negativo, ├¿ obbligatorio selezionare almeno una causale di non conformit├á (es. Intestazione, Firme, Timbro, ecc.).
+Controllo Facoltativo: La verifica della corrispondenza del numero carta sul verbale ├¿ facoltativa e va compilata solo se il numero ├¿ effettivamente presente nel testo del verbale.
+Salvataggio e Modifica:
+Vincolo Operativo: La sezione "Riepilogo" si abilita solo dopo aver premuto il tasto "SALVA E PROSEGUI".
+Il tasto "MODIFICA" ├¿ necessario per rendere nuovamente editabile la checklist dopo un salvataggio.
+Milestone di Riepilogo e Chiusura
+Automazione Esito: L'esito finale (Approvata/Respinta) ├¿ calcolato automaticamente dal sistema e mostrato in card di sola lettura; l'operatore non pu├▓ forzare l'esito manualmente se non modificando la checklist.
+Note Interne: Il campo "Note" ├¿ visibile solo in caso di pratica Respinta; il suo inserimento ├¿ comunque facoltativo.
+Chiusura Task: Il task viene rimosso dalla lista attivit├á dell'operatore solo dopo il clic su "CHIUDI PRATICA".
+Integrazione Tecnica (BPM a SD)
+Validazione Input: La richiesta di apertura da parte del BPM deve contenere obbligatoriamente l'oggetto "DOCUMENTI", altrimenti il sistema restituisce un errore.
+Controllo Idempotenza: Se il sistema riceve un ID_WORKITEM gi├á esistente, la creazione della pratica viene bloccata e viene restituito il codice errore 
+
+Stati della pratica e le transizioni operative
+Stati della Pratica
+Aperta: ├ê lo stato iniziale. La pratica viene creata automaticamente dal sistema Scrivania Digitale (SD) non appena riceve con successo la richiesta di apertura e i documenti necessari dal sistema BPM.
+In Lavorazione: Indica che un operatore ha preso in carico l'attivit├á. In questo stato, l'operatore esegue le verifiche di conformit├á sui documenti.
+In Attesa Conferma BPM: ├ê uno stato transitorio di sincronizzazione. La pratica assume questo stato dopo che l'operatore ha chiuso il task, mentre il sistema SD invia l'esito al BPM e attende una conferma tecnica di ricezione.
+Chiusa OK: Stato finale che indica una pratica approvata. Viene raggiunto dopo che il BPM conferma la ricezione di un esito positivo.
+Chiusa KO: Stato finale che indica una pratica respinta. Viene raggiunto dopo che il BPM conferma la ricezione di un esito negativo (anche con KO multipli).
+Transizioni Operative
+Le transizioni tra uno stato e l'altro sono innescate dalle seguenti azioni operative:
+Da "Inesistente" a Aperta: Innescata dalla ricezione della richiesta di creazione inviata dal BPM tramite servizio web. Il sistema effettua un controllo di idempotenza sull'ID pratica prima di procedere all'apertura.
+Da Aperta a In Lavorazione: Avviene in due fasi all'interno della "Lista Attivit├á". Prima l'operatore deve cliccare su "ACCETTA" per prendere in carico il task; successivamente, deve visualizzare gli allegati e confermare la tipologia di documento (Verbale o Carta). Solo dopo questa conferma la pratica transita ufficialmente in "In Lavorazione".
+Da In Lavorazione a In Attesa Conferma BPM: Questa transizione avviene quando l'operatore, dopo aver completato la checklist di conformit├á e verificato l'esito calcolato dal sistema, clicca sul tasto "CHIUDI PRATICA" nella milestone di riepilogo.
+Da In Attesa Conferma BPM a Chiusa OK/KO: La transizione finale ├¿ automatica e dipende dalla conferma di ricezione esiti restituita dal sistema BPM. In questo momento il sistema valorizza anche la "Data Chiusura" con la data corrente (sysdate).
+L'operatore pu├▓ monitorare lo storico di questi passaggi attraverso la schermata "Dettaglio Pratica ÔÇô Stati", che elenca sequenzialmente tutti i cambiamenti di stato e gli utenti che li hanno generati
+
+Azioni operatore
+Gestione della Home Page e Navigazione
+Accesso al sistema: Effettuare il login tramite l'inserimento delle proprie credenziali.
+Navigazione Tab: Spostarsi tra le sezioni principali tramite i tab "Home", "Attivit├á" e "Pratiche".
+Monitoraggio Real-time: Visualizzare i contatori dinamici relativi al numero di attivit├á in coda, pratiche attive e pratiche chiuse.
+Personalizzazione Link Favoriti:
+Aggiungere nuovi link inserendo Titolo, URL e tipologia (Interno, Esterno o Legacy).
+Modificare o Eliminare i link salvati in precedenza.
+Accesso Strumenti: Utilizzare il widget dedicato per accedere direttamente alla posta elettronica.
+Gestione e Consultazione delle Pratiche
+Ricerca e Filtro: Ricercare pratiche specifiche tramite l'ID pratica o applicando filtri per stato, data di apertura, data di chiusura, data di ultima modifica o esito SD.
+Visualizzazione Dettagli: Accedere al riepilogo completo di una pratica per consultarne i dati anagrafici, i dati della carta bloccata e l'esito finale.
+Monitoraggio Storico: Visualizzare la Cronologia delle attivit├á condotte, l'elenco dei cambiamenti di Stato e le eventuali Azioni correlate.
+Gestione Dati e Liste:
+Ordinare le colonne della lista in modalit├á ascendente o discendente.
+Esportare l'elenco delle pratiche in formato Excel.
+Navigare tra le pagine dell'elenco tramite i comandi di scorrimento.
+Workflow Operativo (Lavorazione Task)
+Presa in carico: Selezionare un'attivit├á dalla lista e cliccare su "ACCETTA" per renderla propria e iniziare la lavorazione.
+Tipizzazione Documento: Visualizzare l'anteprima dell'allegato e selezionare manualmente se si tratta di un "Verbale di denuncia" o di una "Carta" (azione necessaria per abilitare i controlli corretti e irreversibile dopo la conferma).
+Istruttoria Documentale:
+Visualizzare l'anteprima integrata dei documenti o effettuarne il download manuale in caso di problemi tecnici.
+Espandere/Nascondere sezioni di dati (es. indirizzo di residenza) o la preview degli allegati per ottimizzare lo spazio a schermo.
+Compilare la Checklist: Rispondere ai quesiti di conformit├á (Si/No) e, in caso di esito negativo sul verbale, selezionare la causale specifica di KO (es. Firme, Timbro, ecc.).
+Rendere obbligatorio il controllo sul numero di carta (se presente nel verbale) tramite l'apposita icona.
+Finalizzazione:
+Salvare in bozza le verifiche effettuate tramite il tasto "SALVA E PROSEGUI".
+Modificare una checklist gi├á salvata per correggere eventuali errori.
+Inserire note interne facoltative (specialmente in caso di pratica respinta).
+Chiudere la pratica: Cliccare su "CHIUDI PRATICA" per inviare l'esito al BPM e terminare il task.
+Gestione Segnalazioni (Dashboard)
+Invio e Monitoraggio: Inviare segnalazioni relative al processo ANC verso il sistema Sinergia.
+Consultazione: Visualizzare le segnalazioni attive o lo storico delle segnalazioni inviate, applicando filtri per ID segnalazione, stato o operatore.
+Azioni del Supervisore
+Oltre alle azioni sopra elencate, l'utente con profilo Supervisore pu├▓:
+Monitorare tutte le attivit├á del team tramite una vista dedicata.
+Riassegnare i task: Spostare le attivit├á dalla coda di gruppo a un utente specifico o riassegnarle tra diversi operatori/gruppi
+
+Integrazioni funzionali da manuale utente
+Dall'analisi comparativa tra il Product Backlog e il Manuale Utente, emergono diverse funzionalit├á accessorie, dettagli dell'interfaccia utente (UI) e comportamenti operativi descritti esclusivamente nel manuale.
+Funzionalit├á della Home Page e Personalizzazione
+Mentre il backlog si concentra quasi esclusivamente sul processo di attivazione carta (ANC), il manuale descrive strumenti di produttivit├á generale presenti nella Home Page dello specialista:
+Gestione Link Favoriti: Il manuale descrive la possibilit├á per l'operatore di aggiungere link personalizzati definendo Titolo, URL e Tipo Link (Interno, Esterno o Legacy). Include anche le azioni di modifica ed eliminazione di tali link.
+Widget "Posta Elettronica": Viene citato un widget specifico per l'accesso diretto alla web mail, non menzionato nei requisiti funzionali del backlog.
+Contatori Dinamici: Il manuale specifica la presenza di contatori in tempo reale in alto a destra per monitorare istantaneamente il numero di attivit├á in coda, pratiche attive e pratiche chiuse.
+Dashboard Segnalazioni (Integrazione Sinergia)
+Il manuale dedica un'intera sezione (Sezione 2.4) alla Dashboard Segnalazioni, un modulo operativo che permette di inoltrare segnalazioni relative alle pratiche ANC verso il sistema esterno Sinergia.
+Visualizzazione e Filtri: Sono descritte schermate specifiche ("Segnalazioni Attive" e "Visualizza Segnalazioni") con filtri granulari non presenti nel backlog, come la ricerca per "Operatore Ultima Modifica" o range temporali di creazione e chiusura della segnalazione.
+Flusso Operativo: Viene esplicitato che la selezione di una segnalazione avvia un processo parallelo governato dal sistema Sinergia.
+Viste di Audit e Tracciabilit├á
+Il manuale descrive tab di consultazione nel dettaglio pratica che forniscono una profondit├á informativa maggiore rispetto alla semplice "Visualizzazione Lista Pratiche" del backlog:
+Tab Cronologia: Una vista dedicata che tiene traccia di ogni singola attivit├á condotta sulla pratica, associandola all'utente specifico e fornendo una descrizione testuale dell'evento.
+Tab Stati: Una visualizzazione sequenziale di tutti i cambiamenti di stato che hanno interessato la pratica, con relativa data e operatore.
+Tab Azioni Correlate: Una sezione per visualizzare eventuali attivit├á sussidiarie legate alla pratica principale.
+Dettagli di Interfaccia e Supporto Operativo
+Il manuale introduce elementi di assistenza all'utente e controlli di navigazione non dettagliati nel backlog:
+Supporto alla Checklist: Per ogni punto della checklist di conformit├á, il manuale cita il tasto "Mostra Descrizione", che permette all'operatore di visualizzare le istruzioni dettagliate su come eseguire quel controllo specifico.
+Istruzioni in caso di Errore Tecnico: Nella schermata di tipizzazione, il manuale riporta un box informativo (icona "i") che istruisce l'operatore su come procedere qualora non fosse possibile scaricare il contenuto: selezionare comunque un tipo documento e chiudere con esito negativo.
+Controllo Visivo: Viene descritta la possibilit├á di regolare la dimensione del documento in anteprima (Piccolo, Medio, Grande) per facilitare la lettura del verbale o della carta.
+Navigazione Avanzata: Il manuale specifica l'uso di icone blu (frecce su/gi├╣) per indicare l'ordinamento delle colonne e descrive i comandi di paginazione (>, <, >>, <<) per navigare tra elenchi lunghi.
+Tasto "Indietro": Presente nella fase di accettazione dell'attivit├á per permettere all'utente di tornare alla schermata precedente senza prendere in carico il task
+Esperienza utente operativa
+LÔÇÖesperienza utente operativa dell'operatore (Specialista ANC) sulla Scrivania Digitale (SD) ├¿ progettata come un workflow guidato che trasforma dati grezzi provenienti dal sistema BPM in decisioni di conformit├á tracciabili. Di seguito una descrizione dettagliata dell'esperienza, focalizzata su criticit├á e complessit├á.
+Punti chiave del Workflow Operativo
+L'operatore interagisce con il sistema attraverso un percorso sequenziale che garantisce il controllo su ogni fase della pratica:
+Gestione della Coda: L'esperienza inizia nel tab "Attivit├á", dove l'utente visualizza i task in coda. Un punto chiave ├¿ la presa in carico esplicita: l'operatore deve cliccare su "ACCETTA" per rendere il task lavorabile, attivando il passaggio della pratica allo stato "In Lavorazione".
+La Fase di Tipizzazione: Prima di accedere ai controlli, l'operatore deve visualizzare gli allegati e dichiarare manualmente se il documento ├¿ un "Verbale di denuncia" o una "Carta". Questa fase abilita dinamicamente la checklist corretta nelle milestone successive.
+Istruttoria Documentale: L'interfaccia ├¿ divisa in due colonne per facilitare il confronto visivo: a sinistra i dati anagrafici e la checklist, a destra il visualizzatore dell'allegato.
+Finalizzazione Automatica: L'utente non inserisce l'esito finale (Approvata/Respinta), ma compila i singoli punti della checklist; ├¿ il sistema a calcolare l'esito generale in base alle risposte fornite.
+Complessit├á e Logiche Decisionali
+Il sistema presenta diverse complessit├á operative legate a vincoli di business rigorosi:
+Irreversibilit├á della Tipizzazione: Una volta confermato il tipo di documento (Verbale o Carta), la scelta non ├¿ pi├╣ modificabile. Questa rigidit├á richiede massima attenzione iniziale da parte dell'operatore.
+Vincoli di Coerenza Documentale: Ogni pratica pu├▓ essere processata solo per una tipologia di documento, anche se il cliente ha caricato entrambi (Verbale e Carta). L'operatore deve decidere su quale dei due basare l'intera istruttoria.
+Logiche Condizionali della Checklist: Esiste una gerarchia nei controlli. Ad esempio, se l'operatore indica che il documento non ├¿ presente, la colonna "Conformit├á" viene disabilitata e il sistema forza automaticamente l'esito KO su tutti i punti successivi.
+Gestione dei KO Multipli: Se una pratica fallisce il controllo formale del verbale, l'operatore deve selezionare specifici motivi (Intestazione, Firme, Timbro, ecc.), poich├® a ciascuno corrisponde un diverso codice di errore da inviare al sistema BPM.
+Criticit├á Operative
+Dalla documentazione emergono alcuni punti di attenzione che possono impattare sulla fluidit├á del lavoro:
+Mancanza di Automazione dal Front-End: Una criticit├á rilevante ├¿ che il sistema non riceve la tipizzazione automatica dei documenti dal Front-End. Questo costringe l'operatore a un passaggio manuale aggiuntivo (visualizzazione e selezione tipo) per ogni singola pratica.
+Affidabilit├á del Visualizzatore: ├ê prevista una procedura di emergenza (Download manuale) qualora il visualizzatore integrato non carichi correttamente il documento, segno di una possibile criticit├á tecnica nel rendering degli allegati.
+Compilazione Facoltativa ma Cruciale: Il controllo sulla corrispondenza del numero di carta nel verbale ├¿ facoltativo (da eseguire solo se il numero ├¿ presente nel testo), lasciando all'operatore la responsabilit├á di valutare se il controllo sia applicabile o meno.
+Strumenti di Supporto all'Esperienza
+Per mitigare le complessit├á, la Scrivania Digitale offre strumenti di supporto:
+Help in linea: Per ogni punto della checklist, l'utente pu├▓ cliccare su "Mostra Descrizione" per leggere le istruzioni operative su come eseguire correttamente la verifica.
+Personalizzazione e Monitoraggio: L'operatore pu├▓ gestire link favoriti e widget (come la web mail) direttamente dalla Home Page per velocizzare le attivit├á accessorie.
+Tracciabilit├á Totale: Grazie ai tab "Cronologia" e "Stati", l'operatore o il supervisore possono ricostruire ogni fase della lavorazione, riducendo l'incertezza in caso di contestazioni o riassegnazioni
+
+
+SUPERVISORE
+Ruolo
+Il ruolo del Supervisore ANC all'interno della Scrivania Digitale ├¿ focalizzato sull'orchestrazione, il monitoraggio e la governance del workflow operativo del team di Back Office. A differenza dello specialista, il supervisore non esegue solitamente l'istruttoria documentale, ma assicura che il carico di lavoro sia distribuito correttamente e che i processi rispettino i tempi previsti.
+Le sue responsabilit├á operative principali includono:
+Monitoraggio e Analisi delle Performance
+Il supervisore ha una visione d'insieme dell'andamento quotidiano attraverso strumenti di monitoraggio in tempo reale presenti nella Home Page:
+Contatori Dinamici: Visualizza costantemente il numero di attivit├á totali in coda, le pratiche attualmente attive e quelle gi├á chiuse.
+Dashboard Grafica: Analizza tre tipologie di istogrammi (Pratiche Giornaliere, Pratiche Giornaliere Lavorate e Pratiche per Stato) per valutare il volume delle richieste in ingresso e la produttivit├á del team, filtrando i dati per periodi mensili.
+Dettaglio Esiti: Monitora il rapporto tra pratiche chiuse con esito "OK" e quelle con esito "KO".
+Orchestrazione e Riassegnazione Task
+Questa ├¿ la responsabilit├á pi├╣ critica per garantire l'efficienza del workflow. Attraverso il tab "Riassegna Attivit├á", il supervisore pu├▓:
+Bilanciare i carichi: Visualizzare l'elenco completo delle attivit├á dei propri processi e identificare i task pendenti o bloccati.
+Gestire le assegnazioni: Spostare una o pi├╣ pratiche dalla coda del "Gruppo Operatore ANC" a un utente specifico, o viceversa, per ottimizzare la lavorazione in base alla disponibilit├á degli operatori.
+Governance delle Segnalazioni (Dashboard Segnalazioni)
+Il supervisore gestisce l'interfaccia verso il sistema esterno Sinergia. Le sue attivit├á includono:
+Invio e Inoltro: Inviare segnalazioni relative alle pratiche ANC e inoltrarle per la risoluzione.
+Riassegnazione Segnalazioni: Assegnare le segnalazioni attive a un operatore specifico, a un gruppo o a se stesso.
+Monitoraggio Stato Segnalazioni: Filtrare e consultare lo stato delle segnalazioni (In Coda, In Lavorazione, Chiuso) e identificare l'operatore che ha effettuato l'ultima modifica.
+Audit e Consultazione Avanzata
+Il supervisore ha facolt├á di consultare l'intero repository delle pratiche per finalit├á di controllo. Pu├▓ accedere al dettaglio di ogni singola istanza per visualizzare:
+Cronologia: La traccia completa di tutte le attivit├á condotte e degli utenti coinvolti.
+Stati: La sequenza temporale dei passaggi di stato subiti dalla pratica.
+Dati Lavorazione: La checklist compilata dall'operatore e i relativi allegati (verbale o carta) in modalit├á sola lettura
+
+FUNZIONALITAÔÇÖ
+Funzionalit├á di Monitoraggio e Analisi
+Il supervisore dispone di strumenti visivi e contatori in tempo reale per monitorare l'andamento del lavoro:
+Contatori Real-time: In alto a destra nella Home Page sono sempre visibili i contatori dinamici per il numero di attivit├á, le pratiche attive e le pratiche chiuse.
+Grafici Statistici: La Home Page presenta tre istogrammi che coprono un periodo mensile (selezionabile tramite calendario):
+Pratiche Giornaliere: Mostra il numero di richieste di lavorazione aperte ogni giorno su SD.
+Pratiche Giornaliere Lavorate: Indica il numero di pratiche concluse giornalmente, suddivise per esito (Chiusa OK e Chiusa KO).
+Pratiche per Stato: Rappresenta la distribuzione totale delle pratiche nei vari stati di lavorazione (es. Aperta, In Lavorazione, ecc.).
+Funzionalit├á di Gestione e Consultazione Pratiche
+Attraverso il Tab Pratiche, il supervisore pu├▓ amministrare e ricercare l'intero storico delle istanze:
+Ricerca e Filtri Avanzati: ├ê possibile filtrare l'elenco per ID Pratica, Stato (Aperta, In Lavorazione, In Attesa Conferma BPM, Chiusa OK/KO), e per range temporali di Apertura, Chiusura o Ultima Modifica.
+Strumenti della Lista: Il sistema permette di esportare l'elenco in Excel, ordinare le colonne, aggiornare la vista e navigare tra le pagine dei risultati.
+Dettaglio Pratica: Selezionando una pratica, il supervisore pu├▓ accedere a:
+Riepilogo: Visualizzazione della linea di avanzamento (Raccolta input, Lavorazione, Chiusura) e dei dati generici.
+Milestone Dati: Consultazione in sola lettura dei dati cliente, dati della carta bloccata e della checklist di conformit├á compilata dall'operatore.
+Tracciabilit├á (Audit): Accesso ai tab Cronologia (log delle attivit├á e degli utenti) e Stati (storico dei passaggi di stato).
+ Funzionalit├á di Controllo e Orchestrazione (Riassegnazione)
+Queste funzioni permettono al supervisore di intervenire direttamente sulla distribuzione del lavoro:
+Tab Riassegna Attivit├á: Permette di visualizzare l'elenco di tutte le attivit├á dei processi di competenza.
+Tipologia di Riassegnazione: Il supervisore pu├▓ scegliere di spostare un task dalla coda comune al Gruppo Operatore ANC oppure a un singolo Utente specifico.
+Dashboard Segnalazioni (Sinergia): Gestione delle segnalazioni verso sistemi esterni:
+Riassegna Segnalazioni: Permette di assegnare le segnalazioni attive a un operatore, a un gruppo o a se stesso.
+Monitoraggio Segnalazioni: Viste dedicate ("Le Mie Segnalazioni" e "Segnalazioni") per consultare lo stato delle pratiche segnalate, filtrate anche per Operatore Ultima Modifica o data di chiusura
+
+Anomalie, pratiche bloccate, errori o eccezioni operative
+Identificazione di Blocchi e Anomalie
+Il supervisore utilizza strumenti di monitoraggio visivo per individuare colli di bottiglia o pratiche ferme:
+Grafico "Pratiche per Stato": Permette di visualizzare quante pratiche si trovano in stati critici, come "In Attesa Conferma BPM" (potenziali blocchi tecnici di comunicazione) o "In Lavorazione" (possibili ritardi operativi).
+Filtri di Ricerca Avanzati: Nel Tab "Pratiche", il supervisore pu├▓ isolare le pratiche in base alla "Data Ultima Modifica" o allo "Stato", identificando istanze che non avanzano nel workflow da troppo tempo.
+Audit e Investigazione: Per comprendere l'origine di un errore operativo, il supervisore pu├▓ consultare la "Cronologia" (per vedere quali azioni sono state compiute e da chi) e lo storico degli "Stati" per ricostruire il ciclo di vita del problema.
+Gestione delle Pratiche Bloccate (Riassegnazione)
+Lo strumento principale per risolvere blocchi dovuti a carichi di lavoro eccessivi o assenze degli operatori ├¿ il tab "Riassegna Attivit├á":
+Intervento sui Task: Il supervisore visualizza l'elenco di tutte le attivit├á dei processi di sua competenza ("Le attivit├á dei miei processi").
+Riassegnazione Dinamica: Pu├▓ forzare lo sblocco di un task spostandolo dalla coda di un operatore specifico (Owner) nuovamente al "Gruppo Operatore ANC" o assegnandolo direttamente a un altro "Utente" pi├╣ disponibile.
+Gestione di Eccezioni Operative (Sinergia)
+Per le anomalie che non possono essere risolte internamente alla Scrivania Digitale, il sistema prevede l'integrazione con il sistema Sinergia tramite la "Dashboard Segnalazioni":
+Inoltro Segnalazioni: Il supervisore pu├▓ inviare segnalazioni relative a pratiche ANC e inoltrarle al sistema Sinergia per la risoluzione.
+Governo delle Segnalazioni: Pu├▓ monitorare lo stato di queste eccezioni (In Coda, In Lavorazione, Chiuso) e riassegnare le segnalazioni stesse a operatori specifici o a se stesso per garantirne la chiusura.
+Supporto alle Decisioni
+In caso di dubbi sulla conformit├á documentale che generano eccezioni nel processo, il supervisore pu├▓ visualizzare in sola lettura la checklist di controllo compilata dall'operatore e i relativi allegati per validare l'operato del Back Office o istruire correzioni
+l supervisore interviene con poteri autorizzativi sulla distribuzione del lavoro, piuttosto che sull'esito della singola pratica:
+Riassegnazione Task: Il supervisore ├¿ l'unico profilo autorizzato a spostare le attivit├á dalla coda di un gruppo a un utente specifico o tra diversi operatori.
+Governance delle Segnalazioni: Il supervisore ha la responsabilit├á di assegnare le segnalazioni attive agli operatori corretti, a un gruppo o a se stesso per garantirne la presa in carico
+
+Ciclo di vita di una pratica gestita dal supervisore
+Il ciclo di vita completo di una pratica per lÔÇÖAttivazione Nuova Carta (ANC) attraversa diverse fasi, monitorate e gestite dal Supervisore attraverso la Scrivania Digitale per garantirne l'efficienza operativa e il rispetto degli standard di conformit├á.
+1. Apertura e Monitoraggio Iniziale (Stato: Aperta)
+Il processo ha inizio quando il sistema BPM invia la richiesta a Scrivania Digitale, che crea automaticamente la pratica.
+Punto di vista del Supervisore: Dalla Home Page, il Supervisore nota l'incremento del contatore delle "Pratiche Attive" e delle "Attivit├á". Pu├▓ monitorare il flusso di richieste in tempo reale tramite il grafico "Pratiche Giornaliere", che mostra il numero di istanze aperte quotidianamente su SD.
+2. Orchestrazione e Distribuzione (Stato: In Lavorazione)
+In questa fase, la pratica attende di essere lavorata da un operatore del Back Office.
+Punto di vista del Supervisore: Se nota rallentamenti nella coda, il Supervisore interviene nel tab "Riassegna Attivit├á". Qui consulta la lista "Le attivit├á dei miei processi" e pu├▓ forzare la distribuzione del lavoro, decidendo di assegnare task specifici a un singolo Utente o riassegnarli al Gruppo Operatore ANC per una gestione collettiva.
+3. Controllo Istruttoria e Gestione Eccezioni
+Mentre l'operatore esegue i controlli formali sul Verbale di Denuncia o sulla Carta, il Supervisore supervisiona l'avanzamento.
+Punto di vista del Supervisore: Tramite il tab "Pratiche", il Supervisore pu├▓ accedere al Dettaglio Pratica e visualizzare in sola lettura la milestone "Dati Lavorazione". In questa schermata pu├▓ verificare la checklist compilata dall'operatore e consultare l'anteprima degli allegati tramite la funzione "Visualizza Documento".
+Gestione Anomalie: Qualora sorgano eccezioni o errori procedurali, il Supervisore utilizza la "Dashboard Segnalazioni" per inoltrare la problematica al sistema esterno Sinergia, monitorandone poi lo stato fino alla chiusura.
+4. Finalizzazione e Analisi Performance (Stato: Chiusa OK/KO)
+Dopo la chiusura del task da parte dell'operatore, la pratica passa per lo stato transitorio di "In Attesa Conferma BPM" fino alla chiusura definitiva.
+Punto di vista del Supervisore: Il Supervisore analizza i risultati finali tramite strumenti di reporting grafico:
+Pratiche Giornaliere Lavorate: Monitora l'esito delle verifiche condotte, osservando la distribuzione tra pratiche approvate (OK) e respinte (KO).
+Pratiche per Stato: Valuta la distribuzione complessiva delle pratiche in corso per identificare eventuali colli di bottiglia.
+Cronologia e Audit: Per finalit├á di controllo, pu├▓ consultare i tab "Cronologia" (log di tutte le attivit├á condotte dagli utenti) e "Stati" (storico temporale dei passaggi di stato).
+Il ciclo si conclude formalmente quando la pratica viene contabilizzata nel contatore delle "Pratiche Chiuse" nella dashboard del supervisore
+Monitoraggio la gestione operativa
+Il supervisore dispone di diversi strumenti per il monitoraggio e la gestione operativa, raggruppati principalmente nella Home Page e nei tab di navigazione superiore. Di seguito sono elencate le dashboard, le viste, i filtri e gli strumenti di reporting disponibili:
+Dashboard e Viste Aggregate
+Home Page Dashboard: Rappresenta il punto di controllo centrale che include i tab di navigazione, i contatori in tempo reale e gli strumenti di reporting grafico.
+Contatori Real-time: Posizionati in alto a destra, forniscono dati aggregati istantanei su:
+Numero di attivit├á totali.
+Pratiche Attive.
+Pratiche Chiuse.
+Dashboard Segnalazioni: Una vista specifica dedicata alla gestione delle segnalazioni inoltrate al sistema Sinergia, suddivisa in tre sezioni: "Riassegna Segnalazioni", "Visualizza Le Mie Segnalazioni" e "Segnalazioni" (vista globale).
+Strumenti di Reporting (Grafici)
+Il sistema offre tre tipi di istogrammi che mostrano l'andamento mensile (selezionabile tramite calendario):
+Pratiche Giornaliere: Visualizza il numero di richieste di lavorazione aperte ogni giorno su Scrivania Digitale.
+Pratiche Giornaliere Lavorate: Indica il numero di pratiche concluse quotidianamente, segmentate per esito (Chiusa OK e Chiusa KO).
+Pratiche per Stato: Mostra la distribuzione totale delle pratiche nei vari stati di lavorazione (es. Aperta, In Lavorazione, In Attesa Conferma BPM, ecc.).
+Code Operative e Gestione Task
+Tab Riassegna Attivit├á: ├ê lo strumento principale per la gestione delle code. Contiene la lista "Le attivit├á dei miei processi", che elenca tutti i task che il supervisore pu├▓ spostare tra gruppi o singoli utenti.
+Tab Pratiche: Fornisce l'elenco completo dello storico pratiche, permettendo di monitorare l'intero repository aziendale.
+Sistemi di Filtraggio e Ricerca
+Per ogni vista, il supervisore pu├▓ utilizzare filtri granulari:
+Nella Tab Pratiche: Ricerca per Pratica N., Stato (Aperta, In Lavorazione, ecc.), Data Chiusura, Data Apertura, Data Ultima Modifica ed Esito SD (OK/KO).
+Nella Tab Riassegna Attivit├á: Filtri per Pratica N., Data Assegnazione, Owner (proprietario del task) e Assegnatario.
+Nella Dashboard Segnalazioni: Filtri estesi che includono Id Segnalazione, Attivit├á Segnalazione, Utente in Carico, Operatore Ultima Modifica e range temporali di creazione o chiusura.
+Strumenti Correlati
+Esportazione Excel: Possibilit├á di scaricare le liste delle pratiche in formato foglio di calcolo.
+Ordinamento Colonne: Tutte le tabelle permettono l'ordinamento ascendente o discendente tramite clic sulla testata della colonna (evidenziato da frecce blu).
+Paginazione: Comandi per navigare tra elenchi numerosi (avanti, indietro, inizio, fine)
+
+Testbook
+Raggruppa i casi di test per area funzionale e capability applicativa
+Sulla base dei documenti "Test Book" forniti, i casi di test possono essere raggruppati per area funzionale e capability applicativa come segue:
+1. Integrazione e Acquisizione Richieste
+Capability: Apertura Pratica e Validazione JSON Questa area verifica la capacit├á del sistema di ricevere e validare correttamente i dati dal sistema BPM tramite Postman.
+Verifica Campi: Controllo dei campi obbligatori (ST01), facoltativi (ST02) e del dominio dei valori (ST03).
+Gestione Documenti: Apertura pratica con due documenti (ST04), solo Verbale di Denuncia (ST05), solo Carta tagliata (ST06) o senza documenti (ST07).
+Validazione Tecnica: Elaborazione di JSON con diversi CODICE_DOC_ID (ST01-ST04 del Test Book Tipizzazione) e gestione dell'idempotenza con ID_WORKITEM duplicati (ST08).
+2. Gestione Repository e Consultazione Pratiche
+Capability: Monitoraggio e Riepilogo Pratiche Test focalizzati sulla visibilit├á delle pratiche nel repository e sulla correttezza dei dati mostrati.
+Consultazione: Verifica dell'apertura pratica su Scrivania Digitale (ST09) e test delle colonne e dei filtri disponibili nella "Lista Pratiche" (ST15).
+Integrit├á Dati (Riepilogo): Verifica della correttezza dei dati in Testata (ST10), Dati Pratica (ST11), Dati Lavorazione (ST12) ed Esito (ST13).
+Stato Pratica: Verifica del riepilogo per documenti non tipizzati (ST12), tipizzati come Verbale (ST13) o come Carta (ST14).
+3. Workflow Operativo e Task Management
+Capability: Gestione Task e Coda Lavorazioni Verifica della generazione dei task e delle azioni iniziali dell'operatore.
+Generazione e Visibilit├á: Verifica della creazione del task (ST05 del Test Book Tipizzazione), del suo naming e della visibilit├á nella lista attivit├á (ST16).
+Operativit├á Lista: Verifica delle colonne e dei filtri nella "Lista Attivit├á" (ST17).
+Presa in Carico: Accettazione del task e tipizzazione del documento (ST06), con conseguente verifica della variazione di stato della pratica (ST07).
+Dati in Lavorazione: Verifica dei dati testata, pratica e riepilogo durante la fase di presa in carico (ST18, ST19, ST21).
+4. Verifiche di Conformit├á e Controllo Documentale
+Capability: Istruttoria e Checklist Il cuore dell'attivit├á di test sulla checklist di conformit├á e sulla visualizzazione degli allegati.
+Visualizzazione: Verifica del visualizzatore documenti (ST22) e della funzionalit├á di download manuale in caso di errore (ST23, ST14).
+Checklist Verbale: Caricamento della checklist corretta (ST08), verifica della presenza del verbale (ST24, ST25) e controlli di conformit├á (ST26, ST27).
+Checklist Carta: Caricamento della checklist specifica (ST09), verifica presenza carta (ST37, ST38) e controlli di conformit├á (ST39).
+Causali KO e Salva/Modifica: Test specifici sui singoli controlli (IDREF 1-6) impostati su "NO" con relative causali come "Intestazione" o "Firme" (ST28-ST36, ST40, ST41) e verifica della funzione "Salva e Modifica Checklist" (ST42).
+5. Automazione Decisionale e Chiusura Processo
+Capability: Calcolo Esito e Sincronizzazione Finale Test sulla logica di business per il calcolo dell'esito e lo scambio dati finale con BPM.
+Logica Esito: Calcolo corretto dell'esito con tutti i controlli a "SI" (ST43), tutti a "NO" (ST44) o con esiti misti (ST45).
+Chiusura: Azione di chiusura della pratica per Verbale (ST10) o Carta (ST11), con gestione dei casi approvati (ST46) o respinti (ST47).
+Comunicazione BPM: Invio dell'esito al BPM per pratiche approvate (ST48), respinte con un KO (ST49) o con KO multipli (ST50).
+Sincronizzazione Stati: Verifica del cambio di stato finale in SD dopo la ricezione della conferma da parte del BPM (ST51, ST52).
+6. Supervisione e Governance
+Capability: Riassegnazione e Gestione Segnalazioni Test sulle funzionalit├á dedicate al profilo Supervisore e alle integrazioni di monitoraggio.
+Riassegnazione: Verifica dei filtri nel tab "Task da Riassegnare" (ST53) e riassegnazione effettiva di un task a un gruppo (ST54) o a un utente (ST55).
+Integrazioni Sistemi Esterni: Test dell'integrazione con il DataLake (ST56) e delle funzionalit├á Sinergia (PIX): apertura segnalazione (ST57), recupero pratiche/dettaglio (ST58, ST59) e apertura ticket (ST60).
+
+Identifica i workflow e le funzionalit├á considerate pi├╣ critiche in base alla quantit├á e tipologia dei test
+Sulla base dei documenti di test forniti, le funzionalit├á e i workflow considerati pi├╣ critici possono essere identificati attraverso l'alta concentrazione di scenari di test (quantit├á) e la loro classificazione di priorit├á "High" (tipologia).
+1. Workflow di Istruttoria e Checklist (Massima Criticit├á per Quantit├á)
+L'area della lavorazione del task e delle verifiche di conformit├á ├¿ quella con il maggior numero di casi di test dedicati (dal ST24 al ST45), a indicare un'altissima sensibilit├á operativa.
+Dettaglio dei controlli: Il sistema viene testato granularmente per ogni possibile motivo di scarto (KO). Ad esempio, per l'idoneit├á formale del verbale, esistono test specifici per ogni causale: Intestazione (ST30), Firme (ST31), Timbro (ST32), Dichiarazione (ST33) e Carta Poste Italiane (ST34).
+Logica dell'Esito: Sono presenti test multipli per verificare che il sistema calcoli l'esito corretto in scenari complessi, come quando ├¿ presente almeno un controllo valorizzato con "NO" (ST45) o quando tutti i controlli sono negativi (ST44).
+2. Integrazione BPM e Validazione Dati (Criticit├á Fondazionale)
+Questa area ├¿ considerata critica poich├® rappresenta il punto di ingresso di tutto il processo. Tutti i test relativi sono classificati con priorit├á "High".
+Validazione JSON: Il sistema deve gestire correttamente diverse tipologie di CODICE_DOC_ID (ST01-ST04) e restituire errori parlanti in caso di dati non validi (es. codice errore "-4" in ST04).
+Idempotenza: Un punto critico testato ├¿ la capacit├á del sistema di rifiutare ID_WORKITEM duplicati per evitare la creazione di pratiche doppie (ST08).
+Sincronizzazione Esiti: ├ê fondamentale il corretto invio dei risultati al BPM (ST48-ST50), specialmente in caso di KO multipli, per garantire che il cliente riceva tutte le motivazioni del rifiuto.
+3. Chiusura Task e Transizioni di Stato (Criticit├á Operativa)
+La fase finale della lavorazione ├¿ particolarmente delicata, come dimostrato dall'esito dei test:
+Difetti riscontrati: I test sulla chiusura del task con pratica approvata (ST46) o respinta (ST47) sono stati contrassegnati come "Passed with defect". Questo indica che, pur essendo funzionanti, queste fasi hanno presentato criticit├á tecniche o bug che hanno richiesto attenzione specifica.
+Verifica Cambio Stato: Il corretto passaggio di stato a seguito della ricezione della conferma da parte di BPM (ST51-ST52) ├¿ testato come passaggio finale indispensabile per la conclusione del ciclo di vita della pratica.
+4. Visualizzazione e Continuit├á (Criticit├á Tecnica)
+La capacit├á dell'operatore di vedere i documenti ├¿ un prerequisito per l'istruttoria.
+Visualizzatore e Backup: Oltre alla visualizzazione standard (ST22), viene testata la capability di download manuale (ST23) in caso di mancato caricamento degli allegati. Questa funzionalit├á ├¿ critica per garantire che il Back Office possa continuare a lavorare anche in presenza di problemi tecnici del plugin di visualizzazione.
+5. Governance e Integrazioni Esterne (Criticit├á di Supervisione)
+Sebbene in numero inferiore, le funzioni per il supervisore sono tutte ad alta priorit├á:
+Riassegnazione: La capacit├á di spostare task tra gruppi e utenti (ST53-ST55) ├¿ cruciale per la gestione dei colli di bottiglia.
+Integrazione Sinergia (PIX): La gestione delle segnalazioni e l'apertura di ticket verso sistemi esterni (ST57-ST60) ├¿ testata per assicurare la risoluzione di eccezioni che uscirebbero dal normale workflow operativo.
+
+Estrazione delle validazioni, controlli ed error handling presenti nei casi di test
+Sulla base dei Test Book analizzati, le validazioni, i controlli e le logiche di gestione degli errori sono strutturati per garantire l'integrit├á del dato in ingresso e la correttezza del workflow operativo.
+1. Validazioni Tecniche e Integrit├á dei Dati (Apertura Pratica)
+Il sistema esegue controlli rigorosi sui messaggi JSON ricevuti dal sistema BPM per l'apertura delle pratiche:
+Campi Obbligatori e Facoltativi: Verifica della presenza di tutti i parametri necessari per l'inizializzazione della pratica (ST01, ST02).
+Dominio Valori: Controllo che i dati inviati rientrino nei set di valori ammessi (ST03).
+Validazione Codice Documento: Se il campo DOCUMENTI.CODICE_DOC_ID non ├¿ valido (es. valore "4" quando i valori ammessi sono 1, 2, 3), il sistema attiva l'error handling restituendo il resultCode: "-4" e un messaggio di errore descrittivo che blocca l'acquisizione (ST04).
+Idempotenza: Controllo sulla duplicazione dell' ID_WORKITEM. Il sistema verifica che non venga aperta una pratica con un identificativo gi├á associato a un'altra istanza (ST08).
+Presenza Documenti: Validazione del comportamento in caso di invio di due documenti (ST04), di un solo documento specifico (ST05, ST06) o in caso di mancato invio (ST07).
+2. Controlli Operativi e Checklist di Conformit├á
+Durante la fase di istruttoria, il sistema applica controlli logici sulla checklist compilata dall'operatore:
+Controllo Presenza Documento: 
+Se l'operatore seleziona "NO" alla presenza del Verbale o della Carta, il sistema deve gestire correttamente la pratica portandola verso l'esito negativo (ST24, ST37).
+Se selezionato "SI", vengono abilitati i controlli di conformit├á successivi (ST25, ST38).
+Verifiche di Conformit├á (IDREF): Il sistema valida la risposta a ogni singolo punto di controllo (IDREF 1-6). Per il Verbale di Denuncia, i controlli includono la leggibilit├á, l'intestazione, le firme, il timbro e la conformit├á alla carta Poste Italiane (ST28-ST36).
+Gestione delle Causali KO: In caso di esito negativo su un controllo formale, il sistema richiede la selezione di una causale specifica (es. "Intestazione", "Firme", "Timbro") (ST30, ST31, ST32).
+Calcolo Automatico dell'Esito: 
+Esito Approvato solo se tutti i controlli sono valorizzati con "SI" (ST43).
+Esito Respinto se tutti i controlli sono "NO" (ST44) o se ├¿ presente almeno un controllo con "NO" (ST45).
+3. Error Handling e Continuit├á Operativa
+Il sistema prevede procedure specifiche per gestire malfunzionamenti o eccezioni tecniche:
+Mancata Visualizzazione Allegati: Se il visualizzatore integrato fallisce nel caricamento dei documenti, il sistema abilita il controllo di Download manuale per permettere all'operatore di proseguire la lavorazione (ST23).
+Sincronizzazione Esiti BPM: Il sistema gestisce l'invio degli esiti al BPM, differenziando il messaggio in caso di pratica approvata (ST48), respinta con un unico KO (ST49) o respinta con KO multipli (ST50).
+Verifica Cambio Stato: Controllo che la pratica transiti correttamente nello stato finale (Chiusa OK/KO) solo dopo la ricezione della conferma tecnica da parte del BPM (ST51, ST52).
+4. Controlli di Interfaccia e Governance
+Validazione UI: Verifica della corretta visualizzazione dei dati nelle sezioni di testata, dati pratica e riepilogo per evitare incongruenze visive (ST10-ST13, ST18-ST21).
+Filtri e Ricerca: Controllo della validit├á dei parametri di ricerca e dei filtri nelle liste "Pratiche", "Attivit├á" e "Task da Riassegnare" (ST15, ST17, ST53).
+Integrazioni Esterne: Monitoraggio del corretto scambio dati con il DataLake e con il sistema Sinergia (PIX) per l'apertura di segnalazioni o ticket (ST56-ST60).
+Identificazione scenari alternativi, casi di errore ed eccezioni operative presenti nei test.
+Sulla base dei documenti di test forniti, gli scenari alternativi, i casi di errore e le eccezioni operative gestite dal sistema possono essere raggruppati nelle seguenti categorie:
+1. Errori di Integrazione e Validazione Input
+Il sistema ├¿ testato per intercettare anomalie nei dati inviati dal sistema chiamante (BPM) prima che la pratica venga creata:
+Codice Documento Non Valido (ST04): Se il campo CODICE_DOC_ID contiene un valore non ammesso (es. "4"), il sistema attiva una procedura di error handling bloccando la richiesta e restituendo un messaggio specifico: "Il json ricevuto non risulta essere corretto... il campo DOCUMENTI.CODICE_DOC_ID non risulta essere valido".
+Gestione dell'Idempotenza (ST08): In caso di invio di una richiesta con un ID_WORKITEM gi├á esistente e associato a un'altra pratica, il sistema impedisce la creazione di un duplicato.
+Mancato Invio Documenti (ST07): Viene testato lo scenario in cui la richiesta di apertura arriva priva degli allegati necessari.
+2. Eccezioni Tecnico-Operative
+Sono previsti scenari per garantire la continuit├á del lavoro anche in presenza di malfunzionamenti tecnici dell'interfaccia:
+Mancata Visualizzazione Allegati (ST23): Qualora il visualizzatore integrato non carichi correttamente i documenti, il sistema prevede l'eccezione operativa del download manuale dei file, permettendo all'operatore di completare l'istruttoria esternamente alla piattaforma.
+Esiti con Difetti (ST46, ST47): I test sulla chiusura delle pratiche (sia approvate che respinte) sono stati contrassegnati come "Passed with defect", suggerendo la presenza di anomalie tecniche o comportamenti inaspettati durante la fase di transizione finale verso il BPM.
+3. Scenari Alternativi di Istruttoria (Esiti KO)
+Oltre al percorso standard di approvazione ("happy path"), i test coprono capillarmente tutte le casistiche di rifiuto:
+Documento Assente (ST24, ST37): Scenario in cui l'operatore dichiara la mancanza del Verbale di Denuncia o della Carta. Questo attiva una transizione diretta verso l'esito negativo.
+Non Conformit├á Specifiche (IDREF "NO"): Esistono scenari alternativi per ogni singolo controllo di conformit├á fallito (IDREF 1-6), con test dedicati alla selezione delle causali di scarto, come: 
+Intestazione non conforme.
+Mancanza di Firme o Timbri.
+Dichiarazione o Carta non conforme agli standard di Poste Italiane.
+Esiti KO Multipli (ST50): Gestione dello scenario in cui la pratica viene respinta per pi├╣ motivi contemporaneamente; il sistema deve essere in grado di inviare al BPM l'elenco completo di tutte le motivazioni riscontrate.
+4. Validazione della Logica Decisionale
+Esito con Almeno un KO (ST45): Verifica che il sistema non approvi erroneamente una pratica se almeno uno dei controlli obbligatori ├¿ stato segnato come "NO" dall'operatore.
+Verifica Esito Tutti KO (ST44): Controllo della coerenza del sistema quando l'intera checklist viene invalidata.
+Identificazione comportamenti verificati nei test ma non chiaramente descritti nei backlog o nei manuali
+Dall'analisi dei Test Book emergono alcuni comportamenti tecnici e dettagli operativi che, pur essendo verificati durante il collaudo, non sono descritti con la stessa precisione tecnica nei manuali utente o nel backlog funzionale.
+Di seguito i principali comportamenti identificati:
+1. Gestione Tecnica degli Errori (ResultCode e Messaggi JSON)
+Mentre i manuali descrivono genericamente il verificarsi di un errore, i test specificano l'esatta struttura della risposta tecnica del sistema in caso di dati non validi.
+Errore -4 (Validazione JSON): Viene verificato che, se il sistema riceve un CODICE_DOC_ID non ammesso (es. valore "4"), deve restituire un oggetto JSON specifico con resultCode: "-4" e un resultMessage dettagliato che elenca i valori ammessi (1, 2, 3).
+Logica di Idempotenza: Il test ST08 verifica esplicitamente il comportamento del sistema quando riceve un ID_WORKITEM gi├á associato a una pratica esistente, un dettaglio tecnico di backend fondamentale per prevenire duplicati che non appare nelle guide per l'utente finale.
+2. Stato delle Transizioni e "Passed with Defect"
+I test rivelano comportamenti reali del sistema durante la fase di rilascio che indicano criticit├á non previste nella documentazione di progetto:
+Chiusura Task con Difetti: I casi di test ST46 (Pratica Approvata) e ST47 (Pratica Respinta) sono stati classificati come "Passed with defect". Questo indica che, sebbene la funzionalit├á base sia attiva, esistono anomalie tecniche o bug nel comportamento finale del sistema al momento della chiusura della pratica verso il BPM che non sono citati nei manuali.
+3. Dettagli di Integrazione con Sistemi di Supporto (PIX e DataLake)
+I test forniscono una vista pi├╣ granulare sulle azioni di integrazione rispetto a quanto descritto a livello di business:
+Capability Sinergia (PIX): Vengono verificati comportamenti specifici come il "Recupero Pratiche" (ST58), il "Recupero Dettaglio Pratica" (ST59) e l' "apertura Ticket" (ST60). Questi step tecnici definiscono il perimetro reale dell'integrazione con Sinergia che i manuali citano solo come dashboard di segnalazione.
+Sincronizzazione DataLake: Il test ST56 verifica l'invio dei dati verso il DataLake, un'azione di backend totalmente trasparente all'operatore e non descritta nei workflow operativi.
+4. Comportamenti Condizionali dell'Interfaccia
+I test di tipizzazione evidenziano logiche di visualizzazione specifiche per gli stati intermedi:
+Documento Non Tipizzato: Il test ST12 (Tipizzazione) verifica che, se una pratica ├¿ in stato "Aperta" e il documento non ├¿ ancora stato tipizzato, la sezione "Dati Lavorazione" non deve mostrare alcuna checklist.
+Workflow di Sola Lettura: Viene verificato che, a valle della tipizzazione, la pratica deve avanzare immediatamente allo stato "In Lavorazione" e la checklist deve caricarsi dinamicamente in base alla scelta effettuata (Verbale vs Carta), convalidando la corretta separazione dei dati tra le diverse milestone.
+5. Validazione dei Codici Documento (Dominio Valori)
+Nei test viene esplicitato il mapping dei codici inviati tramite Postman:
+ST01, ST02, ST03: Verificano l'elaborazione del JSON con CODICE_DOC_ID pari rispettivamente a 1, 2 e 3. Sebbene non esplicitamente mappati nel testo, questi codici rappresentano internamente le diverse combinazioni di allegati (Verbale, Carta o entrambi) che il sistema deve saper discriminare per generare il task corretto.

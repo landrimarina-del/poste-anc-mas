@@ -1,0 +1,13 @@
+Analizza GAP-BLOCKER-001_Document_Transport_Mode.md.
+
+Coinvolgi esclusivamente:
+- Architect
+- DBA
+
+Produrre:
+- impact analysis
+- delta documentali
+- remediation Sprint 4
+
+NON rigenerare la discovery completa.
+NON modificare baseline roadmap.

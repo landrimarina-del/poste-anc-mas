@@ -1,0 +1,46 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# VSCode
+.vscode/
+
+# Java
+target/
+*.class
+*.jar
+
+# Node
+node_modules/
+
+# Logs
+logs/
+*.log
+
+# Env
+.env
+.env.*
+
+# Generated outputs
+docs/out-develop-backend/*
+docs/out-develop-frontend/*
+docs/out-develop-qa/*
+
+# Runtime temp
+tmp/
+temp/
+
+# Logs
+*.log
+
+# Temp
+tmp_check/
+tmp-noop/
+
+# Recon
+_recon*.txt
+
+# Runtime / local artifacts
+payload.json
+cookies.txt
+*.xlsx

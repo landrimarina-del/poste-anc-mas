@@ -1,0 +1,134 @@
+Vincoli Architetturali Emersi
+1. Vincoli su Data Layer
+Database target vincolato a MariaDB
+Motivazione: gi├á presente nel contesto Poste
+Deve essere mantenuto per evitare complessit├á di porting
+Deve comunque: 
+usare SQL standard
+essere compatibile con altri DB
+2. Gestione Documentale / Storage
+Necessit├á di supporto per object storage flessibile e intercambiabile
+Possibili opzioni: 
+S3-compatible
+file system
+storage proprietari/enterprise
+Requisito chiave: 
+componente pluggable / sostituibile
+3. Linguaggi e Stack Tecnologico
+Backend: Java / OpenJDK come riferimento principale
+evitando dipendenze Oracle
+Possibilit├á di: 
+microservizi eterogenei (es. anche .NET)
+ma evitare eccessiva eterogeneit├á
+4. Architettura Applicativa
+Architettura orientata a: 
+microservizi
+containerizzazione
+deployment su Docker / Kubernetes
+Necessit├á di: 
+ambiente locale ÔÇ£lightÔÇØ per sviluppo
+ambiente centralizzato per demo runtime
+5. Runtime & Ambienti
+Separazione chiara tra: 
+ambiente di sviluppo locale
+runtime condiviso (solo per integrazione/demo)
+Limite: 
+runtime condiviso non pu├▓ essere usato in parallelo da pi├╣ sviluppatori
+Necessit├á di: 
+repository centralizzato per artefatti e configurazioni
+6. Identity & Access Management
+Integrazione obbligatoria con: 
+Active Directory / sistemi IAM enterprise (es. Entra ID, Oracle IAM)
+Necessit├á di: 
+fallback base auth per test
+Modello di autorizzazione: 
+RBAC basato su gruppi gerarchici (stile Appian)
+7. Sicurezza e API
+API devono supportare: 
+autenticazione: 
+OAuth 2.0
+Basic (fallback)
+mutual authentication
+Possibile utilizzo API Gateway: 
+Kong
+Apache APISIX (provato ma con criticit├á)
+Tutte le integrazioni devono essere: 
+esposte secondo standard enterprise
+8. Sicurezza Trasporto
+Tutti i canali di integrazione devono supportare: 
+TLS (versione indicata: TLS 2.x)
+9. Integrazione con Sistemi Esterni
+Obbligo di supporto a: 
+REST API
+SFTP
+code/messaging (MQ)
+Supporto per: 
+autenticazione mutual TLS
+10. Gestione Eventi / Processi
+Process orchestration: 
+possibilit├á di trigger: 
+timer-based
+eventi
+Processi modellati come: 
+grafi (nodi/archi)
+11. Front-end
+Preferenza: 
+React
+12. Componenti Minimi ÔÇ£Punti FermiÔÇØ
+Durante la riunione vengono identificati esplicitamente alcuni ÔÇ£punti fermiÔÇØ:
+Database ÔåÆ MariaDB
+Storage ÔåÆ object storage pluggable
+Backend ÔåÆ Java
+Frontend ÔåÆ React
+IAM ÔåÆ integrazione AD / gruppi
+Security ÔåÆ OAuth2 / TLS
+13. Requisiti Enterprise
+Compatibilit├á con: 
+contesti large enterprise (Poste Italiane)
+Necessit├á di: 
+scalabilit├á
+standard enterprise
+conformit├á a regolamenti (es. contesto bancario)
+14. Vincoli su Framework e Scelte Tecnologiche
+Necessit├á di: 
+evitare framework ÔÇ£giovaniÔÇØ o instabili
+privilegiare: 
+open source maturi
+soluzioni gi├á utilizzate internamente
+Richiesta esplicita: 
+documentare motivazioni di scelta/scarto
+15. AI & Agent Architecture (Vincolo di metodo architetturale)
+Architettura basata su: 
+agenti specializzati: 
+analisi
+architettura
+sviluppo
+testing
+Input: 
+documentazione funzionale + export tecnico
+Output: 
+codice + documentazione
+­ƒôî Sintesi Executive (per slide)
+­ƒæë Osservazione utile (operativa)
+La discussione evidenzia chiaramente che:
+i ÔÇ£vincoliÔÇØ non sono ancora formalizzati in un documento unico
+ma devono diventare rapidamente: ­ƒæë una baseline architetturale condivisa su cui addestrare gli agenti
+Se vuoi, posso fare il passo successivo per te: Ô£à trasformare questi vincoli in
+un documento architetturale formale (Word/Slide)
+oppure una checklist di validazione target (per selezione framework)
+
+
+[TBL] Categoria|Vincolo principale
+[TBL] Data|MariaDB (compatibilit├á cross-DB)
+[TBL] Storage|Object storage pluggable
+[TBL] Backend|Java / OpenJDK
+[TBL] Frontend|React
+[TBL] Architettura|Microservizi + container
+[TBL] Runtime|Dev locale + runtime centralizzato
+[TBL] IAM|AD / RBAC a gruppi
+[TBL] API|OAuth2 + API Gateway
+[TBL] Security|TLS obbligatorio
+[TBL] Integrazione|REST, SFTP, MQ
+[TBL] Orchestrazione|Event/timer based
+[TBL] Enterprise|Scalabilit├á + compliance
+[TBL] Framework|Open source maturi

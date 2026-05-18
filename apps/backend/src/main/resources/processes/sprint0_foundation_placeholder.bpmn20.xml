@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://poste.it/anc/flowable/sprint0">
+
+  <process id="tech.foundation.placeholder" name="Sprint0 Technical Placeholder" isExecutable="true">
+    <startEvent id="start" name="Start"/>
+    <sequenceFlow id="flow_start_to_end" sourceRef="start" targetRef="end"/>
+    <endEvent id="end" name="End"/>
+  </process>
+
+</definitions>

@@ -1,0 +1,302 @@
+
+ARCHITETTURA BPM OPEN SOURCE
+Documento 1 di 3 ÔÇö Architettura di Riferimento
+
+Versione 1.0 ÔÇö Aprile 2026
+
+Indice
+1. Scopo e destinatari
+2. Modello decisionale
+3. Architettura logica a layer
+4. Principi architetturali
+5. Requisiti non funzionali per profilo
+6. Framework di compliance
+7. Percorso di adozione incrementale
+8. Anti-pattern e scelte da evitare
+
+1. Scopo e destinatari
+1.1 Cosa ├¿ questo documento
+Questo documento definisce l'architettura di riferimento per una piattaforma BPM basata su componenti open source. Contiene principi, decisioni architetturali, requisiti non funzionali e percorsi di adozione. Non contiene nomi di prodotto n├® versioni.
+1.2 Cosa NON ├¿
+Non ├¿ un manuale di implementazione: per le scelte tecnologiche consultare il Documento 2 (Catalogo Tecnologico).
+Non ├¿ un documento di sizing: per infrastruttura e costi consultare il Documento 3 (Sizing e Costi).
+Non ├¿ un capitolato di gara: ├¿ un riferimento per chi scrive capitolati.
+1.3 A chi si rivolge
+Solution Architect e Tech Lead: per decisioni architetturali e selezione componenti.
+CTO e responsabili IT: per validare scelte strategiche e governance.
+Business Analyst e Product Owner: per comprendere capability e vincoli della piattaforma.
+Team commerciale: come riferimento per proposte tecniche e allegati di gara.
+1.4 Come consultarlo
+Il documento ├¿ modulare. Ogni sezione ├¿ autocontenuta. Si consiglia:
+Per una panoramica rapida: Sezione 2 (modello decisionale) + Sezione 4 (principi).
+Per decisioni su un progetto specifico: Sezione 2 (profilo) ÔåÆ Sezione 7 (percorso di adozione) ÔåÆ Documento 2 (catalogo).
+Per assessment di compliance: Sezione 6.
+1.5 Relazione tra i 3 documenti
+
+
+2. Modello decisionale
+La piattaforma si declina su tre profili organizzativi. Il profilo determina quali capability architetturali sono obbligatorie, raccomandate o opzionali.
+2.1 Definizione dei profili
+
+2.2 Criteri di selezione del profilo
+Il profilo si determina in base alla variabile pi├╣ restrittiva. Se un'organizzazione con 200 utenti ha requisiti DORA, opera sul profilo Enterprise per la compliance anche se il volume ├¿ da PMI. La regola ├¿: il profilo ├¿ il massimo tra le dimensioni.
+2.3 Matrice delle capability architetturali
+Legenda: ÔùÅ obbligatorio  ÔùÉ raccomandato  Ôùï opzionale  ÔÇö non applicabile
+
+
+3. Architettura logica a layer
+La piattaforma ├¿ organizzata in 8 layer funzionali con responsabilit├á distinte. Ogni layer comunica esclusivamente con i layer adiacenti tramite contratti espliciti. La sostituzione di un componente all'interno di un layer non impatta gli altri.
+3.1 Mappa dei layer
+
+3.2 Flusso di interazione tipico
+Il percorso di una richiesta utente attraverso i layer:
+1. L'utente interagisce con il Layer 1 (Presentation): compila un form, avvia un processo, completa un task.
+2. Il Layer 1 inoltra la richiesta tramite API Gateway al Layer 2 (BPM), che avvia o avanza l'istanza.
+3. Il Layer 2 pu├▓ invocare il Layer 3 (Rules) per valutare condizioni a un gateway BPMN.
+4. Il Layer 2 pu├▓ invocare il Layer 4 (AI) per classificazione, estrazione dati o supporto decisionale.
+5. Il Layer 2 interagisce con il Layer 5 (Document) per acquisire o recuperare documenti.
+6. Il Layer 6 (Integration) viene invocato per interazioni con sistemi esterni (ERP, CRM, legacy).
+7. Ogni transizione di stato del Layer 2 genera un evento che il Layer 7 (Process Mining) consuma.
+8. Il Layer 8 (Infrastructure) sostiene tutti i layer: orchestrazione, osservabilit├á, sicurezza.
+3.3 Principio di attivazione progressiva
+Non tutti i layer devono essere attivati contemporaneamente:
+PMI: Layer 1 + 2 + 8 ÔÇö frontend, BPM base e infrastruttura. Sufficiente per la maggior parte dei casi.
+PMI evoluto: + Layer 5 (documentale leggero) e Layer 6 (integrazione base).
+Mid-Market: tutti tranne Layer 4 (AI) e Layer 7 (Process Mining), che restano opzionali.
+Enterprise / PA: tutti gli 8 layer attivi, con HA, multi-AZ e compliance piena.
+3.4 Contratti tra layer
+Ogni interazione tra layer avviene tramite contratti espliciti:
+API REST: contratti OpenAPI 3.1, versionati, repository GitOps, generazione tipi automatica.
+Eventi asincroni: contratti AsyncAPI, schema registry, topic versionati.
+Autenticazione: OIDC end-to-end, Authorization Code + PKCE per canali web, JWT validato al gateway.
+Tracing: propagazione contesto OpenTelemetry dal frontend al backend e ai broker.
+3.5 Pattern architetturali per profilo
+
+
+4. Principi architetturali
+9 principi governano tutte le decisioni. Ogni principio include un trade-off esplicito: ci├▓ che si guadagna e ci├▓ che si accetta di perdere.
+P1 ÔÇö No vendor lock-in
+Enunciato: Adozione esclusiva di tecnologie open source con licenze OSI-approved e standard aperti (OpenAPI, AsyncAPI, OIDC, CMIS, BPMN 2.0, DMN). Ogni componente deve essere sostituibile senza riscrittura.
+Benefici: Autonomia decisionale, portabilit├á, negoziazione con i fornitori, competenze reperibili sul mercato.
+Trade-off: Alcune feature enterprise non disponibili nella versione OSS. Nessun supporto commerciale incluso: va acquistato separatamente se necessario.
+Implicazioni: Preferire Apache 2.0 / MIT. Evitare BUSL, licenze con restrizioni commerciali, componenti con feature-gating significativo tra versione free e a pagamento.
+P2 ÔÇö Cloud-native & modulare
+Enunciato: Container come unit├á di deploy, indipendenza dal cloud provider, modularit├á per bounded context. Partire semplice (Docker Compose) e crescere verso K8s senza rifondare.
+Benefici: Elasticit├á, portabilit├á multi-cloud, evoluzione incrementale.
+Trade-off: Curva di apprendimento pi├╣ alta rispetto a deploy tradizionale VM. Container e K8s richiedono competenze specifiche nel team.
+Implicazioni: Bounded context, naming coerente con il business. Ogni modulo ha API e schema separati.
+P3 ÔÇö Security by Zero Trust
+Enunciato: Nessuna fiducia implicita: ogni interazione autenticata, autorizzata e cifrata. GDPR, AI Act e DORA sono requisiti strutturali, non verifiche a valle.
+Benefici: Superficie di attacco ridotta, auditabilit├á completa, conformit├á strutturale.
+Trade-off: Overhead di autenticazione su ogni chiamata interna. Complessit├á di gestione certificati e policy. ~5-10% latenza aggiuntiva per mTLS inter-servizio.
+Implicazioni: mTLS tra servizi, policy-as-code, secret management centralizzato, JWT su ogni API, SAST/DAST in CI.
+P4 ÔÇö API-first & event-driven
+Enunciato: Integrazione fondata su contratti espliciti e disaccoppiamento. API versionati, broker ed eventi per asincronia. Contract-first: la specifica precede l'implementazione.
+Benefici: Integrazione rapida, indipendenza dei team, evoluzione parallela frontend/backend.
+Trade-off: Tooling aggiuntivo (schema registry, generazione codice). Debugging asincrono pi├╣ complesso. Richiede disciplina contrattuale nel team.
+Implicazioni: OpenAPI 3.1, AsyncAPI, type-safety end-to-end, generazione automatica tipi e client.
+P5 ÔÇö Observability by design
+Enunciato: Logging strutturato, metriche, tracing distribuito e alerting non sono accessori ma condizioni necessarie per governare SLA e diagnosticare anomalie.
+Benefici: Governo operativo, riduzione tempi diagnosi (MTTR), SLA dimostrabili.
+Trade-off: 10-15% di risorse infrastrutturali dedicate. Storage aggiuntivo per log e metriche. Complessit├á di correlazione in architetture distribuite.
+Implicazioni: Tre pilastri correlati tramite trace ID: metriche, log strutturati, tracing distribuito.
+P6 ÔÇö AI-ready, not AI-first
+Enunciato: Lo stack ├¿ predisposto all'AI (API, dati strutturati, vector store) ma l'AI non ├¿ nella baseline. Si introduce quando esiste un caso d'uso concreto e misurabile.
+Benefici: Piattaforma pronta per AI senza dipendenza. Nessun costo AI se non serve.
+Trade-off: Benefici AI ritardati rispetto a chi li integra subito. Rischio di "predisporre troppo" senza mai attivare.
+Implicazioni: Data-readiness, API compatibili, slot architetturale riservato nel Layer 4.
+P7 ÔÇö UX multicanale & accessibile
+Enunciato: Esperienza coerente desktop/tablet/mobile con approccio mobile-first e PWA. Accessibilit├á WCAG 2.1 AA nativa nel design system (obbligatoria per PA).
+Benefici: Maggiore adozione utenti, compliance accessibilit├á, esperienza uniforme.
+Trade-off: Maggiore effort frontend rispetto a UI solo desktop. Test cross-device e accessibilit├á aggiungono ~15-20% al ciclo di QA.
+Implicazioni: Design system coerente, componenti ARIA-compliant, breakpoint mobile-first.
+P8 ÔÇö Scalabilit├á progressiva
+Enunciato: L'architettura deve partire semplice per PMI e crescere verso Enterprise senza riscrivere. Ogni componente opzionale si aggiunge senza impattare quelli esistenti.
+Benefici: Time-to-market breve per il primo rilascio. Nessun big-bang architetturale.
+Trade-off: Alcune ottimizzazioni enterprise (sharding, multi-tenancy) vanno pianificate, non implementate, fin dall'inizio per evitare blocchi futuri.
+Implicazioni: Modular monolith ÔåÆ few services ÔåÆ microservizi selettivi. Upgrade progressivo del deploy.
+P9 ÔÇö DevOps & rilascio continuo
+Enunciato: Pipeline CI/CD, IaC, GitOps, rollback automatico come parte integrante dell'architettura, non come postfazione.
+Benefici: Rilasci affidabili, time-to-market breve, riduzione rischio operativo.
+Trade-off: Investimento iniziale in pipeline e automazione (~3-4 settimane di setup). Richiede cultura DevOps nel team, non solo strumenti.
+Implicazioni: Build automatiche, quality gate, vulnerability scan, environment promotion, audit trail dei deploy.
+
+5. Requisiti non funzionali per profilo
+
+
+6. Framework di compliance
+Questa sezione traduce i requisiti normativi in capability architetturali richieste. Le scelte tecnologiche specifiche sono nel Documento 2.
+6.1 Applicabilit├á per profilo
+
+6.2 GDPR ÔåÆ Capability architetturali
+
+6.3 AI Act ÔåÆ Capability architetturali
+
+6.4 DORA ÔåÆ Capability architetturali
+
+
+7. Percorso di adozione incrementale
+4 step autocontenuti. Ogni step produce una piattaforma funzionante e verificabile. Il passaggio al successivo ├¿ giustificato da un criterio oggettivo, non da una timeline.
+Step 1 ÔÇö Piattaforma base
+Capability attivate:
+Framework backend + frontend + database + container + CI/CD + osservabilit├á base.
+Autenticazione OIDC, API REST con contratti OpenAPI.
+Risultato: applicazione web funzionante con deploy automatico e monitoring.
+Criterio di passaggio allo Step 2:
+Il business richiede un workflow con stati espliciti, approvazioni, timer, SLA o audit trail.
+Step 2 ÔÇö Aggiunta BPM e IAM
+Capability attivate:
++ Motore BPM con BPMN 2.0, human task, worklist, form engine dinamico.
++ IAM autonomo (se non disponibile IAM corporate).
++ Object storage per documenti base.
+Risultato: piattaforma process-driven con workflow modellati, task assegnati e tracciabilit├á.
+Criterio di passaggio allo Step 3:
+Presenza di integrazioni asincrone, code reali, cache distribuita, o governance API centralizzata.
+Step 3 ÔÇö Asincronia, integrazione, regole
+Capability attivate:
++ Message broker e/o event streaming per disaccoppiamento e retry.
++ Cache distribuita per sessioni e performance.
++ API Gateway per governance, throttling, policy centralizzate.
++ Rule engine per regole business esternalizzate (se dominio complesso).
++ Integration layer per connettori legacy (se presenti).
+Risultato: piattaforma integrata con sistemi terzi, asincrona, con regole governabili.
+Criterio di passaggio allo Step 4:
+Casi d'uso AI concreti e misurabili, oppure volumi che richiedono process mining.
+Step 4 ÔÇö AI, analytics, compliance avanzata
+Capability attivate:
++ LLM inference (classificazione, estrazione, chatbot RAG).
++ Agent orchestration con human-in-the-loop.
++ Vector store per ricerca semantica documentale.
++ Process mining: discovery, conformance checking, KPI dashboard.
++ Secrets management avanzato, chaos testing, SBOM.
+Risultato: piattaforma completa con AI, analytics e compliance DORA/AI Act.
+
+8. Anti-pattern e scelte da evitare
+Errori ricorrenti nella progettazione di piattaforme BPM open source:
+Ôøö Kubernetes per un team senza DevOps
+Regola: Kubernetes richiede almeno 1 DevOps dedicato. Per PMI con team < 3 persone: container managed (Container Apps, ECS Fargate) ├¿ sufficiente e pi├╣ sostenibile.
+Rischio se ignorato: Team PMI sovraccaricato dalla gestione infrastrutturale, release bloccati.
+Ôøö Kafka quando bastano le code
+Regola: Kafka ha senso per event streaming multi-consumatore ad alto volume. Per disaccoppiamento e retry: un message broker tradizionale ├¿ 10x pi├╣ semplice da operare.
+Rischio se ignorato: Infrastruttura sovra-dimensionata, competenze non disponibili, tempi di delivery estesi.
+Ôøö BPM engine per sostituire uno scheduler
+Regola: Un motore BPMN serve per processi con stati, human task, eccezioni e audit. Per job schedulati e retry: lo scheduler applicativo del framework ├¿ sufficiente.
+Rischio se ignorato: Complessit├á ingiustificata per operazioni batch.
+Ôøö ECM enterprise senza requisiti documentali
+Regola: Un sistema ECM completo (repository, CMIS, fascicoli, OCR) serve solo con requisiti documentali forti. Per allegati semplici: object storage + metadati applicativi.
+Rischio se ignorato: Costi infrastrutturali e di gestione sproporzionati per esigenze base.
+Ôøö AI nella baseline senza caso d'uso
+Regola: Predisporre l'architettura per l'AI (P6) non significa deployare LLM, vector store e agent framework dallo Step 1. L'AI si introduce allo Step 4 con un caso d'uso concreto.
+Rischio se ignorato: GPU allocate senza utilizzo, costi cloud elevati, competenze non formate.
+Ôøö Service mesh per cluster < 10 servizi
+Regola: Il service mesh aggiunge mTLS e traffic management ma con overhead significativo. Per cluster con pochi servizi: network policy Kubernetes native sono sufficienti.
+Rischio se ignorato: Overhead risorse 15-25%, complessit├á di debug, formazione aggiuntiva.
+Ôøö Componente non verificato da oltre 12 mesi
+Regola: L'ecosistema open source evolve rapidamente. Un componente raccomandato oggi pu├▓ essere deprecato tra 6 mesi (esempio: Camunda 7 CE archiviato nov 2025). Il Documento 2 ha date di verifica per questo.
+Rischio se ignorato: Lock-in involontario su progetto abbandonato, vulnerabilit├á non patchate.
+Ôøö Microservizi dallo Sprint 1
+Regola: Partire con microservizi moltiplica la complessit├á senza beneficio per i volumi PMI/Mid-Market. Il modello consigliato (P8) ├¿: modular monolith ÔåÆ few services ÔåÆ microservizi selettivi.
+Rischio se ignorato: Delivery lento, debugging distribuito complesso, overhead di comunicazione inter-servizio.
+[TBL] Documento|Contenuto|Frequenza aggiornamento|Durata utile
+[TBL] 1 ÔÇö Architettura|Principi, layer, decisioni, compliance, percorso|Annuale o su cambio strategico|5-10 anni
+[TBL] 2 ÔÇö Catalogo Tecnologico|Schede prodotto con scelta, alternative, scartati|Semestrale|6-12 mesi
+[TBL] 3 ÔÇö Sizing e Costi|Infrastruttura, prezzi cloud, TCO, licenze|Semestrale o su variazione prezzi|6-12 mesi
+[TBL] Parametro|PMI|Mid-Market|Enterprise / PA
+[TBL] Utenti|50 ÔÇô 500|500 ÔÇô 5.000|5.000+
+[TBL] Processi / mese|Ôëñ 5.000|Ôëñ 100.000|Illimitati
+[TBL] SLA disponibilit├á|99,5%|99,5% ÔÇô 99,9%|ÔëÑ 99,9%
+[TBL] RTO|Best effort (< 24h)|< 8h|< 4h
+[TBL] RPO|Best effort (< 24h)|< 4h|< 1h
+[TBL] Modello deploy|Container managed|K8s single-cluster|K8s multi-AZ + DR
+[TBL] Team DevOps|0-1 (part-time)|1-2|3+
+[TBL] Compliance|GDPR base|GDPR + AI Act possibile|GDPR + AI Act + DORA
+[TBL] Workflow|Opzionale|Frequente|Core business
+[TBL] Integrazioni|Limitate|Moderate, asincrone|Elevate, multi-sistema
+[TBL] Capability architetturale|PMI|Mid-Mkt|Enterprise|Criterio decisionale chiave
+[TBL] Framework applicativo backend|ÔùÅ|ÔùÅ|ÔùÅ|Baseline comune a tutti i profili
+[TBL] Framework applicativo frontend|ÔùÅ|ÔùÅ|ÔùÅ|Baseline comune a tutti i profili
+[TBL] Database transazionale|ÔùÅ|ÔùÅ|ÔùÅ|Persistenza dati; HA da Mid-Market
+[TBL] Container runtime|ÔùÅ|ÔùÅ|ÔùÅ|Standard di packaging e deploy
+[TBL] Osservabilit├á (metriche, log, trace)|ÔùÅ|ÔùÅ|ÔùÅ|Governo operativo minimo
+[TBL] Pipeline CI/CD|ÔùÅ|ÔùÅ|ÔùÅ|Build, test e deploy automatici
+[TBL] Motore BPM / workflow|ÔùÉ|ÔùÅ|ÔùÅ|Se processo ├¿ auditabile con stati, SLA, timer
+[TBL] Identity & Access Management|ÔùÉ|ÔùÅ|ÔùÅ|IAM corporate se disponibile; autonomo altrimenti
+[TBL] Object storage|ÔùÉ|ÔùÅ|ÔùÅ|Allegati e documenti ÔÇö base di ogni livello documentale
+[TBL] Message broker (code applicative)|Ôùï|ÔùÉ|ÔùÉ|Code reali, retry, disaccoppiamento
+[TBL] Event streaming|ÔÇö|Ôùï|ÔùÅ|Solo volumi elevati o multi-dominio a eventi
+[TBL] Cache distribuita|Ôùï|ÔùÉ|ÔùÅ|Sessioni, rate limiting, performance
+[TBL] API Gateway|Ôùï|ÔùÉ|ÔùÅ|Governance API, throttling, policy centralizzate
+[TBL] Rule engine|Ôùï|ÔùÉ|ÔùÅ|Regole business esplicite, DMN, multi-legislazione
+[TBL] Integration layer (EIP)|ÔÇö|Ôùï|ÔùÅ|Connettori legacy, SOAP, SAP, sistemi eterogenei
+[TBL] Gestione documentale avanzata (ECM)|ÔÇö|Ôùï|ÔùÉ|Solo requisiti ECM espliciti e continuativi
+[TBL] Content extraction / OCR|ÔÇö|Ôùï|ÔùÉ|Parsing multi-formato, pre-processing AI
+[TBL] LLM inference self-hosted|Ôùï|Ôùï|ÔùÉ|Classificazione, estrazione, assistenza ÔÇö via API per PMI
+[TBL] Agent orchestration|ÔÇö|Ôùï|ÔùÉ|Agenti AI con stato, human-in-the-loop
+[TBL] Vector store / RAG|ÔÇö|Ôùï|ÔùÉ|Ricerca semantica documentale
+[TBL] Process mining|ÔÇö|Ôùï|ÔùÉ|Discovery, conformance checking, KPI
+[TBL] Container orchestration (K8s)|ÔÇö|ÔùÉ|ÔùÅ|Container managed per PMI; K8s da Mid-Market
+[TBL] GitOps / CD dichiarativo|ÔÇö|ÔùÉ|ÔùÅ|Deploy K8s da Git, audit trail
+[TBL] Service mesh|ÔÇö|ÔÇö|ÔùÉ|mTLS, canary, traffic management
+[TBL] Secrets management|Ôùï|ÔùÉ|ÔùÅ|PKI interna, cifratura PII, gestione segreti
+[TBL] Chaos testing|ÔÇö|ÔÇö|ÔùÉ|Test resilienza ÔÇö richiesto da DORA
+[TBL] SBOM / vulnerability scanning|Ôùï|ÔùÉ|ÔùÅ|Supply chain security, compliance fornitori ICT
+[TBL] Durable execution engine|ÔÇö|Ôùï|Ôùï|Orchestrazioni tecniche: saga, retry con stato, long-running
+[TBL] #|Layer|Responsabilit├á|Contratto verso il layer superiore|Profilo minimo
+[TBL] 1|Presentation|Punto di contatto con l'utente. Frontend multicanale (web, tablet, mobile PWA). API Gateway come reverse proxy, autenticazione, rate limiting.|HTTP/REST + OIDC token|PMI
+[TBL] 2|Orchestration
+& BPM|Esecuzione processi BPMN 2.0: ciclo di vita istanze, task umani, timer, SLA, eventi. Ogni transizione di stato genera un evento consumabile.|REST API OpenAPI 3.1
++ eventi asincroni|PMI
+[TBL] 3|Decision
+& Rules|Logica decisionale esternalizzata: regole business, decision table DMN, policy multi-legislazione. Modificabili a runtime senza rilasci.|REST API + DMN standard|Mid-Market
+[TBL] 4|AI & Agentic|Classificazione documenti, pre-compilazione form, chatbot (RAG), supporto decisionale. Agenti invocati come service task BPMN con human-in-the-loop obbligatorio per decisioni ad alto rischio.|REST API
+(compatibile OpenAI)|Enterprise
+[TBL] 5|Document
+Management|Ciclo di vita documentale: acquisizione, estrazione contenuto (OCR), archiviazione, versioning, ricerca full-text, conformit├á CMIS e protocollo informatico CAD.|CMIS 1.1 + REST API|Mid-Market
+[TBL] 6|Integration|Connessione con sistemi esterni: pattern EIP (trasformazione, routing, retry, dead letter). Il message broker garantisce disaccoppiamento asincrono.|REST/SOAP/JMS + eventi|Mid-Market
+[TBL] 7|Data &
+Process Mining|Analisi event log: discovery processi reali, conformance checking contro modelli attesi, KPI, bottleneck, SLA breach. Alimenta dashboard BI.|Event log standard
+(XES/OCEL 2.0)|Enterprise
+[TBL] 8|Infrastructure|Layer trasversale: orchestrazione container, GitOps, service mesh (mTLS), osservabilit├á (metriche, log, tracing), gestione segreti, CI/CD.|Kubernetes API
++ OpenTelemetry|PMI
+[TBL] Pattern|PMI|Mid-Market|Enterprise
+[TBL] Modello applicativo|Modular monolith|Few services|Microservizi selettivi
+[TBL] Comunicazione|REST sincrono|REST + code asincrone|REST + event streaming
+[TBL] Orchestrazione processi|BPM engine embedded|BPM engine dedicato|BPM engine cluster + HPA
+[TBL] Documentale|Object storage + metadati|DMS leggero|ECM completo
+[TBL] Deploy|Docker Compose / managed|K8s single-cluster|K8s multi-AZ + DR
+[TBL] Resilienza|Backup + 2 repliche|HA locale + failover|Multi-AZ + chaos testing
+[TBL] Requisito|PMI|Mid-Market|Enterprise / PA
+[TBL] Disponibilit├á|99,5%|99,5% ÔÇô 99,9%|ÔëÑ 99,9%
+[TBL] RTO|Best effort (< 24h)|< 8h|< 4h (DORA)
+[TBL] RPO|Best effort (< 24h)|< 4h|< 1h (DORA)
+[TBL] Latenza API (p95)|< 500ms|< 300ms|< 200ms
+[TBL] Concorrenza|50-100 sessioni|500-1.000 sessioni|5.000+ sessioni
+[TBL] Accessibilit├á|Best effort|WCAG 2.1 A|WCAG 2.1 AA (obbligo PA)
+[TBL] Internazionalizzazione|Italiano|IT + EN|Multi-lingua + multi-legislazione
+[TBL] Backup|Giornaliero|Ogni 4h|Ogni 1h + replica sincrona
+[TBL] Restore testato|Semestrale|Trimestrale|Mensile (DORA)
+[TBL] Deploy zero-downtime|Non richiesto|Rolling update|Canary + blue/green
+[TBL] Scanning vulnerabilit├á|Manuale|Ad ogni build CI|Ad ogni build + SBOM obbligatorio
+[TBL] Penetration test|Opzionale|Annuale|Annuale + DORA test resilienza
+[TBL] Normativa|PMI|Mid-Market|Enterprise / PA
+[TBL] GDPR (UE 2016/679)|Sempre|Sempre|Sempre
+[TBL] AI Act (UE 2024/1689)|Solo se AI attivata|Probabile|Sempre (se AI presente)
+[TBL] DORA (UE 2022/2554)|Solo se settore finanziario|Se finanziario/assicurativo|Sempre per enti regolati
+[TBL] CAD + linee guida AgID|Se PA|Se PA|Se PA
+[TBL] Requisito GDPR|Capability architetturale richiesta
+[TBL] Art. 17 ÔÇö Diritto alla cancellazione|API di data subject request con cancellazione a cascata. Log immutabile. Form di richiesta nell'area personale.
+[TBL] Art. 25 ÔÇö Privacy by design|Raccolta minima nei form. Nessun dato personale in storage client-side. No tracking analytics terze parti.
+[TBL] Art. 32 ÔÇö Sicurezza trattamento|Cifratura at-rest (AES-256) e in-transit (TLS 1.3). Secret management per PII. HSTS obbligatorio.
+[TBL] Art. 30 ÔÇö Registro trattamenti|Generazione automatica del registro dai modelli di processo e definizioni form.
+[TBL] Art. 35 ÔÇö DPIA|Dashboard per il DPO con accesso ai log di audit e ai trattamenti.
+[TBL] Requisito AI Act|Capability architetturale richiesta
+[TBL] Art. 9 ÔÇö Gestione rischi|Registro dei rischi: scheda tecnica per ogni modello AI deployato.
+[TBL] Art. 13 ÔÇö Spiegabilit├á|Trace di attivazione regole e decisioni AI esposta nel pannello task del frontend.
+[TBL] Art. 14 ÔÇö Supervisione umana|Human-in-the-loop obbligatorio per decisioni ad alto rischio: nodo di interruzione negli agent workflow.
+[TBL] Art. 15 ÔÇö Robustezza|Monitoraggio drift modelli ML. Alert automatico su degradazione performance.
+[TBL] Requisito DORA|Capability architetturale richiesta
+[TBL] Art. 9.4 ÔÇö Change management|Ogni deploy tracciato con autore, approvazione e rollback. GitOps obbligatorio.
+[TBL] Art. 11 ÔÇö Continuit├á operativa|RTO < 4h, RPO < 1h. Database HA, replica messaggi, backup con retention ÔëÑ 90 gg.
+[TBL] Art. 19 ÔÇö Incident management|Alerting ÔåÆ ticket automatico ÔåÆ post-mortem documentato.
+[TBL] Art. 25 ÔÇö Test resilienza|Chaos testing trimestrale: simulazione failure nodi, latenza, perdita messaggi.
+[TBL] Art. 28 ÔÇö Fornitori ICT|SBOM generato e scansionato ad ogni build CI. Tracciabilit├á dipendenze.

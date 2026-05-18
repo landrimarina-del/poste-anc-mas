@@ -1,0 +1,132 @@
+openapi: 3.0.3
+info:
+  title: SubmitWorkItem
+  version: '1.1'
+  x-logo:
+    url: ''
+  description: API ricezione esiti SD
+paths:
+  /submitWorkitem:
+    post:
+      tags: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitWorkItemRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/200'
+          x-last-modified: 1682681767947
+        '400':
+          $ref: '#/components/responses/400'
+          x-last-modified: 1682681778902
+        '404':
+          $ref: '#/components/responses/404'
+          x-last-modified: 1682681789583
+        '500':
+          $ref: '#/components/responses/500'
+          x-last-modified: 1682681802149
+    x-last-modified: 1682680637374
+components:
+  securitySchemes: {}
+  schemas:
+    SubmitWorkItemResponse:
+      type: object
+      example:
+        esito: ''
+        messaggio: ''
+      properties:
+        esito:
+          type: string
+          enum:
+            - OK
+            - KO
+          example:
+            - ''
+        messaggio:
+          type: string
+          example:
+            - ''
+      x-last-modified: 1682681004589
+    SubmitWorkItemRequest:
+      type: object
+      properties:
+        idPratica:
+          type: string
+          example: ""
+        idWorkItem:
+          type: string
+          example: ""
+        codiceStato:
+          type: string
+          example: ""
+        iToken:
+          type: string
+          example: ""
+        userIdBO:
+          type: string
+          example: ""
+        matricolaBO:
+          type: string
+          example: ""
+        motivazione:
+          type: array
+          items:
+            type: string
+          example: ["str1", "str2", "str3"]
+        nota:
+          type: string
+          example: ""
+      x-last-modified: 1682681339636
+      required:
+        - idPratica
+        - idWorkItem
+        - codiceStato
+  headers: {}
+  responses:
+    '200':
+      description: Operation succeeded
+      x-last-modified: 1682681039513
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/SubmitWorkItemResponse'
+    '400':
+      description: Illegal input for operation.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/SubmitWorkItemResponse'
+      x-last-modified: 1682681187204
+    '404':
+      description: Entity not found.
+      x-last-modified: 1682681083473
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/SubmitWorkItemResponse'
+    '500':
+      description: Server Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/SubmitWorkItemResponse'
+      x-last-modified: 1682681146536
+  parameters: {}
+  requestBodies:
+    SubmitWorkItemRequest:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/SubmitWorkItemRequest'
+      x-last-modified: 1682680892267
+tags: []
+servers:
+  - url: https://api.example.io
+    description: ''
+    variables: {}
+    x-last-modified: 1682680613435
+security: []

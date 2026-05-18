@@ -1,0 +1,151 @@
+# =====================================================================
+# Scrivania Digitale ANC - POC stack locale
+# Sprint 0 Foundation: stack locale completo DB + Backend + Frontend + Reverse Proxy.
+# I servizi frontend e reverse-proxy sono gestiti da develop-frontend.
+# =====================================================================
+
+services:
+
+  db:
+    image: mariadb:10.11
+    container_name: anc-db
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: anc
+      MARIADB_USER: anc
+      MARIADB_PASSWORD: anc
+      MARIADB_ROOT_PASSWORD: root
+    ports:
+      - "3307:3306"
+    volumes:
+      - anc-db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build:
+      context: .
+      dockerfile: infra/docker/backend.Dockerfile
+    image: anc/backend:0.1.0
+    container_name: anc-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      bpm-stub:
+        condition: service_started
+      bpm-outbound-fake:
+        condition: service_started
+    environment:
+      SPRING_PROFILES_ACTIVE: poc
+      SPRING_DATASOURCE_URL: jdbc:mariadb://db:3306/anc?useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: anc
+      SPRING_DATASOURCE_PASSWORD: anc
+      ANC_BPM_INBOUND_API_KEY: anc-poc-bpm-inbound-key
+      ANC_BPM_INBOUND_HEADER_NAME: X-SD-API-Key
+      # Fake outbound endpoint interno Docker per close pratica Sprint 6.
+      ANC_BPM_OUTBOUND_URL: http://bpm-outbound-fake:8080/bpm-stub/outcome
+      # GAP-BLOCKER-001 - trasporto allegati BPM (pull-through sincrono).
+      ANC_ATTACHMENT_ALLOWLIST_HOSTS: bpm-stub
+      ANC_ATTACHMENT_MAX_BYTES: "26214400"
+      ANC_ATTACHMENT_PULL_TIMEOUT_MS: "5000"
+      ANC_ATTACHMENT_STORAGE_ENDPOINT: http://minio:9000
+      ANC_ATTACHMENT_STORAGE_REGION: us-east-1
+      ANC_ATTACHMENT_STORAGE_BUCKET: anc-attachments
+      ANC_ATTACHMENT_STORAGE_ACCESS_KEY: anc
+      ANC_ATTACHMENT_STORAGE_SECRET_KEY: anc-poc-minio-secret
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health/readiness | grep -q '\"status\":\"UP\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  # GAP-BLOCKER-001 - object storage locale per binari allegati.
+  minio:
+    image: minio/minio:latest
+    container_name: anc-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: anc
+      MINIO_ROOT_PASSWORD: anc-poc-minio-secret
+    volumes:
+      - anc-minio-data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # GAP-BLOCKER-001 - file server statico che simula LINKDOWNLOAD lato BPM.
+  bpm-stub:
+    image: nginx:1.27-alpine
+    container_name: anc-bpm-stub
+    restart: unless-stopped
+    volumes:
+      - ./infra/bpm-stub/files:/usr/share/nginx/html/files:ro
+    # Nessuna porta esposta esternamente: raggiungibile solo dalla rete docker-compose.
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/files/ > /dev/null || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Fake endpoint HTTP per outbound esito BPM (risponde 200 su qualsiasi path).
+  bpm-outbound-fake:
+    image: mendhak/http-https-echo:36
+    container_name: anc-bpm-outbound-fake
+    restart: unless-stopped
+    environment:
+      HTTP_PORT: 8080
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/ > /dev/null || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  frontend:
+    build:
+      context: .
+      dockerfile: infra/docker/frontend.Dockerfile
+    image: anc/frontend:0.1.0
+    container_name: anc-frontend
+    restart: unless-stopped
+    volumes:
+      - anc-frontend-static:/frontend-dist
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /frontend-dist/index.html"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  reverse-proxy:
+    image: nginx:1.27-alpine
+    container_name: anc-reverse-proxy
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - anc-frontend-static:/usr/share/nginx/html:ro
+    ports:
+      - "80:80"
+
+volumes:
+  anc-db-data:
+  anc-frontend-static:
+  anc-minio-data:

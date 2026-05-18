@@ -1,0 +1,37 @@
+Alta: autenticazione inbound non coerente col contratto API Key
+Il contratto richiede autenticazione API Key per Crea Pratica ANC in InterfaceAgreement.md:181, ma l’endpoint inbound è aperto con permitAll in SecurityConfig.java:53.
+Rischio: chiamate non autenticate da sorgenti esterne non allineate all’Interface Agreement.
+
+Alta: mismatch del payload input rispetto al tracciato richiesto
+Il contratto marca obbligatori CANALE, ID_WORKITEM, NUM_PRATICA, CF_CLIENTE, DATA_INSERIMENTO_RICHIESTA in InterfaceAgreement.md:229, InterfaceAgreement.md:234, InterfaceAgreement.md:244, InterfaceAgreement.md:248, InterfaceAgreement.md:254.
+L’implementazione mappa solo un sottoinsieme campi in BpmPracticeOpenRequest.java:10 e in service imposta canale e numPratica internamente in BpmPracticeInboundService.java:55, BpmPracticeInboundService.java:56.
+Rischio: provider BPM che invia payload conforme a IA potrebbe non avere semantica preservata 1:1.
+
+Alta: struttura DOCUMENTI non coerente con Interface Agreement
+Il contratto prevede DOCUMENTI con CONTENUTI e campi NOME_FILE, ESTENSIONE, ID_DOC, LINKDOWNLOAD in InterfaceAgreement.md:330, InterfaceAgreement.md:333, InterfaceAgreement.md:335, InterfaceAgreement.md:338, InterfaceAgreement.md:343.
+Il DTO implementato usa invece una lista flat con FILE_NAME, MIME_TYPE, SIZE_BYTES, CONTENT_BASE64 in BpmPracticeOpenRequest.java:121.
+Rischio: incompatibilità diretta con producer esterno aderente al documento IA.
+
+Media: dominio CODICE_DOC_ID dichiarato ma non validato applicativamente
+IA dichiara dominio CODICE_DOC_ID con valori 1,2,3 in InterfaceAgreement.md:324.
+Nel service non vedo controllo del dominio; è verificata solo presenza di DOCUMENTI in BpmPracticeInboundService.java:39, BpmPracticeInboundService.java:65.
+Rischio: accettazione di codici documento fuori contratto.
+
+Media: contratto di output differente
+IA descrive output con nodo INFO + APPIANTICKETID in InterfaceAgreement.md:359, InterfaceAgreement.md:367.
+L’implementazione restituisce formato uniforme resultCode/resultMessage/details in ApiResponse.java:9, con details practiceId/requestId/state in BpmPracticeOpenResponse.java:3.
+Rischio: consumer legacy non compatibile col body attuale.
+
+Media: semantica esiti non allineata al documento
+IA distingue -3 JSON non conforme e -4 JSON non formattato in InterfaceAgreement.md:383, InterfaceAgreement.md:386.
+Il service usa -4 per payload mancante/non valido e non implementa -3 in BpmPracticeInboundService.java:31.
+Rischio: comportamento differente in gestione errori verso BPM.
+
+Bassa: URI contratto diverso dall’endpoint POC
+IA riporta URI Appian boaanccreapratica in InterfaceAgreement.md:189, mentre il POC espone /api/v1/bpm/practices in BpmPracticeInboundController.java:11.
+Nota: può essere intenzionale (adattamento POC), ma non è “coerenza stretta” col documento.
+
+Punti coerenti rilevati:
+
+ID_WORKITEM gestito e usato per idempotenza, in linea concettuale con IA, in BpmPracticeOpenRequest.java:10 e BpmPracticeInboundService.java:45.
+Codice -5 per duplicato ID_WORKITEM presente, coerente con tabella esiti IA, in InterfaceAgreement.md:389 e BpmPracticeInboundService.java:47.

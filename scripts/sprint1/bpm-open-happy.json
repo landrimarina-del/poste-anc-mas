@@ -1,0 +1,46 @@
+{
+  "CANALE": "BPM",
+  "ID_WORKITEM": "WI-S1-1001",
+  "NUM_PRATICA": "APP-POC-1001",
+  "CF_CLIENTE": "RSSMRA80A01H501U",
+  "CODICE_CLIENTE": "AUC-1001",
+  "DATA_INSERIMENTO_RICHIESTA": "14/05/2026 11:30:00",
+  "CLIENTE": {
+    "NOME": "Mario",
+    "COGNOME": "Rossi",
+    "SESSO": "M",
+    "DATANASCITA": "1980-01-01",
+    "COMUNENASCITA": "Roma",
+    "PROVINCIANASCITA": "RM",
+    "NAZIONENASCITA": "IT",
+    "CITTADINANZA": "Italiana",
+    "CELLULARE": "3331234567",
+    "TELEFONO": "061234567",
+    "INDIRIZZO_DI_RESIDENZA": {
+      "LUOGO": "Via Roma",
+      "COMUNE": "Roma",
+      "PROVINCIA": "RM",
+      "NAZIONE": "IT",
+      "CAP": "00100",
+      "CIVICO": "10"
+    }
+  },
+  "DATI_CARTA_BLOCCATA": {
+    "I_NUMERO_CARTA": "1234567890123456",
+    "I_TIPO_CARTA": "PostePay Evolution",
+    "I_INTEST_CARTA": "Mario Rossi"
+  },
+  "DOCUMENTI": [
+    {
+      "CODICE_DOC_ID": 1,
+      "CONTENUTI": [
+        {
+          "NOME_FILE": "verbale.pdf",
+          "ESTENSIONE": "pdf",
+          "ID_DOC": "DOC-1001",
+          "LINKDOWNLOAD": "https://example.local/docs/DOC-1001"
+        }
+      ]
+    }
+  ]
+}

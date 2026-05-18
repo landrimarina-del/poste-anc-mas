@@ -1,0 +1,8 @@
+# Profilo TARGET: placeholder per ambiente di destinazione.
+# Sprint 0 non implementa questo profilo (OIDC/Keycloak, broker reale, ecc. fuori scope).
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    driver-class-name: org.mariadb.jdbc.Driver

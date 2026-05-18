@@ -1,0 +1,36 @@
+{
+  "CANALE": "BPM",
+  "ID_WORKITEM": "WI-S1-2001",
+  "NUM_PRATICA": "APP-POC-2001",
+  "CF_CLIENTE": "BNCLCU80A01H501R",
+  "CODICE_CLIENTE": "AUC-2001",
+  "DATA_INSERIMENTO_RICHIESTA": "14/05/2026 11:31:00",
+  "CLIENTE": {
+    "NOME": "Luca",
+    "COGNOME": "Bianchi",
+    "SESSO": "M",
+    "DATANASCITA": "1985-02-10",
+    "COMUNENASCITA": "Milano",
+    "PROVINCIANASCITA": "MI",
+    "NAZIONENASCITA": "IT",
+    "CITTADINANZA": "Italiana"
+  },
+  "DATI_CARTA_BLOCCATA": {
+    "I_NUMERO_CARTA": "5555444433332222",
+    "I_TIPO_CARTA": "PostePay Standard",
+    "I_INTEST_CARTA": "Luca Bianchi"
+  },
+  "DOCUMENTI": [
+    {
+      "CODICE_DOC_ID": 4,
+      "CONTENUTI": [
+        {
+          "NOME_FILE": "invalid.pdf",
+          "ESTENSIONE": "pdf",
+          "ID_DOC": "DOC-INVALID-1",
+          "LINKDOWNLOAD": "https://example.local/docs/DOC-INVALID-1"
+        }
+      ]
+    }
+  ]
+}

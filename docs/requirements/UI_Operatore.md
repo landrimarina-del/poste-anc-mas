@@ -1,0 +1,745 @@
+Attivazione Nuova Carta
+Manuale Utente per Operatore ANC
+
+INTRODUZIONE
+
+Il  documento  è  la  guida  utente  per  l’utilizzo  della  Scrivania  Digitale  basata  sulla  piattaforma  di  Case
+Management  adottata  da  Poste  Italiane  nell’ambito  del  progetto  Back  Office  Automation  (BOA),  per  la
+gestione  delle attività di Back Office.
+La  piattaforma  è  dotata  di  interfacce  utente  amichevoli  che  consentono  di  gestire,  attraverso  semplici
+interazioni  e  recupero  automatico  delle  informazioni,  la  lavorazione  delle  pratiche  mediante  una  logica  di
+workflow  guidati e di monitoraggio  real time dei KPI/SLA.
+
+1ACCESSO AL SISTEMA
+
+Per accedere alla Scrivania Digitale è richiesto l’inserimento  delle proprie  credenziali nella pagina di login. Dopo
+l’operazione  verrà  visualizzata  la  “Welcome  Page”,  specifica  per  gruppo  di  utenti
+avere  effettuato
+(Specialista/Supervisore):
+
+2
+
+FUNZIONALITA’ PROFILO OPERATORE ANC
+
+2.1  Home Page
+
+La Home Page del profilo  Specialista contiene:
+
+•
+
+in alto a sinistra tre tab
+
+o  Home
+o  Attività
+o  Pratiche
+
+•  Tre sezioni
+
+o  Una Azione:  Segnalazioni
+o  Link Favoriti
+o
+
+I Miei Widget
+
+
+
+•
+
+In alto a destra
+
+o
+o
+o
+
+Il numero  delle attività
+Il numero  delle pratiche attive
+Il numero  delle pratiche chiuse
+
+Figura Home Page Operatore ANC
+
+2.1.1  Contatori
+
+In alto a destra della Home page,  sono visualizzati i contatori  delle pratiche.
+
+2.1.2
+
+I Miei Widget
+
+Figura Contatori
+
+Il link presente  in questa sezione  è possibile  accedere alla WEB mail.
+
+
+ I Miei Widget
+
+2.1.3
+
+Link Favoriti
+
+Aggiunta Link Favoriti
+
+Nella Home Page sezione  Link Favoriti è possibile  aggiungere  le preferenze  su   + Aggiungi nuovo link.
+Azionando  tale tasto appaiono  i campi da compilare  per inserire  i link  favoriti sulla homepage.
+
+▪  Titolo Link: Nome o descrizione del nuovo link da aggiungere
+▪
+▪  Tipo Link: è possibile scegliere tra le opzioni Interno, Esterno o Legacy.
+
+Link: URL della pagina
+
+È possibile  eliminare
+Infine  è presente  il tasto SALVA per effettuare il salvataggio dell’azione.
+
+utilizzando  i tasti ononimi.
+
+ o modificare
+
+2.2
+
+Tab Pratiche
+
+Nel Tab Pratiche è consultabile  l'elenco dello  storico pratiche.  La pagina è costituita dai seguenti  Filtri:
+
+▪  Cerca Pratiche e il tasto Cerca: è possibile inserire in questa sezione i dati della pratica per ricercarla.
+▪
+
+Stato dal cui  elenco  a discesa  è  possibile  selezionare:  Aperta,  In  Lavorazione,  In  Attesa  Conferma  BPM,
+Chiusa  Ok e Chiusa KO.
+
+▪  Data Chiusura: tramite questo  filtro  l’operatore  può  scegliere di visualizzare esclusivamente  le pratiche la
+
+cui la Data Chiusura è compresa nel periodo  di riferimento  selezionato  dall’operatore.
+
+▪  Data Apertura: tramite questo  filtro l’operatore  può  scegliere di visualizzare esclusivamente  le pratiche la
+
+cui la Data Apertura è compresa  nel periodo  di riferimento  selezionato  dall’operatore.
+
+▪  Data Ultima Modifica:  tramite questo  filtro  l’operatore  può  scegliere  di  visualizzare  esclusivamente  le
+pratiche la cui la Data Ultima Modifica è compresa nel periodo  di riferimento  selezionato  dall’operatore.
+
+
+▪  Esito SD: dal cui elenco a discesa l’operatore può selezionare OK o KO.
+
+È inoltre  possibile:
+
+▪  esportare  l’elenco in excel selezionando
+
+▪
+
+cancellare o salvare dei filtri  selezionando
+
+▪
+
+aggiornare  selezionando
+
+Ogni  riga  della  tabella  presente  nella  parte  sottostante  del  TAB  è  composta  da:  Pratica  N.,  Codice  Fiscale,
+Codice  Cliente,  Data  Apertura,  Data  Ultima  Modifica,  Data  Chiusura,  Data  Inserimento  Richiesta,  Esito  SD,
+Operatore,  Stato e Segnalazioni.
+
+Figura Pratiche Contratto
+
+La comparsa  del simbolo  freccia su  o   freccia giù   in blu,  a fianco  della testata della colonna,  indicheranno  la
+modalità di ordinamento  applicata.
+In  fondo  alla pagina  in basso  a destra  sono  presenti  il numero  di pagina  ed il numero  di pagine  totali di  cui è
+composto  l’elenco.
+Azionando  il simbolo   >  è possibile  avanzare di una pagina.
+Azionando  il simbolo   <  è possibile  retrocedere  di una pagina.
+Azionando  il simbolo   >>  è possibile posizionarsi  direttamente  all’ultima pagina.
+Azionando  il simbolo   <<  è possibile posizionarsi  direttamente  sulla prima pagina.
+Il valore nel campo Pratica N. è un link il quale si visualizza il dettaglio  della pratica selezionata.
+
+2.2.1  Dettaglio Pratica – Riepilogo
+
+Dal tab  Pratiche selezionando  il link  presente  nel  campo  Pratica  N.  è possibile  visualizzare  il  Riepilogo della
+pratica scelta.
+
+
+In Riepilogo  sono  presenti  tre sezioni:
+
+•  Nella parte centrale della pagina è predisposta  una griglia gialla dov’è  presente  una linea orizzontale
+blu ed indica lo stato di avanzamento della pratica: Raccolta input, Lavorazione  e Chiusura  Pratica.  In
+basso sono  riportate  le informazioni  generiche  della pratica; è indicato il nome  del processo  in
+questo  caso Attivazione Nuova Carta, Codice Fiscale Cliente, Pratica N..
+
+•  Una sezione  contenente  tre tasti: Dati Pratica, Dati Lavorazione e Esito. Azionando uno di questi
+
+indicati si accede all’interno  della Milestone.
+
+Sezione Riepilogo
+
+3.2.1.1  Dati Pratica
+
+All’interno  della  milenstone  è  presente  solo  una  sezione,  che  prende  il  nome  di  Dati Pratica in  cui  sono
+visualizzati  i dati minimi  relativi alla pratica selezionata.  Le informazioni  riportate  sono:  Data Apertura,  Data
+Ultima Modifica, Stato, Codice Cliente,  Codice Fiscale e  Canale.Se  la lavorazione è terminata, saranno mostrate
+anche le seguenti  informazioni:  Esito SD e Data Chiusura  Pratica.
+
+Milenstone Dati Pratica Verifica Documenti
+
+
+3.2.1.2  Dati Lavorazione
+
+Allegato: Verbale di Denuncia
+Per tipo pratica contenente  il Verbale di Denuncia, in Dati Lavorazione, è possibile visualizzare i dati del cliente,
+del Verbale di Denuncia  e la relativa checklist attraverso la quale effettuare  le verifiche.
+
+La milestone si presenta divisa in più  sezioni:
+
+Dati Lavorazione – Verbale di Denucia
+
+▪  Nella sezione Dati Cliente sono mostrate le seguenti informazioni: Nome, Cognome,  Sesso,  Codice
+Fiscale,  Data di Nascita, Comune  di Nascita, Provincia di Nascita, Nazione  di Nascita, Telefono,
+Cellulare.  Inoltre  è possibile  esplodere  la barra blu che riporta  i dati di Indirizzo  di Residenza.
+
+Figura Dati Cliente
+
+
+▪
+
+In Dati Carta Bloccata sono mostrate le seguenti informazioni: Tipo Carta, Numero Carta e
+Intestazione  Carta
+
+Figura Dati Documento Riconoscimento
+
+▪  Nella sezione Contenuti Verbale di denuncia è possibile visualizzare informazioni sul Documento
+allegato. Le informazioni  riportate sono:  Nome File ed Estensione.  Azionando  l’icona dell’occhio
+
+ è possibile  visualizzare in anteprima  il documento.
+
+Figura Contenuti Documento Riconoscimento
+
+▪
+
+In Controllo Documento è presente la checklist dei controlli effettuati sul documento. I controlli sono
+mostrati in sola lettura.  La tabella è organizzata in più colonne:
+
+-  Richiesto: in cui è possibile  visualizzare
+
+ se il controllo  è obbligatorio,  oppure
+
+ se il
+
+controllo  non è obbligatorio;
+
+Conforme
+
+-  Descrizione  in cui è riportata la descrizione  del controllo  effettuato;
+-
+-  Note
+Inotre,  è  presente  il  campo  Esito  Controllo  (OK  o  KO)  ed  il  campo  Causale  in  cui  è  riportata  la
+motivazione  associata all’esito.
+
+
+Figura Controlli Verbale di Denuncia
+
+Il tasto NASCONDI SEZIONE permette di nascondere tutte le sezioni che riportano informazioni.
+Il tasto NASCONDI ALLEGATI permette di nascondere la preview di tutti gli allegati alla pratica.
+
+Carta
+
+Per tipo pratica contenente la Carta Tagliata, in Dati Lavorazione, è possibile  visualizzare i dati del cliente, della
+Carta e la relativa checklist attraverso la quale effettuare le verifiche.
+
+La milestone si presenta divisa in più  sezioni:
+
+
+▪  Nella sezione Dati Cliente sono mostrate le seguenti informazioni: Nome, Cognome,  Sesso,  Codice
+Fiscale,  Data di Nascita, Comune  di Nascita, Provincia di Nascita, Nazione  di Nascita, Telefono,
+Cellulare.  Inoltre  è possibile  esplodere  la barra blu che riporta  i dati di Indirizzo  di Residenza.
+
+Figura Dati Cliente
+
+▪
+
+In Dati Carta Bloccata sono mostrate le seguenti informazioni: Tipo Carta, Numero Carta e
+Intestazione  Carta
+
+Figura Dati Documento Riconoscimento
+
+▪  Nella sezione Contenuti Verbale di denuncia è possibile visualizzare informazioni sul Documento
+allegato. Le informazioni  riportate sono:  Nome File ed Estensione.  Azionando  l’icona dell’occhio
+
+ è possibile  visualizzare in anteprima  il documento.
+
+Figura Contenuti Documento Riconoscimento
+
+▪
+
+In Controllo Documento è presente la checklist dei controlli effettuati sul documento. I controlli sono
+mostrati in sola lettura.  La tabella è organizzata in più colonne:
+
+-  Richiesto: in cui è possibile  visualizzare
+
+ se il controllo  è obbligatorio,  oppure
+
+ se il
+
+controllo  non è obbligatorio;
+
+Conforme
+
+-  Descrizione  in cui è riportata la descrizione  del controllo  effettuato;
+-
+-  Note
+Inotre,  è  presente  il  campo  Esito  Controllo  (OK  o  KO)  ed  il  campo  Causale  in  cui  è  riportata  la
+motivazione  associata all’esito.
+
+3.2.1.3  Esito
+
+Controllo Carta
+
+In questa milestone  è presente  una sola sezione  in cui sono  riportate le seguenti  informazioni:  Esito Scrivania
+Digitale  e  Data  Esito  Scrivania  Digitale.  Inoltre,  è  presente  la  sezione  dedicata  alle  note,  se  inserite
+dall’operatore  in fase di chiusura della pratica.
+
+
+Esito
+
+2.2.2  Dettaglio Pratica – Cronologia
+
+Nella  pagina  di  dettaglio  Pratica  Cronologia, verrà  visualizzata  la  Cronologia  che  tiene  traccia delle  attività
+condotte  durante  la lavorazione  della pratica e dell’utente.
+
+Dettagli Cronologia
+
+2.2.3  Dettaglio Pratica – Stati
+
+Nella pagina  di  dettaglio  Pratica  Stati, è  mostrato  l’elenco  di  tutti  gli  stati  che  hanno  interessato  la  pratica
+durante  la lavorazione.
+
+2.2.4  Dettaglio Pratica – Azioni correlate
+
+Azioni correlate
+
+Nella  pagina  di  dettaglio  Pratica  Azioni correlate,  verranno  visualizzate  tutte  le  azioni  correlate  legate  alla
+pratica.
+
+Azioni correlate
+
+2.3
+
+Tab  Attività
+
+Nel tab  Attività  è consultabile  l’elenco  delle attività associate alle pratiche di pertinenza  dello Specialista PPE
+che effettua il login  e del gruppo  di cui fa parte.
+La pagina è costituita:
+
+•  Una sezione  di filtri;
+•  Una tabella contenente  le attività in lavorazione  ed in coda
+
+Figura Tab Attività
+
+In questa sezione  è presente  la lista di tutte le pratiche attive in corso con i fiitri:
+
+▪
+
+Stato:  in questa cella è presente l’elenco degli  stati che si può  presentare durante  la lavorazione  della
+pratica. Gli stati sono  i seguenti:  In Coda  e in Lavorazione.
+
+▪  Tipo Pratica: valorizzato di default con “Attivazione Nuova Carta”. Il campo risulta disabilitato;
+▪  Pratica N.:  in cui è possibile indicare il numero pratica da ricercare;
+▪  Nome Attività: in cui è possibile indicare parole chiavi relative al nome dell’attività;
+▪  Assegnatario;
+▪  Utente in carico;
+
+All’interno  di questa sezione sono  presenti  i seguenti  tasti:
+
+-  APPLICA FILTRI permette di applicare i filtri impostati
+-  APPLICA FILTRI E SALVA permette di applicare i filtri e salvarli
+-  CANCELLA FILTRI consente di cancellare i filtri selezionati in precedenza.
+
+La tabella sottostante  consta  delle  seguenti  colonne:  Pratica  N.,Attività,  Assegnatari,  Utente  in  carico,  Data
+Creazione,  Data Presa in Carico e Stato.
+Tutte  le colonne  dell’elenco,  ad  eccezione  della  colonna  Assegnatari,  sono  ordinabili  in modo  ascendente  o
+discendente  effettuando  un click sulla testata della colonna.  La comparsa del simbolo   freccia su  o  freccia giù
+in blu, a fianco della testata della colonna,  indicheranno  la modalità di ordinamento  applicata.
+
+In fondo  alla pagina,  in basso a destra, sono  presenti  il numero  di pagina ed il numero  di pagine  totali di cui è
+composto  l’elenco.
+Azionando  il simbolo   >  è possibile  avanzare di una pagina.
+Azionando  il simbolo   <  è possibile  retrocedere  di una pagina.
+Azionando  il simbolo   >>  è possibile posizionarsi  direttamente  all’ultima pagina.
+Azionando  il simbolo   <<  è possibile posizionarsi  direttamente  sulla prima pagina.
+
+Nella colonna  Attività,  è  presente  un  link  che,  se  attivato,  permette  di  richiamare  direttamente  la pratica a
+partire dallo stato nella quale essa si trova.
+
+2.4 Azioni- Dashboard Segnalazioni
+
+All’interno  di questa sezione  è possibile  inviare le segnalazioni  delle pratiche per il processo  ANC e inoltrarle a
+Sinergia.  Sono  presenti  due tasti attivi:
+
+•  Visualizza Le Segnalazioni Attive
+•  Visualizza Segnalazioni
+
+Selezionando  una delle  pratiche  nell’elenco,  per tutte  le sezioni,  si accede  ad un  nuovo  processo  che prende  il
+nome  di Sinergia, per maggiori approfondimenti aprire  il documento  Manuale  Utente  Sinergia.
+
+2.4.1 Visualizza  Le Segnalazioni Attive
+
+ Dashboard Segnalazioni
+
+Le segnalazioni  attive possono  essere filtrate utilizzando  i filtri posti  in alto:
+▪  Pratica N.: idcase della pratica ANC presente su Scrivania a cui è associata la segnalazione;
+▪
+▪  Attività Segnalazione: nome e descrizione della pratica segnalata
+▪
+
+Id Segnalazione:  numero della pratica di segnalazione
+
+Stato: è presente un menù a tendina dove sono  presenti  gli stati di lavorazione  della pratica. Tra cui:
+Tutti, In Coda e in Lavorazione.
+
+▪  Data Creazione Da:  permette di filtrare le pratiche per un determinato periodo di tempo da / a per la
+
+▪
+
+data di creazione
+ Data Creazione A: permette di filtrare le pratiche per un determinato periodo di tempo da / a per la data
+di creazione
+
+▪  Utente in Carico: nome utente associata alla pratica
+Inoltre  sono  presenti  le azioni:
+AGGIORNA: aggiorna la lista delle pratiche
+CANCELLA FILTRI  elimina i filtri inseriti per poter ripetere la ricerca.
+ESCI permette di tornare alla Home Page.
+Nella  parte  sottostante  è  presente  l’elenco  delle  pratiche  ANC  inviate  per  la  segnalazione:    ID  Pratica,  ID
+Segnalazione,  Attività  Segnalazione,  Assegnatario,  Utente  in  Carico,  Data  Creazione,  Data  Presa  in  carico,
+Stato.
+
+Visualizza le Segnalazioni Attive
+
+Tutte le colonne  dell’elenco,  ad eccezione di Assegnatario,  sono  ordinabili  in modo  ascendente o discendente
+effettuando  un  click sulla  testata della colonna.  La comparsa  del  simbolo   freccia su    o   freccia giù    in blu,  a
+fianco della testata della colonna,  indicheranno  la modalità di ordinamento  applicata.
+Nel  corso  della  lavorazione  della  pratica  il nome  attività che  l’operatore  dovrà  effettuare  si aggiorna  fino  a
+conclusione  del ciclo di lavorazione.
+In  fondo  alla pagina  in basso  a destra  sono  presenti  il numero  di pagina  ed il numero  di pagine  totali di  cui è
+composto  l’elenco.
+Azionando  il simbolo   >  è possibile  avanzare di una pagina.
+Azionando  il simbolo   <  è possibile  retrocedere  di una pagina.
+Azionando  il simbolo   >>  è possibile  posizionarsi  direttamente  all’ultima pagina.
+Azionando  il simbolo   <<  è possibile  posizionarsi  direttamente  sulla prima pagina.
+Nella colonna Attività Segnalazione,  è presente  un link che, se attivato, permette  di richiamare direttamente
+la pratica.
+
+2.4.2 Visualizza Segnalazioni
+
+Le segnalazioni  possono  essere filtrate utilizzando  i filtri posti  in alto:
+▪  Pratica N.: idcase della pratica ANC presente su Scrivania a cui è associata la segnalazione;
+▪
+▪  Data Creazione Da:  permette di filtrare le pratiche per un determinato periodo di tempo da / a per la
+
+ Id Segnalazione:  numero pratica associata alla segnalazione.
+
+▪
+
+data di creazione.
+ Data Creazione A: permette di filtrare le pratiche per un determinato periodo di tempo da / a per la data
+di creazione.
+
+▪  Data Chiusura Da: permette di filtrare le pratiche per un determinato periodo di tempo da / a per la di
+
+chiusura  della pratica.
+
+▪  Data Chiusura  A: permette di filtrare le pratiche per un determinato periodo di tempo da / a per la di
+
+▪
+▪
+
+chiusura  della pratica.
+ Operatore Ultima Modifica: nome utente associata alla pratica che ha effettuato l’ultima modifica.
+Stato : è presente un menù a tendina dove sono  presenti  gli stati di lavorazione  della pratica. Tra cui: In
+Coda,  in Lavorazione  e Chiuso.
+
+Inoltre  sono  presenti  le azioni:
+AGGIORNA: aggiorna la lista delle pratiche
+
+CANCELLA FILTRI  elimina i filtri inseriti per poter ripetere la ricerca.
+ESCI permette di tornare alla Home Page
+Nella parte  sottostante  è  presente  l’elenco  delle  pratiche  di  ANC  inviate  per  la segnalazione:  Pratica  N.,  Id
+Segnalazione,  Attività Segnalazione,  Assegnatario,  Operatore  Ultima  Modifica, Data Creazione,  Data Chiusura,
+Stato.
+
+Segnalazioni
+
+Tutte  le  colonne  dell’elenco  sono  ordinabili  in  modo  ascendente  o  discendente  effettuando  un  click  sulla
+testata della  colonna.  La comparsa  del  simbolo    freccia  su   o    freccia giù   in  blu,  a fianco  della  testata della
+colonna,  indicheranno  la modalità di ordinamento  applicata.
+Nel  corso  della  lavorazione  della  pratica  il nome  attività che  l’operatore  dovrà  effettuare  si aggiorna  fino  a
+conclusione  del ciclo di lavorazione.
+In  fondo  alla pagina  in basso  a destra  sono  presenti  il numero  di pagina  ed il numero  di pagine  totali di  cui è
+composto  l’elenco.
+Azionando  il simbolo   >  è possibile  avanzare di una pagina.
+Azionando  il simbolo   <  è possibile  retrocedere  di una pagina.
+Azionando  il simbolo   >>  è possibile posizionarsi  direttamente  all’ultima pagina.
+Azionando  il simbolo   <<  è possibile posizionarsi  direttamente  sulla prima pagina.
+Nella colonna Attività,  è presente  un link che, se attivato, permette di richiamare direttamente  la pratica.
+
+3 TIPIZZAZIONE DOCUMENTO
+
+Dal tab Attività selezionando  il link presente  nel campo  Attività è possibile  accedere alla pratica e procedere
+alla lavorazione.
+Prima di poter effettuare  la lavorazione  viene chiesto  all’operatore  di prendere  in carico la pratica:
+
+▪  Accetta: L’operatore prende in carico la pratica per procedere alla lavorazione.
+▪
+
+Indietro: si ritorna alla schermata precedente.
+
+Nella parte centrale della pagina è predisposta  una griglia gialla dov’è  presente  una linea orizzontale  blu ed
+indica lo stato di avanzamento della pratica: Raccolta input, Lavorazione  e Chiusura  Pratica.  In basso sono
+riportate  le informazioni  generiche  della pratica; è indicato il nome del processo  in questo  caso Attivazione
+Nuova Carta , Codice Fiscale Cliente, Pratica N.
+
+Tipizzazione del Documento
+
+Nella parte in alto della pagina è predisposta  una griglia  gialla dov’è  presente  una linea orizzontale  blu ed
+indica lo stato di avanzamento della pratica: Raccolta input, Lavorazione  e Chiusura  Pratica.  In basso sono
+riportate  le informazioni  generiche  della pratica; è indicato il nome del processo  in questo  caso Attivazione
+Nuova Carta , Codice Fiscale Cliente, Pratica N.
+La parte centrale della pagina è divisa in due colonne:
+
+-  Nella colonna a destra è presente  la sezione Documento  contenente  la preview del documento
+
+allegato alla pratica;
+
+-  Nella colonna sinistra è presente  la sezione  “Tipizzazione  Documento”  contenente  un campo in
+
+cui è possibile  indicare il tipo documento  allegato alla pratica.
+
+Nel campo “Tipo  Documento”  è presente  un  elenco  a discesa attraverso  il quale  l’operatore  può  selezionare
+una delle due opzioni  previste:
+o  Verbale di denuncia
+o  Carta
+
+Tipo Documento
+
+A valle della selezione  del tipo  documento  si abilita il tasto CONFERMA che, se attivato consente di
+proseguire  con la lavorazione  come mostrato  nei capitoli successivi.
+
+4 LAVORAZIONE DI UNA PRATICA CON VERBALE DI DENUNCIA
+
+Con la conferma  del tipo documento  (Capitolo  3 Tipizzazione  Documento),  l’operatore  viene rispedito  al task
+dedicato alla lavorazione.
+La pagina si presenta in due sezioni:
+
+•  Nella parte centrale della pagina è predisposta  una griglia gialla dov’è  presente  una linea orizzontale
+blu ed indica lo stato di avanzamento della pratica: Raccolta input, Lavorazione  e Chiusura  Pratica.  In
+basso sono  riportate  le informazioni  generiche   della pratica; è indicato il nome del processo  in
+questo  caso Attivazione Nuova Carta , Codice Fiscale Cliente, Pratica N.
+
+•  Una sezione  verticale con 3 milenstone  contenente  cinque  tasti: Dati Pratica, Verifica Documento e
+
+Riepilogo.  Azionando uno di questi indicati si accede all’interno della Milenstone.
+
+Presa in carico
+
+4.1 Dati Pratica
+
+La  milestone  Dati Pratica presenta  una  sezione  contenente  le  seguenti  informazioni:  Data  Apertura,  Data
+Ultima  Modifica,  Stato, Codice  Cliente,  Codice Fiscale  e Canale
+
+Dati Pratica
+
+4.2 Verifica Documento
+
+In questa sezione  è possibile  effettuare  i controlli  sul Verbale di Denuncia allegato alla pratica.
+
+La milestone si presenta divisa in più  sezioni:
+
+▪  Nella sezione Dati Cliente sono mostrate le seguenti informazioni: Nome, Cognome,  Sesso,  Codice
+Fiscale,  Data di Nascita, Comune  di Nascita, Provincia di Nascita, Nazione  di Nascita, Telefono  e
+Cellulare.  Inoltre  è possibile  esplodere  la barra blu che riporta  i dati di Indirizzo  di Residenza.
+
+
+Dati Cliente
+
+▪
+
+In Dati Carta Bloccata  sono mostrate le seguenti informazioni: Tipo Carta, Numero Carta ed
+Intestazione  Carta.
+
+Dati Carta Bloccata
+
+▪  Nella sezione Contenuti Verbale di denuncia  è possibile visualizzare informazioni sul Documento
+allegato. Le informazioni  riportate sono:  Nome File ed Estensione.  Azionando  l’icona dell’occhio
+
+ è possibile  visualizzare in anteprima  il documento.
+
+Contenuti Verbale di denuncia
+
+▪
+
+In Controllo Verbale di denuncia  è presente la checklist attraverso la quale effettuare i controlli
+sull’allegato.  La tabella è organizzata  in più  colonne
+
+
+-  Richiesto: in cui è possibile  visualizzare
+
+ se il controllo  è obbligatorio,  oppure
+
+ se il
+
+controllo  non è obbligatorio;
+
+-  Descrizione  in cui è riportata la descrizione  del controllo  effettuato.  Per poterla visualizzare, sarà
+
+necessario azionare il tasto Mostra Descrizione.
+Conforme
+
+-
+-  Note
+L’ultimo  controllo  dovrà essere compilato solo  in caso di presenza  numero  di Carta sul Verbale di
+Denuncia.  Per poterlo  rendere  obbligatorio  sarà necessario azionare  l’icona:
+
+La colonna Conformità  è disabilitata. Per rendere  attiva la colonna Conformità  è necessario effettuare  il
+controllo  sulla presenza  del documento.  Se il documento  è presente  è possibile  proseguire  con i controlli  di
+conformità.  Se il documento  non  è presente  tutti i controlli  di Conformità  andranno  in KO.
+
+Indicando  con  NO  il  controllo  conformità  afferente  al  controllo  n.2  è  obbligatorio  selezionare  una  delle
+seguenti  voci per cui il controllo  risultato in KO:
+
+•
+Intestazione
+•
+Firme
+•
+Intestazione  Conforme  al Timbro
+•  Dichiarazione  Conforme  alle Firme
+•  Carta Poste Italiane
+
+Controllo Verbale di denuncia
+
+Inotre,  è  presente  il  campo  Esito  Controllo  (OK  o  KO)  ed  il campo  Causale  in  cui  è riportata  la  motivazione
+associata all’esito.
+
+Il tasto NASCONDI SEZIONE permette di nascondere tutte le sezioni che riportano informazioni.
+Il tasto NASCONDI ALLEGATI permette di nascondere la preview di tutti gli allegati alla pratica.
+
+Dopo  aver  effettuato  i  controlli  il  tasto  SALVA E PROSEGUI posto  in  basso  permette  di  salvare  le  verifiche
+effettuate ed accedere alla milestone successiva per inviare l’esito  della lavorazione.
+
+Il tasto MODIFICA permette di modificare i controlli effettuati dopo  un salvataggio. La selezione di questo  tasto
+rende  attive le checklist dei controlli.
+
+4.3 Riepilogo
+
+In  questa  sezione  è possibile  visualizzare  l’esito  generale  della pratica prima  di procedere  con  la chiusura.  È
+mostrato  l’esito dei controlli  effettuati  sul documento  e le eventuali motivazioni  associate a ciascun KO.
+Nella zona centrale della pagina sono  presenti due  card di sola lettura:
+
+▪  RESPINTA
+▪  APPROVATA
+
+In base ai controlli effettuati,  verrà illuminata solo la card corrispondente  all’esito generale della pratica.
+In caso di esito RESPINTA, sarà presente il box Note interne in cui l’utente può indicare una nota.
+
+Riepilogo
+
+Azionando  il tasto  CHIUDI PRATICA si procede  con  la chiusura  della pratica.  Il  task si chiude  e l’utente  torna
+nella Lista delle  Attività. In  alternativa è possibile  tornare  nella  milestone  Verifica Documento per modificare
+le verifiche  effettuate.
+
+5 LAVORAZIONE DI UNA PRATICA CON CARTA TAGLIATA
+
+Con la conferma  del tipo documento  (Capitolo  3 Tipizzazione  Documento),  l’operatore  viene rispedito  al task
+dedicato alla lavorazione.
+La pagina si presenta in due sezioni:
+
+•  Nella parte centrale della pagina è predisposta  una griglia gialla dov’è  presente  una linea orizzontale
+blu ed indica lo stato di avanzamento della pratica: Raccolta input, Lavorazione  e Chiusura  Pratica.  In
+basso sono  riportate  le informazioni  generiche   della pratica; è indicato il nome del processo  in
+questo  caso Attivazione Nuova Carta , Codice Fiscale Cliente, Pratica N.
+
+•  Una sezione  verticale con 3 milenstone  contenente  cinque  tasti: Dati Pratica, Verifica Documento e
+
+Riepilogo.  Azionando uno di questi indicati si accede all’interno della Milenstone.
+
+Presa in carico
+
+5.1 Dati Pratica
+
+La  milestone  Dati Pratica presenta  una  sezione  contenente  le  seguenti  informazioni:  Data  Apertura,  Data
+Ultima  Modifica,  Stato, Codice  Cliente,  Codice Fiscale  e Canale
+
+Dati Pratica
+
+5.2 Verifica Documento
+
+In questa sezione  è possibile  effettuare  i controlli  sull’allegato  Carta.
+
+La milestone si presenta divisa in più  sezioni:
+
+▪  Nella sezione Dati Cliente sono mostrate le seguenti informazioni: Nome, Cognome,  Sesso,  Codice
+Fiscale,  Data di Nascita, Comune  di Nascita, Provincia di Nascita, Nazione  di Nascita, Telefono  e
+Cellulare.  Inoltre  è possibile  esplodere  la barra blu che riporta  i dati di Indirizzo  di Residenza.
+
+Dati Cliente
+
+▪
+
+In Dati Carta Bloccata  sono mostrate le seguenti informazioni: Tipo Carta, Numero Carta ed
+Intestazione  Carta.
+
+Dati Carta Bloccata
+
+▪  Nella sezione Contenuti Carta è possibile visualizzare informazioni sul Documento allegato. Le
+
+informazioni  riportate sono:  Nome File ed Estensione.  Azionando  l’icona dell’occhio
+
+ è possibile  visualizzare in anteprima  il documento.
+
+Contenuti Verbale di denuncia
+
+▪
+
+In Controllo Carta  è presente la checklist attraverso la quale effettuare i controlli sull’allegato. La
+tabella è organizzata  in più  colonne:
+
+-  Richiesto: in cui è possibile  visualizzare
+
+-  Descrizione  in cui è riportata la descrizione  del controllo  effettuato.  Per poterla visualizzare, sarà
+
+necessario azionare il tasto Mostra Descrizione.
+Conforme
+
+-
+-  Note
+
+La colonna Conformità  è disabilitata. Per rendere  attiva la colonna Conformità  è necessario effettuare  il
+controllo  sulla presenza  del documento.  Se il documento  è presente  è possibile  proseguire  con i controlli  di
+conformità.  Se il documento  non  è presente  tutti i controlli  di Conformità  andranno  in KO.
+
+Controllo Verbale di denuncia
+
+Inotre,  è  presente  il  campo  Esito  Controllo  (OK  o  KO)  ed  il campo  Causale  in  cui  è riportata  la  motivazione
+associata all’esito.
+
+Il tasto NASCONDI SEZIONE permette di nascondere tutte le sezioni che riportano informazioni.
+Il tasto NASCONDI ALLEGATI permette di nascondere la preview di tutti gli allegati alla pratica.
+
+Dopo  aver  effettuato  i  controlli  il  tasto  SALVA E PROSEGUI posto  in  basso  permette  di  salvare  le  verifiche
+effettuate ed accedere alla milestone successiva per inviare l’esito  della lavorazione.
+
+Il tasto MODIFICA permette di modificare i controlli effettuati dopo  un salvataggio. La selezione di questo  tasto
+rende  attive le checklist dei controlli.
+
+5.3 Riepilogo
+
+In  questa  sezione  è possibile  visualizzare  l’esito  generale  della pratica prima  di procedere  con  la chiusura.  È
+mostrato  l’esito dei controlli  effettuati  sul documento  e le eventuali motivazioni  associate a ciascun KO.
+Nella zona centrale della pagina sono  presenti due  card di sola lettura:
+
+▪  RESPINTA
+▪  APPROVATA
+
+In base ai controlli effettuati,  verrà illuminata solo la card corrispondente  all’esito generale della pratica.
+In caso di esito RESPINTA, sarà presente il box Note interne in cui l’utente può indicare una nota.
+
+Riepilogo
+
+Azionando  il tasto  CHIUDI PRATICA si procede  con  la chiusura  della pratica.  Il  task si chiude  e l’utente  torna
+nella Lista delle  Attività. In  alternativa è possibile  tornare  nella  milestone  Verifica Documento per modificare
+le verifiche  effettuate.
+
