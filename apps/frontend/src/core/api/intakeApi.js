@@ -22,5 +22,7 @@ export const intakeApi = {
     httpClient.request(`/api/v1/practices/${practiceId}/intake/checklist/edit`, {
       method: 'POST',
       body: JSON.stringify({})
-    })
+    }),
+  getChecklistHelp: (practiceId, itemId) =>
+    httpClient.request(`/api/v1/practices/${practiceId}/intake/checklist/help/${encodeURIComponent(itemId)}`)
 };

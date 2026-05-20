@@ -293,7 +293,10 @@ export const supervisionDashboardApi = {
   byState: async (month) => {
     return withFallback(
       async () => {
-        const details = await httpClient.request('/api/v1/supervision/dashboard/by-state', { method: 'GET' });
+        const details = await httpClient.request(
+          `/api/v1/supervision/dashboard/by-state${buildQueryString({ month })}`,
+          { method: 'GET' }
+        );
         return {
           items: normalizeByState(details),
           fallbackMode: false

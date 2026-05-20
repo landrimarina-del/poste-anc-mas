@@ -1,8 +1,8 @@
 // HomePage.jsx business: versione unica consolidata
 import React, { useEffect, useState, useRef } from "react";
-import { useAuth } from "../../hooks/useAuth";
+import { useAuth } from '../../app/auth/AuthContext';
 import * as favoritesApi from "../../api/favoritesApi";
-import * as supervisionDashboardApi from "../../api/supervisionDashboardApi";
+import { supervisionDashboardApi } from "../../core/api/supervisionDashboardApi";
 
 function normalizeFavorites(response) {
   const list = Array.isArray(response) ? response : Array.isArray(response?.items) ? response.items : [];
@@ -253,6 +253,7 @@ export function HomePage() {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
+  const [refreshKey, setRefreshKey] = useState(0);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [infoMessage, setInfoMessage] = useState('');
@@ -316,13 +317,13 @@ export function HomePage() {
     return () => {
       isCancelled = true;
     };
-  }, [isSupervisore, selectedMonth]);
+  }, [isSupervisore, selectedMonth, refreshKey]);
 
   const onChangeMonth = (event) => {
     setSelectedMonth(event.target.value);
   };
   const onRefresh = () => {
-    setSelectedMonth((prev) => prev);
+    setRefreshKey((k) => k + 1);
   };
 
   if (isSupervisore) {
@@ -366,15 +367,15 @@ export function HomePage() {
         <div className="home-charts-grid">
           <article className="home-chart-card">
             <h3>Pratiche Giornaliere</h3>
-            {loading ? <div className="chart-empty">Caricamento grafico...</div> : <div>N/A</div>}
+            {loading ? <div className="chart-empty">Caricamento grafico...</div> : <DailyOpenedChart items={dashboardData.dailyOpened} />}
           </article>
           <article className="home-chart-card">
             <h3>Pratiche Giornaliere Lavorate (OK/KO)</h3>
-            {loading ? <div className="chart-empty">Caricamento grafico...</div> : <div>N/A</div>}
+            {loading ? <div className="chart-empty">Caricamento grafico...</div> : <DailyWorkedChart items={dashboardData.dailyWorked} />}
           </article>
           <article className="home-chart-card">
             <h3>Pratiche per Stato</h3>
-            {loading ? <div className="chart-empty">Caricamento grafico...</div> : <div>N/A</div>}
+            {loading ? <div className="chart-empty">Caricamento grafico...</div> : <ByStateChart items={dashboardData.byState} />}
           </article>
         </div>
         <FavoriteLinksSection />
@@ -402,6 +403,61 @@ export function HomePage() {
       </div>
       <FavoriteLinksSection />
     </section>
+  );
+}
+
+function maxValue(items, accessor) {
+  return items.reduce((acc, item) => Math.max(acc, accessor(item)), 0);
+}
+
+function shouldShowDailyLabel(index) {
+  return index % 5 === 0;
+}
+
+function ChartWithAxes({ max, ariaLabel, children }) {
+  return (
+    <div className="chart-with-axes" aria-label={ariaLabel}>
+      <div className="chart-y-axis">
+        <span>{max}</span>
+        <span>{Math.round(max / 2)}</span>
+        <span>0</span>
+      </div>
+      <div className="chart-bars">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function DailyWorkedLegend() {
+  return (
+    <div className="chart-legend">
+      <span className="chart-legend-item"><span className="chart-legend-swatch chart-segment-ok" />OK</span>
+      <span className="chart-legend-item"><span className="chart-legend-swatch chart-segment-ko" />KO</span>
+    </div>
+  );
+}
+
+function DailyOpenedChart({ items }) {
+  const max = Math.max(1, maxValue(items, (item) => item.count));
+
+  if (!items.length) {
+    return <div className="chart-empty">Nessun dato per il mese selezionato.</div>;
+  }
+
+  return (
+    <ChartWithAxes max={max} ariaLabel="Istogramma pratiche giornaliere">
+      {items.map((item, index) => {
+        const percentage = Math.max(4, Math.round((item.count / max) * 100));
+        const showDayLabel = shouldShowDailyLabel(index);
+        return (
+            <div key={`opened-${item.day}`} className="chart-bar-item" title={`Giorno ${item.day}: ${item.count}`}>
+            <div className="chart-bar-single" style={{ height: `${percentage}%` }} />
+            <div className={`chart-bar-label${showDayLabel ? '' : ' chart-bar-label-hidden'}`}>{item.day}</div>
+          </div>
+        );
+      })}
+    </ChartWithAxes>
   );
 }
 

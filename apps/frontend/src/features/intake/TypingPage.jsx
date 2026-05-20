@@ -324,6 +324,18 @@ export function TypingPage() {
       setChecklistDescription(typeof mapped.description === 'string' ? mapped.description : '');
       setChecklistEditable(mapped.isEditable);
       setChecklistInfo('');
+
+      // C4.10: arricchisce la descrizione checklist con l'endpoint help dedicato
+      const helpItemId = confirmedType === 'CARTA' ? 'CARDPRESENT' : 'DOCUMENTPRESENT';
+      try {
+        const helpResponse = await intakeApi.getChecklistHelp(practiceId, helpItemId);
+        const helpText = helpResponse?.description || helpResponse?.title;
+        if (helpText) {
+          setChecklistDescription(helpText);
+        }
+      } catch {
+        // fallback: mantieni la descrizione già impostata dalla risposta checklist
+      }
     } catch (error) {
       const errorMessage = error?.message ?? 'Errore tecnico nel caricamento della checklist.';
       resetChecklistState();
@@ -379,6 +391,17 @@ export function TypingPage() {
   useEffect(() => {
     loadChecklist();
   }, [loadChecklist]);
+
+  // ISS-S6-02: polling automatico ack BPM quando la pratica è IN_ATTESA_CONFERMA_BPM
+  useEffect(() => {
+    if (practiceState !== 'IN_ATTESA_CONFERMA_BPM') {
+      return undefined;
+    }
+    const pollInterval = setInterval(() => {
+      loadPage();
+    }, 5000);
+    return () => clearInterval(pollInterval);
+  }, [practiceState, loadPage]);
 
   const onConfirmTyping = async () => {
     setTypingError('');

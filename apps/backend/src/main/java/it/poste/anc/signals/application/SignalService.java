@@ -6,6 +6,7 @@ import it.poste.anc.signals.api.SignalForwardResponse;
 import it.poste.anc.signals.api.SignalListItem;
 import it.poste.anc.signals.api.SignalReassignRequest;
 import it.poste.anc.signals.api.SignalReassignResponse;
+import it.poste.anc.signals.api.SignalTakeResponse;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -204,6 +205,45 @@ public class SignalService {
                 target.targetGroupCode(),
                 Instant.now()
         );
+    }
+
+    @Transactional
+    public SignalTakeResponse takeSignal(Long signalId, String actorUsername) {
+        Long userId = findActiveUserId(actorUsername);
+        ensureUserCanCreateSignals(userId);
+
+        SignalSnapshot signal = loadSignal(signalId);
+
+        if (!STATE_IN_CODA.equals(signal.state())) {
+            throw new SignalOperationException(HttpStatus.CONFLICT, 7019,
+                    "Segnalazione non in coda: impossibile prendere in carico");
+        }
+
+        Long operatorGroupId = findOperatorGroupId();
+        Instant now = Instant.now();
+
+        int updated = jdbcTemplate.update(
+                "UPDATE signal_case SET owner_user_id = ?, candidate_group_id = ?, stato = 'IN_LAVORAZIONE', "
+                        + "updated_at = CURRENT_TIMESTAMP(3), version = version + 1 WHERE id = ?",
+                userId,
+                operatorGroupId,
+                signalId
+        );
+
+        if (updated == 0) {
+            throw new SignalOperationException(HttpStatus.CONFLICT, 7020,
+                    "Segnalazione non aggiornabile in modo concorrente");
+        }
+
+        insertAuditEvent(
+                actorUsername,
+                signal.practiceId(),
+                "SIGNAL_TAKE_" + signalId,
+                "SIGNAL_TAKEN",
+                "{\"signalId\":" + signalId + ",\"state\":\"IN_LAVORAZIONE\"}"
+        );
+
+        return new SignalTakeResponse(signalId, signal.practiceId(), STATE_IN_LAVORAZIONE, actorUsername, now);
     }
 
     @Transactional

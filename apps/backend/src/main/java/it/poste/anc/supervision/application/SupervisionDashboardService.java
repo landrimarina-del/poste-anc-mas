@@ -122,9 +122,22 @@ public class SupervisionDashboardService {
     }
 
     @Transactional(readOnly = true)
-    public List<SupervisionPracticeByStatePoint> loadPracticesByState(String username) {
+    public List<SupervisionPracticeByStatePoint> loadPracticesByState(String username, YearMonth month) {
         Long supervisorId = findActiveUserId(username);
         ensureUserIsSupervisor(supervisorId);
+
+        if (month != null) {
+            LocalDate firstDay = month.atDay(1);
+            LocalDate firstDayNextMonth = month.plusMonths(1).atDay(1);
+            return jdbcTemplate.query(
+                    "SELECT stato, COUNT(1) AS total FROM practice "
+                            + "WHERE data_apertura >= ? AND data_apertura < ? "
+                            + "GROUP BY stato ORDER BY stato",
+                    (rs, rowNum) -> new SupervisionPracticeByStatePoint(rs.getString("stato"), rs.getLong("total")),
+                    Timestamp.valueOf(firstDay.atStartOfDay()),
+                    Timestamp.valueOf(firstDayNextMonth.atStartOfDay())
+            );
+        }
 
         return jdbcTemplate.query(
                 "SELECT stato, COUNT(1) AS total FROM practice GROUP BY stato ORDER BY stato",

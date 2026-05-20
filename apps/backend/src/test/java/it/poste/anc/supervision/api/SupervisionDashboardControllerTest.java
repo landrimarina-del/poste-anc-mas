@@ -14,6 +14,7 @@ import java.util.List;
 import java.time.YearMonth;
 
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -74,13 +75,25 @@ class SupervisionDashboardControllerTest {
     @Test
     @WithMockUser(username = "sup.verdi")
     void byStateReturnsHistogram() throws Exception {
-        when(supervisionDashboardService.loadPracticesByState("sup.verdi"))
+        when(supervisionDashboardService.loadPracticesByState(eq("sup.verdi"), isNull()))
                 .thenReturn(List.of(new SupervisionPracticeByStatePoint("IN_LAVORAZIONE", 7)));
 
         mockMvc.perform(get("/api/v1/supervision/dashboard/by-state"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.resultCode").value(0))
                 .andExpect(jsonPath("$.details[0].state").value("IN_LAVORAZIONE"));
+    }
+
+    @Test
+    @WithMockUser(username = "sup.verdi")
+    void byStateWithMonthFiltersData() throws Exception {
+        when(supervisionDashboardService.loadPracticesByState(eq("sup.verdi"), eq(YearMonth.of(2026, 5))))
+                .thenReturn(List.of(new SupervisionPracticeByStatePoint("APERTA", 3)));
+
+        mockMvc.perform(get("/api/v1/supervision/dashboard/by-state?month=2026-05"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.resultCode").value(0))
+                .andExpect(jsonPath("$.details[0].state").value("APERTA"));
     }
 
     @Test
