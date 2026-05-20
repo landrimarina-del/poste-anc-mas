@@ -59,7 +59,8 @@ class SupervisionDashboardServiceTest {
         jdbcTemplate.execute("""
                 CREATE TABLE practice (
                     id BIGINT PRIMARY KEY,
-                    stato VARCHAR(64)
+                    stato VARCHAR(64),
+                    data_apertura TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
                 """);
         jdbcTemplate.execute("""
@@ -86,11 +87,11 @@ class SupervisionDashboardServiceTest {
         jdbcTemplate.update("INSERT INTO user_role (user_id, role_id) VALUES (10, 1)");
         jdbcTemplate.update("INSERT INTO app_user (id, username, active) VALUES (20, 'op.rossi', true)");
 
-        jdbcTemplate.update("INSERT INTO practice (id, stato) VALUES (100, 'APERTA')");
-        jdbcTemplate.update("INSERT INTO practice (id, stato) VALUES (101, 'IN_LAVORAZIONE')");
-        jdbcTemplate.update("INSERT INTO practice (id, stato) VALUES (102, 'IN_ATTESA_CONFERMA_BPM')");
-        jdbcTemplate.update("INSERT INTO practice (id, stato) VALUES (103, 'CHIUSA_OK')");
-        jdbcTemplate.update("INSERT INTO practice (id, stato) VALUES (104, 'CHIUSA_KO')");
+        jdbcTemplate.update("INSERT INTO practice (id, stato, data_apertura) VALUES (100, 'APERTA', TIMESTAMP '2026-05-01 08:00:00')");
+        jdbcTemplate.update("INSERT INTO practice (id, stato, data_apertura) VALUES (101, 'IN_LAVORAZIONE', TIMESTAMP '2026-05-02 09:00:00')");
+        jdbcTemplate.update("INSERT INTO practice (id, stato, data_apertura) VALUES (102, 'IN_ATTESA_CONFERMA_BPM', TIMESTAMP '2026-05-03 09:00:00')");
+        jdbcTemplate.update("INSERT INTO practice (id, stato, data_apertura) VALUES (103, 'CHIUSA_OK', TIMESTAMP '2026-04-10 10:00:00')");
+        jdbcTemplate.update("INSERT INTO practice (id, stato, data_apertura) VALUES (104, 'CHIUSA_KO', TIMESTAMP '2026-04-11 11:00:00')");
 
         jdbcTemplate.update("INSERT INTO task (id, stato) VALUES (1, 'IN_CODA')");
         jdbcTemplate.update("INSERT INTO task (id, stato) VALUES (2, 'IN_CARICO')");
@@ -143,10 +144,24 @@ class SupervisionDashboardServiceTest {
 
     @Test
     void byStateReturnsCurrentDistribution() {
-        List<SupervisionPracticeByStatePoint> points = supervisionDashboardService.loadPracticesByState("sup.verdi");
+        List<SupervisionPracticeByStatePoint> points = supervisionDashboardService.loadPracticesByState("sup.verdi", null);
 
         assertThat(points).extracting(SupervisionPracticeByStatePoint::state)
                 .contains("APERTA", "IN_LAVORAZIONE", "IN_ATTESA_CONFERMA_BPM", "CHIUSA_OK", "CHIUSA_KO");
+    }
+
+    @Test
+    void byStateFilteredByMonthReturnsSubset() {
+        // Maggio 2026: practice 100, 101, 102 (create a maggio)
+        // Aprile 2026: practice 103, 104 (create ad aprile)
+        List<SupervisionPracticeByStatePoint> points = supervisionDashboardService.loadPracticesByState(
+                "sup.verdi",
+                YearMonth.of(2026, 5)
+        );
+
+        assertThat(points).extracting(SupervisionPracticeByStatePoint::state)
+                .contains("APERTA", "IN_LAVORAZIONE", "IN_ATTESA_CONFERMA_BPM")
+                .doesNotContain("CHIUSA_OK", "CHIUSA_KO");
     }
 
     @Test

@@ -3,15 +3,6 @@ import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../app/auth/AuthContext';
 import { signalsApi } from '../../core/api/signalsApi';
 
-// Demo data per tab attive/storico
-const DEMO_ATTIVE = [
-  { id: 'SIG-001', practiceNumber: 'ANC-2026-0001', state: 'IN_LAVORAZIONE', operator: 'operatore.anc', title: 'Anomalia login', sinergiaTicketId: '-', createdAt: '2026-05-10T09:00', updatedAt: '2026-05-10T10:00' },
-  { id: 'SIG-002', practiceNumber: 'ANC-2026-0002', state: 'IN_CODA', operator: 'operatore.anc', title: 'Errore invio', sinergiaTicketId: '-', createdAt: '2026-05-11T09:00', updatedAt: '2026-05-11T10:00' }
-];
-const DEMO_STORICO = [
-  { id: 'SIG-003', practiceNumber: 'ANC-2026-0003', state: 'CHIUSO', operator: 'operatore.anc', title: 'Test chiusura', sinergiaTicketId: 'TCK-123', createdAt: '2026-04-10T09:00', updatedAt: '2026-04-11T10:00' }
-];
-
 const initialCreateForm = {
   practiceId: '',
   practiceNumber: '',
@@ -136,9 +127,6 @@ export function SignalsDashboardPage() {
 
   const [mySignals, setMySignals] = useState([]);
   const [globalSignals, setGlobalSignals] = useState([]);
-  // Stato tab demo
-  const [activeTab, setActiveTab] = useState('attive'); // 'attive' | 'storico'
-  const [demoFilters, setDemoFilters] = useState({ state: '', operator: '', signalId: '' });
 
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -348,7 +336,7 @@ export function SignalsDashboardPage() {
       <h2>Dashboard Segnalazioni</h2>
       <p className="panel-note">
         Sprint 9 (EPIC E10): invio segnalazioni ANC, vista Le Mie Segnalazioni e gestione supervisore.<br />
-        <b>Nota:</b> i dati delle tabelle sottostanti sono dimostrativi e non sincronizzati con il sistema esterno.
+        <b>Nota:</b> le segnalazioni sono caricate in tempo reale dal backend ANC.
       </p>
 
       {successMessage ? <div className="api-success-box">{successMessage}</div> : null}
@@ -414,75 +402,99 @@ export function SignalsDashboardPage() {
         </form>
       </article>
 
-      {/* TAB DEMO */}
-      <div className="signals-tabs-demo">
-        <button
-          type="button"
-          className={activeTab === 'attive' ? 'tab-btn active' : 'tab-btn'}
-          onClick={() => setActiveTab('attive')}
-        >Visualizza Le Segnalazioni Attive</button>
-        <button
-          type="button"
-          className={activeTab === 'storico' ? 'tab-btn active' : 'tab-btn'}
-          onClick={() => setActiveTab('storico')}
-        >Visualizza Segnalazioni (Storico)</button>
-      </div>
-
-      <div className="filters-box" aria-label="Filtri tab demo segnalazioni">
-        <div className="filters-grid">
-          <label>
-            ID segnalazione
-            <input
-              type="text"
-              name="signalId"
-              value={demoFilters.signalId}
-              onChange={e => setDemoFilters(f => ({ ...f, signalId: e.target.value }))}
-              placeholder="Es. SIG-0001"
-            />
-          </label>
-          <label>
-            Stato
-            <select name="state" value={demoFilters.state} onChange={e => setDemoFilters(f => ({ ...f, state: e.target.value }))}>
-              <option value="">Tutti</option>
-              <option value="IN_CODA">IN_CODA</option>
-              <option value="IN_LAVORAZIONE">IN_LAVORAZIONE</option>
-              <option value="CHIUSO">CHIUSO</option>
-            </select>
-          </label>
-          <label>
-            Operatore
-            <input
-              type="text"
-              name="operator"
-              value={demoFilters.operator}
-              onChange={e => setDemoFilters(f => ({ ...f, operator: e.target.value }))}
-              placeholder="Es. operatore.anc"
-            />
-          </label>
-        </div>
-        <div className="filters-actions">
-          <button type="button" className="btn btn-primary btn-small" onClick={() => setDemoFilters({ ...demoFilters })}>AGGIORNA</button>
-          <button type="button" className="btn btn-outline btn-small" onClick={() => setDemoFilters({ state: '', operator: '', signalId: '' })}>CANCELLA FILTRI</button>
-        </div>
-      </div>
-
-      {/* Tabella demo */}
+      {/* Le Mie Segnalazioni */}
       <SignalsTable
-        title={activeTab === 'attive' ? 'Segnalazioni Attive (DEMO)' : 'Segnalazioni Storico (DEMO)'}
-        rows={
-          (activeTab === 'attive' ? DEMO_ATTIVE : DEMO_STORICO)
-            .filter(row =>
-              (!demoFilters.signalId || row.id.includes(demoFilters.signalId)) &&
-              (!demoFilters.state || row.state === demoFilters.state) &&
-              (!demoFilters.operator || row.operator.includes(demoFilters.operator))
-            )
-        }
-        loading={false}
+        title="Le Mie Segnalazioni"
+        rows={mySignals}
+        loading={loadingMySignals}
         emptyMessage="Nessuna segnalazione presente."
         canManage={false}
-        onForward={() => {}}
+        onForward={onForwardToSinergia}
         onReassign={() => {}}
       />
+
+      {/* Vista globale - solo supervisore */}
+      {isSupervisore ? (
+        <>
+          <div className="filters-box" aria-label="Filtri segnalazioni globali">
+            <div className="filters-grid">
+              <label>
+                ID segnalazione
+                <input
+                  type="text"
+                  name="signalId"
+                  value={globalFiltersDraft.signalId}
+                  onChange={onChangeGlobalFilter}
+                  placeholder="Es. 1234"
+                />
+              </label>
+              <label>
+                Stato
+                <select name="state" value={globalFiltersDraft.state} onChange={onChangeGlobalFilter}>
+                  <option value="">Tutti</option>
+                  {signalStateOptions.filter(Boolean).map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Operatore
+                <input
+                  type="text"
+                  name="operator"
+                  value={globalFiltersDraft.operator}
+                  onChange={onChangeGlobalFilter}
+                  placeholder="Es. operatore.anc"
+                />
+              </label>
+              <label>
+                Da data
+                <input
+                  type="date"
+                  name="fromDate"
+                  value={globalFiltersDraft.fromDate}
+                  onChange={onChangeGlobalFilter}
+                />
+              </label>
+              <label>
+                A data
+                <input
+                  type="date"
+                  name="toDate"
+                  value={globalFiltersDraft.toDate}
+                  onChange={onChangeGlobalFilter}
+                />
+              </label>
+            </div>
+            <div className="filters-actions">
+              <button
+                type="button"
+                className="btn btn-primary btn-small"
+                onClick={onApplyGlobalFilters}
+              >
+                APPLICA FILTRI
+              </button>
+              <button
+                type="button"
+                className="btn btn-outline btn-small"
+                onClick={onResetGlobalFilters}
+              >
+                CANCELLA FILTRI
+              </button>
+            </div>
+          </div>
+
+          <SignalsTable
+            title="Visualizza Segnalazioni"
+            rows={globalSignals}
+            loading={loadingGlobalSignals}
+            emptyMessage="Nessuna segnalazione presente."
+            canManage={isSupervisore}
+            onForward={onForwardToSinergia}
+            onReassign={onReassignSignal}
+          />
+        </>
+      ) : null}
     </section>
   );
 }

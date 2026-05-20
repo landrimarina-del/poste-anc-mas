@@ -186,7 +186,7 @@ Da terminale:
 
 ```powershell
 $base='http://localhost'
-$ack='{"correlationId":"POC-ACK-0001","practiceId":1,"requestId":"POC-PRAT-0001","outcome":"OK","koCodes":[]}'
+$ack='{"correlationId":"REQ-IA-1004-IMG-001","practiceId":3,"requestId":"REQ-IA-1004-IMG-001","outcome":"OK","koCodes":[]}'
 curl.exe -s -u 'op.rossi:Demo1234!' -H "Content-Type: application/json" -d $ack "$base/api/v1/bpm/outcome-ack"
 ```
 

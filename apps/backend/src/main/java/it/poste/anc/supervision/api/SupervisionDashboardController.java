@@ -68,10 +68,13 @@ public class SupervisionDashboardController {
     }
 
     @GetMapping("/by-state")
-    public ResponseEntity<ApiResponse<List<SupervisionPracticeByStatePoint>>> byState(Authentication authentication) {
+    public ResponseEntity<ApiResponse<List<SupervisionPracticeByStatePoint>>> byState(
+            @RequestParam(name = "month", required = false) String month,
+            Authentication authentication) {
         try {
+            YearMonth parsedMonth = month != null && !month.isBlank() ? parseMonth(month) : null;
             return ResponseEntity.ok(ApiResponse.ok(
-                    supervisionDashboardService.loadPracticesByState(authentication.getName())
+                    supervisionDashboardService.loadPracticesByState(authentication.getName(), parsedMonth)
             ));
         } catch (TaskOperationException ex) {
             return ResponseEntity.status(ex.getHttpStatus().value())

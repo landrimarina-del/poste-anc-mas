@@ -107,6 +107,21 @@ public class SignalController {
         }
     }
 
+    @PostMapping(path = "/{id}/take")
+    public ResponseEntity<ApiResponse<SignalTakeResponse>> takeSignal(
+            @PathVariable("id") Long signalId,
+            Authentication authentication
+    ) {
+        try {
+            return ResponseEntity.ok(ApiResponse.ok(
+                    signalService.takeSignal(signalId, authentication.getName())
+            ));
+        } catch (SignalOperationException ex) {
+            return ResponseEntity.status(ex.getHttpStatus().value())
+                    .body(ApiResponse.error(ex.getResultCode(), ex.getMessage()));
+        }
+    }
+
     @PostMapping(path = "/{id}/forward-sinergia")
     public ResponseEntity<ApiResponse<SignalForwardResponse>> forwardToSinergia(
             @PathVariable("id") Long signalId,

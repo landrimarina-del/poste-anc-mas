@@ -125,32 +125,32 @@ export const supervisionTasksApi = {
     );
   },
 
-  reassignGroup: async (taskId) => {
+  reassignGroup: async (taskId, reason) => {
     return withFallback(
       () =>
         httpClient.request(`/api/v1/supervision/tasks/${taskId}/reassign-group`, {
           method: 'POST',
-          body: JSON.stringify({ targetGroup: 'GRUPPO_OPERATORE_ANC' })
+          body: JSON.stringify(reason ? { reason } : {})
         }),
       () =>
         httpClient.request(`/api/v1/tasks/${taskId}/reassign-group`, {
           method: 'POST',
-          body: JSON.stringify({ targetGroup: 'GRUPPO_OPERATORE_ANC' })
+          body: JSON.stringify(reason ? { reason } : {})
         })
     );
   },
 
-  reassignUser: async (taskId, username) => {
+  reassignUser: async (taskId, username, reason) => {
     return withFallback(
       () =>
         httpClient.request(`/api/v1/supervision/tasks/${taskId}/reassign-user`, {
           method: 'POST',
-          body: JSON.stringify({ username, assignee: username, targetUser: username })
+          body: JSON.stringify(reason ? { username, reason } : { username })
         }),
       () =>
         httpClient.request(`/api/v1/tasks/${taskId}/reassign-user`, {
           method: 'POST',
-          body: JSON.stringify({ username, assignee: username, targetUser: username })
+          body: JSON.stringify(reason ? { username, reason } : { username })
         })
     );
   }

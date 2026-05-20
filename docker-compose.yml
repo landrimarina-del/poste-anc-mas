@@ -97,7 +97,7 @@ services:
       - ./infra/bpm-stub/files:/usr/share/nginx/html/files:ro
     # Nessuna porta esposta esternamente: raggiungibile solo dalla rete docker-compose.
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost/files/ > /dev/null || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost/files/sample.pdf > /dev/null || exit 1"]
       interval: 5s
       timeout: 5s
       retries: 20

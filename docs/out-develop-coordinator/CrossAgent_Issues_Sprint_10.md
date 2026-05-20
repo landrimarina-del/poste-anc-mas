@@ -7,6 +7,24 @@ Data: 2026-05-16
 | ID | Severita | Tema | Owner | Stato | Note |
 |---|---|---|---|---|---|
 | ISS-S10-05 | Medium | Review Discovery BA su narrativa demo supervisore | Coordinator/BA | Open | Richiesta inviata in `Richiesta_Review_Discovery_BA_Demo_Supervisore_Sprint_10.md`; in attesa feedback gap. |
+| ISS-S10-06 | High | Flyway: V100 in classpath anziché infra/db/migrations | Backend/Architect | Open | Vedere analisi DIFF-BE-1 di seguito. Richiede autorizzazione prima di qualsiasi azione. |
+
+### Analisi DIFF-BE-1 — Flyway migration naming (2026-05-19)
+
+**Stato attuale:**
+- `V100__favorite_link_crud.sql` esiste in `apps/backend/src/main/resources/db/migration/` (classpath)
+- NON duplicato in `infra/db/migrations/`
+- Java migration V2 confermata in `apps/backend/src/main/java/db/migration/V2__seed_demo_users.java`
+- Prossimo numero libero in `infra/db/migrations/`: **V15**
+- Nessuna traccia di `flyway_schema_history` verificabile nel workspace (nessun dump SQL)
+
+**Conflitti rilevati:**
+- V100 vs V1-V14: **nessun conflitto numerico** (100 > 14, ordine di applicazione corretto)
+- Coesistenza due directory: **intenzionale** (documentata in application.yml), ma V100 è in posizione anomala — il classpath è riservato esclusivamente alle Java migrations per architettura
+- Naming: **discrepanza** tra README Sprint 10 (`V20260516_01__favorite_link_crud.sql`) e file fisico (`V100__favorite_link_crud.sql`)
+
+**Raccomandazione agente backend:**
+Spostare in `infra/db/migrations/V15__sprint10_favorite_link_crud.sql`. Rischio operativo **ALTO** se il DB locale ha già applicato V100 (rename causa mismatch checksum o re-applicazione). Richede verifica preventiva `flyway_schema_history` e autorizzazione esplicita del Coordinator/Architect.
 
 ## Issue chiuse
 
