@@ -5,7 +5,8 @@ import java.time.Instant;
 public record PracticeDetailResponse(
         Header header,
         Client client,
-        BlockedCard blockedCard
+        BlockedCard blockedCard,
+        String fase
 ) {
     public record Header(
             Long practiceId,

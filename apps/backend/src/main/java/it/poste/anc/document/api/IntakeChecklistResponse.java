@@ -17,6 +17,7 @@ public record IntakeChecklistResponse(
         List<String> koReasons,
         String internalNotes,
         String outcome,
-        List<String> koCodes
+        List<String> koCodes,
+        Long codiceCausaleId
 ) {
 }

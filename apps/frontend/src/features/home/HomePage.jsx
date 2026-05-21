@@ -129,8 +129,56 @@ function FavoriteLinksSection() {
     }
   };
 
+  const favoritesList = (
+    <>
+      {favoriteError ? <div className="api-error-box">{favoriteError}</div> : null}
+      {favoriteInfo ? <div className="info-box">{favoriteInfo}</div> : null}
+      {showModal && (
+        <div className="modal-backdrop" tabIndex={-1} style={{ position: 'fixed', zIndex: 1000, top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.2)' }} onClick={closeModal}>
+          <div className="modal-content" style={{ background: '#fff', maxWidth: 400, margin: '10vh auto', padding: 24, borderRadius: 8, position: 'relative' }} onClick={e => e.stopPropagation()}>
+            <h4>{editingFavoriteId ? 'Modifica Link Preferito' : 'Aggiungi Nuovo Link'}</h4>
+            <form className="favorites-form" onSubmit={onSubmit}>
+              <label>Titolo Link<input ref={modalRef} type="text" value={favoriteForm.label} onChange={(event) => setFavoriteForm((prev) => ({ ...prev, label: event.target.value }))} placeholder="Es. Lista Pratiche" disabled={savingFavorite} required /></label>
+              <label>Link (URL)<input type="text" value={favoriteForm.url} onChange={(event) => setFavoriteForm((prev) => ({ ...prev, url: event.target.value }))} placeholder="Es. /pratiche" disabled={savingFavorite} required /></label>
+              <label>Tipo Link<select value={favoriteForm.tipo} onChange={(event) => setFavoriteForm((prev) => ({ ...prev, tipo: event.target.value }))} disabled={savingFavorite} required><option value="INTERNO">INTERNO</option><option value="ESTERNO">ESTERNO</option><option value="LEGACY">LEGACY</option></select></label>
+              <div className="favorites-actions" style={{ marginTop: 16 }}>
+                <button type="submit" className="btn btn-primary btn-small" disabled={savingFavorite}>{savingFavorite ? 'SALVATAGGIO...' : editingFavoriteId ? 'SALVA' : 'AGGIUNGI'}</button>
+                <button type="button" className="btn btn-outline btn-small" onClick={closeModal} disabled={savingFavorite} style={{ marginLeft: 8 }}>Annulla</button>
+              </div>
+              {favoriteError ? <div className="api-error-box">{favoriteError}</div> : null}
+            </form>
+          </div>
+        </div>
+      )}
+      <div className="table-wrapper">
+        <table className="practices-table favorites-table">
+          <thead><tr><th>Titolo</th><th>URL</th><th>Tipo</th><th>Azione</th></tr></thead>
+          <tbody>
+            {favorites.length === 0 ? (
+              <tr><td className="empty-row" colSpan={4}>{loadingFavorites ? 'Caricamento link favoriti...' : 'Nessun link presente'}</td></tr>
+            ) : (
+              favorites.map((item) => (
+                <tr key={item.id}>
+                  <td>{item.label}</td>
+                  <td>{item.url}</td>
+                  <td>{item.tipo}</td>
+                  <td>
+                    <div className="row-actions">
+                      <button type="button" className="btn btn-outline btn-small" onClick={() => onEdit(item)} disabled={savingFavorite}>MODIFICA</button>
+                      <button type="button" className="btn btn-outline btn-small" onClick={() => onDelete(item.id)} disabled={savingFavorite}>ELIMINA</button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+
   return (
-    <section className="favorites-section" aria-label="Link favoriti">
+    <section className="favorites-section" aria-label="Link favoriti" id="favorites-section">
       <div className="favorites-header">
         <h3>Link Favoriti</h3>
         <button type="button" className="btn btn-outline btn-small" onClick={loadFavorites} disabled={loadingFavorites || savingFavorite}>
@@ -140,109 +188,7 @@ function FavoriteLinksSection() {
           + Aggiungi nuovo link
         </button>
       </div>
-
-      {favoriteError ? <div className="api-error-box">{favoriteError}</div> : null}
-      {favoriteInfo ? <div className="info-box">{favoriteInfo}</div> : null}
-
-      {/* Modal per aggiunta/modifica link */}
-      {showModal && (
-        <div className="modal-backdrop" tabIndex={-1} style={{ position: 'fixed', zIndex: 1000, top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.2)' }} onClick={closeModal}>
-          <div
-            className="modal-content"
-            style={{ background: '#fff', maxWidth: 400, margin: '10vh auto', padding: 24, borderRadius: 8, position: 'relative' }}
-            onClick={e => e.stopPropagation()}
-          >
-            <h4>{editingFavoriteId ? 'Modifica Link Preferito' : 'Aggiungi Nuovo Link'}</h4>
-            <form className="favorites-form" onSubmit={onSubmit}>
-              <label>
-                Titolo Link
-                <input
-                  ref={modalRef}
-                  type="text"
-                  value={favoriteForm.label}
-                  onChange={(event) => setFavoriteForm((prev) => ({ ...prev, label: event.target.value }))}
-                  placeholder="Es. Lista Pratiche"
-                  disabled={savingFavorite}
-                  required
-                />
-              </label>
-              <label>
-                Link (URL)
-                <input
-                  type="text"
-                  value={favoriteForm.url}
-                  onChange={(event) => setFavoriteForm((prev) => ({ ...prev, url: event.target.value }))}
-                  placeholder="Es. /pratiche"
-                  disabled={savingFavorite}
-                  required
-                />
-              </label>
-              <label>
-                Tipo Link
-                <select
-                  value={favoriteForm.tipo}
-                  onChange={(event) => setFavoriteForm((prev) => ({ ...prev, tipo: event.target.value }))}
-                  disabled={savingFavorite}
-                  required
-                >
-                  <option value="INTERNO">INTERNO</option>
-                  <option value="ESTERNO">ESTERNO</option>
-                  <option value="LEGACY">LEGACY</option>
-                </select>
-              </label>
-              <div className="favorites-actions" style={{ marginTop: 16 }}>
-                <button type="submit" className="btn btn-primary btn-small" disabled={savingFavorite}>
-                  {savingFavorite ? 'SALVATAGGIO...' : editingFavoriteId ? 'SALVA' : 'AGGIUNGI'}
-                </button>
-                <button type="button" className="btn btn-outline btn-small" onClick={closeModal} disabled={savingFavorite} style={{ marginLeft: 8 }}>
-                  Annulla
-                </button>
-              </div>
-              {favoriteError ? <div className="api-error-box">{favoriteError}</div> : null}
-            </form>
-          </div>
-        </div>
-      )}
-
-      <div className="table-wrapper">
-        <table className="practices-table favorites-table">
-          <thead>
-            <tr>
-              <th>Titolo</th>
-              <th>URL</th>
-              <th>Tipo</th>
-              <th>Azione</th>
-            </tr>
-          </thead>
-          <tbody>
-            {favorites.length === 0 ? (
-              <tr>
-                <td className="empty-row" colSpan={4}>
-                  {loadingFavorites ? 'Caricamento link favoriti...' : 'Nessun link presente'}
-                </td>
-              </tr>
-            ) : (
-              favorites.map((item) => (
-                <tr key={item.id}>
-                  <td>{item.label}</td>
-                  <td>{item.url}</td>
-                  <td>{item.tipo}</td>
-                  <td>
-                    <div className="row-actions">
-                      <button type="button" className="btn btn-outline btn-small" onClick={() => onEdit(item)} disabled={savingFavorite}>
-                        MODIFICA
-                      </button>
-                      <button type="button" className="btn btn-outline btn-small" onClick={() => onDelete(item.id)} disabled={savingFavorite}>
-                        ELIMINA
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      {favoritesList}
     </section>
   );
 }
@@ -328,11 +274,11 @@ export function HomePage() {
 
   if (isSupervisore) {
     return (
-      <section className="panel">
-        <div className="supervisor-home-header">
+      <section className="panel supervisor-panel">
+        <h2>Dashboard Supervisore ANC</h2>
+        <p className="panel-note">Benvenuto, {user?.fullName ?? user?.username}</p>
           <div>
-            <h2>Welcome Page Supervisore</h2>
-            <p className="panel-note">Sprint 8: monitoraggio volumi e stati pratiche ANC.</p>
+
           </div>
           <div className="month-filter-box">
             <label htmlFor="dashboard-month">Mese (YYYY-MM)</label>
@@ -347,7 +293,6 @@ export function HomePage() {
               {loading ? 'Caricamento...' : 'Aggiorna'}
             </button>
           </div>
-        </div>
         <div className="home-counters-grid" aria-label="Contatori supervisore">
           <article className="home-counter-card">
             <h3>Attivita</h3>
@@ -384,24 +329,81 @@ export function HomePage() {
   }
 
   // Operatore
+  const [showFavorites, setShowFavorites] = useState(false);
+
   return (
     <section className="panel">
-      <h2>Welcome Page {isSupervisore ? 'Supervisore' : 'Specialista'}</h2>
-      <p>
-        Benvenuto {user?.fullName ?? user?.username}. Questa e' la home placeholder di Sprint 0,
-        pronta per ospitare i contenuti dei prossimi sprint.
+      <h2>Dashboard Operatore ANC</h2>
+      <p className="panel-note">
+        Benvenuto {user?.fullName ?? user?.username}.
       </p>
-      <div className="placeholder-grid">
-        <article className="placeholder-card">
-          <h3>Dashboard</h3>
-          <p>Contenuto non disponibile in Sprint 0.</p>
-        </article>
-        <article className="placeholder-card">
-          <h3>Navigazione</h3>
-          <p>Tab attivi in base al profilo autenticato.</p>
-        </article>
+
+      <div className="home-operator-layout">
+
+        {/* Colonna sinistra: Azioni + Link Favoriti */}
+        <aside className="home-sidebar">
+          <div className="box-poste home-sidebar-box">
+            <h3 className="box-poste-title">Azioni</h3>
+            <ul className="dashboard-actions-list">
+              <li>
+                <a className="dashboard-action-link" href="/segnalazioni">
+                  <i className="fa fa-flag" style={{ marginRight: '8px' }} />
+                  Segnalazioni
+                </a>
+              </li>
+            </ul>
+          </div>
+          <div className="box-poste home-sidebar-box" style={{ marginTop: '12px' }}>
+            <h3 className="box-poste-title">Link Favoriti</h3>
+            <button
+              type="button"
+              className="btn btn-outline btn-small"
+              style={{ marginTop: 8, width: '100%' }}
+              onClick={() => {
+                setShowFavorites((v) => !v);
+                if (!showFavorites) {
+                  setTimeout(() => {
+                    document.getElementById('favorites-section')?.scrollIntoView({ behavior: 'smooth' });
+                  }, 50);
+                }
+              }}
+            >
+              {showFavorites ? '▲ Chiudi' : '▼ Gestisci link'}
+            </button>
+          </div>
+        </aside>
+
+        {/* Area centrale: griglia widget */}
+        <div className="home-widgets-area">
+          {/* Riga superiore: Attività + Pratiche */}
+          <div className="home-widgets-row">
+            <a className="home-widget-card" href="/attivita">
+              <i className="fa fa-list-ul home-widget-icon" />
+              <span className="home-widget-label">Attività</span>
+            </a>
+            <a className="home-widget-card" href="/pratiche">
+              <i className="fa fa-folder-open home-widget-icon" />
+              <span className="home-widget-label">Pratiche</span>
+            </a>
+          </div>
+          {/* Riga inferiore: Posta Elettronica */}
+          <div className="home-widgets-row">
+            <a
+              className="home-widget-card home-widget-card-full"
+              href="https://outlook.office.com"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <i className="fa fa-envelope home-widget-icon" />
+              <span className="home-widget-label">Posta Elettronica</span>
+            </a>
+          </div>
+        </div>
+
       </div>
-      <FavoriteLinksSection />
+
+      {/* Sezione Link Favoriti espandibile */}
+      {showFavorites && <FavoriteLinksSection />}
     </section>
   );
 }
@@ -411,16 +413,16 @@ function maxValue(items, accessor) {
 }
 
 function shouldShowDailyLabel(index) {
-  return index % 5 === 0;
+  return index % 3 === 0;
 }
 
 function ChartWithAxes({ max, ariaLabel, children }) {
   return (
     <div className="chart-with-axes" aria-label={ariaLabel}>
       <div className="chart-y-axis">
-        <span>{max}</span>
-        <span>{Math.round(max / 2)}</span>
-        <span>0</span>
+        <span style={{ fontSize: '0.65rem', color: '#667085', fontWeight: 600 }}>{max}</span>
+        <span style={{ fontSize: '0.65rem', color: '#667085', fontWeight: 600 }}>{Math.round(max / 2)}</span>
+        <span style={{ fontSize: '0.65rem', color: '#667085', fontWeight: 600 }}>0</span>
       </div>
       <div className="chart-bars">
         {children}
@@ -448,11 +450,11 @@ function DailyOpenedChart({ items }) {
   return (
     <ChartWithAxes max={max} ariaLabel="Istogramma pratiche giornaliere">
       {items.map((item, index) => {
-        const percentage = Math.max(4, Math.round((item.count / max) * 100));
+        const percentage = item.count > 0 ? Math.max(2, Math.round((item.count / max) * 100)) : 0;
         const showDayLabel = shouldShowDailyLabel(index);
         return (
             <div key={`opened-${item.day}`} className="chart-bar-item" title={`Giorno ${item.day}: ${item.count}`}>
-            <div className="chart-bar-single" style={{ height: `${percentage}%` }} />
+            {percentage > 0 && <div className="chart-bar-single" style={{ height: `${percentage}%` }} />}
             <div className={`chart-bar-label${showDayLabel ? '' : ' chart-bar-label-hidden'}`}>{item.day}</div>
           </div>
         );
@@ -479,17 +481,19 @@ function DailyWorkedChart({ items }) {
       <ChartWithAxes max={max} ariaLabel="Istogramma pratiche giornaliere lavorate">
         {items.map((item, index) => {
           const total = item.ok + item.ko;
-          const totalHeight = Math.max(4, Math.round((total / max) * 100));
+          const totalHeight = total > 0 ? Math.max(2, Math.round((total / max) * 100)) : 0;
           const okHeight = total > 0 ? Math.round((item.ok / total) * totalHeight) : 0;
           const koHeight = Math.max(0, totalHeight - okHeight);
           const showDayLabel = shouldShowDailyLabel(index);
 
           return (
             <div key={`worked-${item.day}`} className="chart-bar-item" title={`Giorno ${item.day}: OK ${item.ok}, KO ${item.ko}`}>
-              <div className="chart-bar-stacked" style={{ height: `${totalHeight}%` }}>
-                <div className="chart-segment-ok" style={{ height: `${okHeight}%` }} />
-                <div className="chart-segment-ko" style={{ height: `${koHeight}%` }} />
-              </div>
+              {totalHeight > 0 && (
+                <div className="chart-bar-stacked" style={{ height: `${totalHeight}%` }}>
+                  <div className="chart-segment-ok" style={{ height: `${okHeight}%` }} />
+                  <div className="chart-segment-ko" style={{ height: `${koHeight}%` }} />
+                </div>
+              )}
               <div className={`chart-bar-label${showDayLabel ? '' : ' chart-bar-label-hidden'}`}>{item.day}</div>
             </div>
           );

@@ -12,6 +12,7 @@ public record IntakeChecklistRequest(
         Boolean cardPresent,
         Boolean cardConformityOk,
         List<String> koReasons,
-        String internalNotes
+        String internalNotes,
+        Long codiceCausaleId
 ) {
 }

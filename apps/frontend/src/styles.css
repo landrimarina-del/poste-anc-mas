@@ -63,12 +63,37 @@ body {
   gap: 12px;
 }
 
+/* Logo Poste Italiane — pagina Login */
+.poste-logo {
+  display: block;
+  width: 180px;
+  height: auto;
+  margin: 0 auto 20px;
+}
+
+/* Logo Poste Italiane — header AppShell */
+.brand-logo {
+  display: block;
+  width: 96px;
+  height: auto;
+  margin-bottom: 6px;
+}
+
 input {
   width: 100%;
   border: 1px solid #cfd5df;
   border-radius: 6px;
   padding: 10px 12px;
   font-size: 14px;
+}
+
+input[type="radio"],
+input[type="checkbox"] {
+  width: auto;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  flex-shrink: 0;
 }
 
 textarea {
@@ -262,6 +287,20 @@ select {
   height: 6px;
   border-radius: 8px;
   background: var(--poste-blue);
+  transition: width 0.4s ease;
+  min-width: 0;
+}
+
+.progress-step-current {
+  color: var(--poste-blue);
+  font-weight: 900;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.progress-step-done {
+  color: #555;
+  font-weight: 700;
 }
 
 .content-area {
@@ -317,6 +356,25 @@ select {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 12px;
+}
+
+.filter-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #344054;
+  cursor: pointer;
+  width: fit-content;
+}
+
+.filter-checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  flex-shrink: 0;
 }
 
 .table-sort-btn {
@@ -780,15 +838,33 @@ select {
 }
 
 .month-filter-box {
-  display: grid;
-  gap: 6px;
-  min-width: 210px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-bottom: 12px;
 }
 
 .month-filter-box label {
-  font-size: 0.8rem;
-  font-weight: 700;
+  font-size: 0.75rem;
+  font-weight: 600;
   color: #344054;
+  white-space: nowrap;
+}
+
+.month-filter-box input[type="month"] {
+  width: 150px;
+  font-size: 0.8rem;
+  padding: 4px 8px;
+  height: 32px;
+}
+
+.month-filter-box .btn-small {
+  font-size: 0.75rem;
+  padding: 4px 12px;
+  height: 32px;
+  white-space: nowrap;
 }
 
 .home-counters-grid {
@@ -828,12 +904,16 @@ select {
   border: 1px solid var(--gray-200);
   border-radius: 8px;
   background: #fff;
-  padding: 12px;
+  padding: 14px 16px;
 }
 
 .home-chart-card h3 {
   margin: 0 0 10px;
-  font-size: 0.95rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #344054;
 }
 
 .favorites-section {
@@ -891,18 +971,18 @@ select {
 
 .chart-with-axes {
   display: grid;
-  grid-template-columns: 38px minmax(0, 1fr);
-  gap: 8px;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 4px;
 }
 
 .chart-y-axis {
-  height: 210px;
+  height: 200px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   align-items: flex-end;
-  padding-top: 6px;
-  padding-bottom: 22px;
+  padding-top: 4px;
+  padding-bottom: 20px;
 }
 
 .chart-y-axis-tick {
@@ -911,9 +991,9 @@ select {
   justify-content: flex-end;
   align-items: center;
   gap: 5px;
-  font-size: 0.72rem;
+  font-size: 0.65rem;
   font-weight: 600;
-  color: #344054;
+  color: #667085;
 }
 
 .chart-y-axis-tick::after {
@@ -923,48 +1003,46 @@ select {
 }
 
 .chart-bars {
-  height: 210px;
-  border: 1px solid #c5cfdd;
-  border-left: 2px solid #667085;
-  border-bottom: 2px solid #667085;
-  border-radius: 6px;
+  height: 200px;
+  border-left: 2px solid #c5cfdd;
+  border-bottom: 2px solid #c5cfdd;
   background:
     repeating-linear-gradient(
       to top,
-      rgba(152, 162, 179, 0.12) 0,
-      rgba(152, 162, 179, 0.12) 1px,
+      rgba(152, 162, 179, 0.10) 0,
+      rgba(152, 162, 179, 0.10) 1px,
       transparent 1px,
       transparent 25%
     ),
-    linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
-  padding: 10px 8px;
+    #fafbfc;
+  padding: 6px 4px 0 4px;
   display: flex;
   align-items: flex-end;
-  gap: 6px;
-  overflow-x: auto;
+  gap: 2px;
+  overflow-x: hidden;
 }
 
 .chart-bar-item {
-  min-width: 24px;
-  height: 168px;
-  display: grid;
-  grid-template-rows: 1fr auto;
-  gap: 6px;
-  align-items: end;
-  justify-items: center;
+  flex: 1;
+  min-width: 6px;
+  max-width: 30px;
+  height: 160px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
 }
 
 .chart-bar-single,
 .chart-bar-stacked {
-  width: 14px;
-  border-radius: 4px 4px 0 0;
-  border: 1px solid rgba(11, 78, 162, 0.35);
-  background: var(--poste-blue);
+  width: 100%;
+  border-radius: 2px 2px 0 0;
+  background: #0b4ea2;
 }
 
 .chart-bar-state {
-  background: #7a8ca8;
-  border-color: #657890;
+  background: #6b7fa3;
 }
 
 .chart-bar-stacked {
@@ -972,8 +1050,7 @@ select {
   flex-direction: column;
   justify-content: flex-end;
   overflow: hidden;
-  border: 1px solid #96b4df;
-  background: #d5e3f6;
+  background: transparent;
 }
 
 .chart-segment-ok {
@@ -987,8 +1064,10 @@ select {
 }
 
 .chart-bar-label {
-  font-size: 0.72rem;
-  color: #344054;
+  font-size: 0.65rem;
+  color: #667085;
+  line-height: 1;
+  user-select: none;
 }
 
 .chart-bar-label-hidden {
@@ -1164,4 +1243,661 @@ select {
   .signals-form-actions {
     justify-content: flex-start;
   }
+}
+
+/* ============================================================
+   Sprint 12 — WorkflowSidebar + TaskLavorazione + PhaseProgressBar
+   S12-FE-1, S12-FE-2, S12-FE-3, S12-FE-4, S12-FE-5
+   ============================================================ */
+
+/* Bottone squadrato (border-radius: 0) per footer workflow */
+.btn-squared {
+  border-radius: 0;
+}
+
+/* Layout pagina workflow: sidebar + contenuto */
+.workflow-page {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 60px);
+  background: var(--gray-100);
+}
+
+.workflow-page-layout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ── PhaseProgressBar (S12-FE-4) ── */
+.phase-progress-bar {
+  display: flex;
+  align-items: center;
+  padding: 10px 20px;
+  background: #fff;
+  border-bottom: 1px solid var(--gray-200);
+  gap: 0;
+}
+
+.phase-step {
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+
+.phase-step-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.phase-connector {
+  flex: 1;
+  height: 2px;
+  margin: 0 8px;
+  background: var(--gray-200);
+}
+
+.phase-step-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+  transition: background 0.2s, color 0.2s;
+}
+
+.phase-step-label {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Fase corrente: #0047BB (ACCENT) — AC-S6-08 */
+.phase-step-current .phase-step-dot {
+  background: #0047BB;
+  color: #fff;
+  border: 2px solid #0047BB;
+}
+
+.phase-step-current .phase-step-label {
+  color: #0047BB;
+  font-weight: 700;
+}
+
+/* Fasi precedenti: completed */
+.phase-step-completed .phase-step-dot {
+  background: var(--ok-green);
+  color: #fff;
+  border: 2px solid var(--ok-green);
+}
+
+.phase-step-completed .phase-step-label {
+  color: var(--ok-green);
+}
+
+.phase-step-completed .phase-connector {
+  background: var(--ok-green);
+}
+
+/* Fasi future: grigio chiaro */
+.phase-step-future .phase-step-dot {
+  background: #fff;
+  color: #aab1bc;
+  border: 2px solid var(--gray-200);
+}
+
+.phase-step-future .phase-step-label {
+  color: #aab1bc;
+}
+
+/* ── WorkflowSidebar (S12-FE-1) — AC-S6-09 ── */
+.workflow-sidebar {
+  flex-shrink: 0;
+  background: #fff;
+  border-right: 1px solid var(--gray-200);
+  display: flex;
+  flex-direction: column;
+  transition: width 0.2s ease;
+  overflow: hidden;
+}
+
+/* NARROW: label visibili (~200px) */
+.workflow-sidebar.narrow {
+  width: 200px;
+}
+
+/* EXTRA_NARROW: solo icone (~52px) — AC-S6-09 */
+.workflow-sidebar.extra-narrow {
+  width: 52px;
+}
+
+.workflow-sidebar-toggle {
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--gray-200);
+  padding: 10px 14px;
+  cursor: pointer;
+  color: var(--poste-blue);
+  font-size: 16px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  width: 100%;
+  transition: background 0.15s;
+}
+
+.workflow-sidebar-toggle:hover {
+  background: var(--gray-100);
+}
+
+.workflow-sidebar-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+}
+
+.workflow-sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 13px 14px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--gray-200);
+  border-left: 3px solid transparent;
+  cursor: pointer;
+  color: #344054;
+  font-size: 14px;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.workflow-sidebar-item:hover:not(.disabled):not(.active) {
+  background: var(--gray-100);
+}
+
+/* Voce attiva: ACCENT #0047BB */
+.workflow-sidebar-item.active {
+  color: #0047BB;
+  font-weight: 700;
+  background: #edf4ff;
+  border-left-color: #0047BB;
+}
+
+/* Voce disabilitata: grigia, cursor default — N-01 */
+.workflow-sidebar-item.disabled,
+.workflow-sidebar-item:disabled {
+  color: #aab1bc;
+  cursor: default;
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* Voce completata */
+.workflow-sidebar-item.completed:not(.active) {
+  color: var(--ok-green);
+}
+
+.workflow-sidebar-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+  width: 20px;
+  text-align: center;
+}
+
+.workflow-sidebar-label {
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Area contenuto workflow ── */
+.workflow-content-area {
+  flex: 1;
+  min-width: 0;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+/* ── Footer azioni (S12-FE-5) ── */
+.workflow-footer {
+  padding: 12px 16px;
+  background: #fff;
+  border-top: 1px solid var(--gray-200);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* ── ClassificazioneStep (S12-FE-3) ── */
+.classificazione-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+  gap: 14px;
+}
+
+.classificazione-left,
+.classificazione-right {
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  padding: 14px;
+  background: #fff;
+}
+
+.classificazione-left h3 {
+  margin-top: 0;
+}
+
+/* ── VerificaDocumentiStep (S12-FE-2) ── */
+.verifica-wrapper {
+  width: 100%;
+}
+
+.verifica-button-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.verifica-content {
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+  gap: 14px;
+}
+
+.verifica-content-full {
+  grid-template-columns: 1fr;
+}
+
+.verifica-left,
+.verifica-right {
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  padding: 14px;
+  background: #fff;
+  min-width: 0;
+}
+
+.verifica-data-card {
+  margin-bottom: 12px;
+}
+
+/* ── Dialog conferma tipizzazione (S12-FE-3) — AC-S6-07 ── */
+.confirm-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(16, 24, 40, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.confirm-dialog {
+  background: #fff;
+  border-radius: 8px;
+  padding: 28px 24px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 8px 32px rgba(16, 24, 40, 0.2);
+}
+
+.confirm-dialog h3 {
+  margin-top: 0;
+  color: var(--ko-red);
+  font-size: 1.1rem;
+  letter-spacing: 0.5px;
+}
+
+.confirm-dialog p {
+  margin: 0 0 4px;
+  line-height: 1.6;
+}
+
+.confirm-dialog-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+/* ── Responsive Sprint 12 ── */
+@media (max-width: 900px) {
+  .workflow-sidebar.narrow {
+    width: 52px;
+  }
+
+  .workflow-sidebar-label {
+    display: none;
+  }
+
+  .classificazione-layout,
+  .verifica-content {
+    grid-template-columns: 1fr;
+  }
+
+  .phase-progress-bar {
+    padding: 8px 12px;
+  }
+
+  .phase-step-label {
+    font-size: 11px;
+  }
+}
+
+/* ============================================================
+   Sprint 13 — Aree KO espandibili (D13-FE-1, D13-FE-2)
+   ============================================================ */
+
+.ko-area-expandable {
+  margin-top: 10px;
+  border: 1px solid #f0b429;
+  border-radius: 6px;
+  background: #fffbec;
+  overflow: hidden;
+}
+
+.ko-area-toggle {
+  width: 100%;
+  background: none;
+  border: none;
+  border-bottom: 1px solid #f0b429;
+  padding: 8px 12px;
+  text-align: left;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #7a4f00;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s;
+}
+
+.ko-area-toggle:hover {
+  background: #fff3cd;
+}
+
+.ko-area-body {
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.ko-area-body label {
+  display: grid;
+  gap: 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #344054;
+}
+
+.ko-area-body textarea,
+.ko-area-body select {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--gray-200);
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.ko-area-body textarea:disabled,
+.ko-area-body select:disabled {
+  background: var(--gray-100);
+  color: var(--gray-500);
+  cursor: not-allowed;
+}
+
+/* ================================================================
+   SPRINT 15 — SLA Badge
+   ================================================================ */
+.badge-sla {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.badge-sla-in-tempo {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.badge-sla-scaduto {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.badge-sla-nd {
+  background: transparent;
+  color: var(--gray-400);
+}
+
+/* ================================================================
+   SPRINT 16 — Dashboard Supervisore billboard #FFEC00
+   ================================================================ */
+.supervisor-billboard {
+  border-radius: 6px;
+  padding: 0;
+  margin-bottom: 0;
+}
+
+.supervisor-billboard h2 {
+  color: #1a1a1a;
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+/* ================================================================
+   SPRINT 16 — Box Poste stile BOA_STYLE_POSTE con bordo #0047BB
+   ================================================================ */
+.box-poste {
+  border: 2px solid #0047BB;
+  border-radius: 4px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  background: #fff;
+}
+
+.box-poste-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #0047BB;
+  text-transform: uppercase;
+  margin: 0 0 10px 0;
+}
+
+/* ================================================================
+   SPRINT 16 — Dashboard Operatore: box Azioni lista
+   ================================================================ */
+.dashboard-actions-box {
+  max-width: 420px;
+}
+
+.dashboard-actions-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dashboard-action-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 4px;
+  color: #0047BB;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+
+.dashboard-action-link:hover {
+  background: #e8eef8;
+}
+
+.action-icon {
+  font-size: 1rem;
+  color: #0047BB;
+}
+
+/* ================================================================
+   SPRINT 16 — Filtri Salvati: ROW_HIGHLIGHT + stili tabella
+   ================================================================ */
+.saved-filters-box {
+  border: 1px solid var(--gray-200);
+  border-radius: 6px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  background: #fafafa;
+}
+
+.saved-filters-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.saved-filters-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #344054;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.saved-filters-table {
+  font-size: 0.82rem;
+}
+
+.saved-filter-row.selected {
+  background-color: #e8eef8;
+}
+
+.saved-filter-row:hover {
+  background-color: #f0f4ff;
+}
+
+/* ================================================================
+   SPRINT 16 — Card SEMI_ROUNDED
+   ================================================================ */
+.home-counter-card,
+.home-chart-card {
+  border-radius: 8px;
+}
+
+/* ================================================================
+   SPRINT 16 — Stile globale bottoni SQUARED + labels UPPERCASE
+   ================================================================ */
+.btn {
+  border-radius: 2px;
+}
+
+.btn-primary,
+.btn-outline,
+.btn-danger {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+/* ================================================================
+   SPRINT 15 — Attachment placeholder documento non disponibile
+   ================================================================ */
+.attachment-unavailable {
+  color: var(--gray-500);
+  font-style: italic;
+  font-size: 0.85rem;
+}
+
+
+/* ================================================================
+   HOME OPERATOR — Layout sidebar + widget grid
+   ================================================================ */
+.home-operator-layout {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  margin-top: 16px;
+}
+
+.home-sidebar {
+  width: 160px;
+  flex-shrink: 0;
+}
+
+.home-sidebar-box {
+  padding: 12px 14px;
+}
+
+.home-widgets-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.home-widgets-row {
+  display: flex;
+  gap: 16px;
+}
+
+.home-widget-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 28px 16px;
+  background: #fff;
+  border: 1px solid var(--gray-200);
+  border-radius: 4px;
+  text-decoration: none;
+  color: var(--gray-700);
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: box-shadow 0.15s, border-color 0.15s;
+  cursor: pointer;
+}
+
+.home-widget-card:hover {
+  box-shadow: 0 2px 8px rgba(0,71,187,0.12);
+  border-color: #0047BB;
+  color: #0047BB;
+}
+
+.home-widget-card-full {
+  flex: 1;
+}
+
+.home-widget-icon {
+  font-size: 2rem;
+  color: #0047BB;
+}
+
+.favorites-embedded {
+  font-size: 0.85rem;
 }

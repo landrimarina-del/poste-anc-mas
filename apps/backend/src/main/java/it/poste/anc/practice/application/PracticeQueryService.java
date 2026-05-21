@@ -138,7 +138,7 @@ public class PracticeQueryService {
                     rs.getString("intestatario_carta")
             );
 
-            return new PracticeDetailResponse(header, client, blockedCard);
+            return new PracticeDetailResponse(header, client, blockedCard, computeFase(rs.getString("stato")));
         }, practiceId);
 
         return details.stream().findFirst();
@@ -517,5 +517,20 @@ public class PracticeQueryService {
 
     private Instant toInstant(Timestamp timestamp) {
         return timestamp == null ? null : timestamp.toInstant();
+    }
+
+    /**
+     * Deriva la fase operativa dalla pratica.
+     * GAP-US-06 — GAP_Architettura.md §GAP-US-06
+     */
+    private String computeFase(String stato) {
+        if (stato == null) {
+            return "RACCOLTA_INPUT";
+        }
+        return switch (stato) {
+            case "IN_LAVORAZIONE" -> "LAVORAZIONE";
+            case "IN_ATTESA_CONFERMA_BPM", "CHIUSA_OK", "CHIUSA_KO" -> "CHIUSURA_PRATICA";
+            default -> "RACCOLTA_INPUT";
+        };
     }
 }

@@ -7,6 +7,7 @@ import { LoginPage } from '../features/auth/LoginPage';
 import { HomePage } from '../features/home/HomePage';
 import { ActivitiesPage } from '../features/activities/ActivitiesPage';
 import { TypingPage } from '../features/intake/TypingPage';
+import { TaskLavorazionePage } from '../features/intake/TaskLavorazionePage';
 import { PracticesPage } from '../features/practices/PracticesPage';
 import { PracticeDetailPage } from '../features/practices/PracticeDetailPage';
 import { ReassignActivitiesPage } from '../features/supervisor/ReassignActivitiesPage';
@@ -50,7 +51,7 @@ export const router = createBrowserRouter([
         path: 'attivita/:taskId/tipizzazione',
         element: (
           <RoleRoute allowedRoles={['OPERATORE', 'OPERATORE_ANC']}>
-            <TypingPage />
+            <TaskLavorazionePage />
           </RoleRoute>
         )
       },

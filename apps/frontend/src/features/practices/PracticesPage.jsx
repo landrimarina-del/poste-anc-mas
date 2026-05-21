@@ -184,7 +184,7 @@ export function PracticesPage() {
   return (
     <section className="panel">
       <h2>Pratiche</h2>
-      <p className="panel-note">Repository pratiche Sprint 2 in sola consultazione.</p>
+
 
       <div className="filters-box" aria-label="Filtri pratiche">
         <div className="filters-grid">
@@ -295,19 +295,22 @@ export function PracticesPage() {
           <thead>
             <tr>
               <th>{renderHeaderButton('practiceNumber')}</th>
-              <th>Request ID</th>
-              <th>ID Work Item</th>
               <th>{renderHeaderButton('state')}</th>
+              <th>Tipo Pratica</th>
+              <th>Codice Fiscale</th>
+              <th>Assegnatario</th>
+              <th>Utente in Carico</th>
               <th>{renderHeaderButton('openedAt')}</th>
-              <th>{renderHeaderButton('lastModifiedAt')}</th>
-              <th>{renderHeaderButton('closedAt')}</th>
+              <th>Data Presa in Carico</th>
               <th>{renderHeaderButton('sdOutcome')}</th>
+              <th>Data Esito SD</th>
+              <th>Segnalazioni</th>
             </tr>
           </thead>
           <tbody>
             {!hasRows ? (
               <tr>
-                <td className="empty-row" colSpan={8}>
+                <td className="empty-row" colSpan={11}>
                   {loading ? 'Caricamento pratiche in corso...' : 'Nessuna pratica disponibile con i filtri impostati.'}
                 </td>
               </tr>
@@ -319,13 +322,20 @@ export function PracticesPage() {
                       {practice.practiceNumber ?? '-'}
                     </Link>
                   </td>
-                  <td>{practice.requestId ?? '-'}</td>
-                  <td>{practice.idWorkItem ?? '-'}</td>
                   <td>{practice.state ?? '-'}</td>
+                  <td>{practice.practiceType ?? practice.tipoPratica ?? '-'}</td>
+                  <td>{practice.fiscalCode ?? practice.codiceFiscale ?? '-'}</td>
+                  <td>{practice.assignee ?? practice.assegnatario ?? '-'}</td>
+                  <td>{practice.ownerUser ?? practice.utenteInCarico ?? '-'}</td>
                   <td>{formatDateTime(practice.openedAt)}</td>
-                  <td>{formatDateTime(practice.lastModifiedAt)}</td>
-                  <td>{formatDateTime(practice.closedAt)}</td>
+                  <td>{formatDateTime(practice.takenInChargeAt ?? practice.dataPresa ?? practice.takenAt)}</td>
                   <td>{practice.sdOutcome ?? '-'}</td>
+                  <td>{formatDateTime(practice.sdOutcomeDate ?? practice.dataEsitoSD ?? practice.sdOutcomeAt)}</td>
+                  <td>
+                    {practice.segnalazioniAperte
+                      ? <span className="badge-warning" title="Segnalazioni aperte">⚠</span>
+                      : null}
+                  </td>
                 </tr>
               ))
             )}

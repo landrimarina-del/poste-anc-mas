@@ -407,4 +407,20 @@ public class SupervisionTaskService {
 
     private record UserSnapshot(Long userId, String username) {
     }
+
+    @Transactional(readOnly = true)
+    public List<String> listOperatorUsernames(String supervisorUsername) {
+        Long supervisorId = findActiveUserId(supervisorUsername);
+        ensureUserIsSupervisor(supervisorId);
+        return jdbcTemplate.queryForList(
+                "SELECT u.username "
+                        + "FROM app_user u "
+                        + "JOIN user_group_member ugm ON ugm.user_id = u.id "
+                        + "JOIN user_group ug ON ug.id = ugm.group_id "
+                        + "WHERE u.active = 1 AND ug.code = ? "
+                        + "ORDER BY u.username ASC",
+                String.class,
+                OPERATORE_GROUP_CODE
+        );
+    }
 }

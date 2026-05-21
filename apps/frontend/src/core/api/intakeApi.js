@@ -24,5 +24,16 @@ export const intakeApi = {
       body: JSON.stringify({})
     }),
   getChecklistHelp: (practiceId, itemId) =>
-    httpClient.request(`/api/v1/practices/${practiceId}/intake/checklist/help/${encodeURIComponent(itemId)}`)
+    httpClient.request(`/api/v1/practices/${practiceId}/intake/checklist/help/${encodeURIComponent(itemId)}`),
+  // Sprint 13: causali KO
+  getCausali: (practiceId, categoria) =>
+    httpClient.request(`/api/v1/practices/${practiceId}/intake/checklist/causali?categoria=${encodeURIComponent(categoria)}`),
+  // Sprint 13: note di lavorazione
+  getNotes: (practiceId) =>
+    httpClient.request(`/api/v1/practices/${practiceId}/notes`),
+  addNote: (practiceId, testo) =>
+    httpClient.request(`/api/v1/practices/${practiceId}/notes`, {
+      method: 'POST',
+      body: JSON.stringify({ testo })
+    })
 };

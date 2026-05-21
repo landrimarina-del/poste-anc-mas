@@ -29,14 +29,44 @@ public class TaskController {
     public ResponseEntity<ApiResponse<List<TaskListItem>>> listTasks(
             @RequestParam(name = "practiceNumber", required = false) String practiceNumber,
             @RequestParam(name = "taskState", required = false) String taskState,
+            @RequestParam(name = "assignedToMe", required = false, defaultValue = "false") boolean assignedToMe,
             Authentication authentication) {
         try {
             List<TaskListItem> tasks = taskManagementService.listTasksForCurrentOperator(
                     authentication.getName(),
                     practiceNumber,
-                    taskState
+                    taskState,
+                    assignedToMe
             );
             return ResponseEntity.ok(ApiResponse.ok(tasks));
+        } catch (TaskOperationException ex) {
+            return ResponseEntity.status(ex.getHttpStatus().value())
+                    .body(ApiResponse.error(ex.getResultCode(), ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/counters")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Long>>> operatorCounters(Authentication authentication) {
+        try {
+            long[] c = taskManagementService.loadOperatorCounters(authentication.getName());
+            java.util.Map<String, Long> result = new java.util.LinkedHashMap<>();
+            result.put("activities", c[0]);
+            result.put("activePractices", c[1]);
+            result.put("closedPractices", c[2]);
+            return ResponseEntity.ok(ApiResponse.ok(result));
+        } catch (TaskOperationException ex) {
+            return ResponseEntity.status(ex.getHttpStatus().value())
+                    .body(ApiResponse.error(ex.getResultCode(), ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<TaskDetailResponse>> getTaskDetail(
+            @PathVariable("id") Long taskId,
+            Authentication authentication) {
+        try {
+            TaskDetailResponse detail = taskManagementService.getTaskDetail(taskId, authentication.getName());
+            return ResponseEntity.ok(ApiResponse.ok(detail));
         } catch (TaskOperationException ex) {
             return ResponseEntity.status(ex.getHttpStatus().value())
                     .body(ApiResponse.error(ex.getResultCode(), ex.getMessage()));

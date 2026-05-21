@@ -53,6 +53,17 @@ public class SupervisionTaskController {
         }
     }
 
+    @GetMapping("/operators")
+    public ResponseEntity<ApiResponse<List<String>>> listOperators(Authentication authentication) {
+        try {
+            List<String> operators = supervisionTaskService.listOperatorUsernames(authentication.getName());
+            return ResponseEntity.ok(ApiResponse.ok(operators));
+        } catch (TaskOperationException ex) {
+            return ResponseEntity.status(ex.getHttpStatus().value())
+                    .body(ApiResponse.error(ex.getResultCode(), ex.getMessage()));
+        }
+    }
+
         @PostMapping(path = "/{id}/reassign-group")
     public ResponseEntity<ApiResponse<SupervisionTaskReassignResponse>> reassignToGroup(
             @PathVariable("id") Long taskId,

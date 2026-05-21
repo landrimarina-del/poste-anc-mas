@@ -334,10 +334,7 @@ export function SignalsDashboardPage() {
   return (
     <section className="panel">
       <h2>Dashboard Segnalazioni</h2>
-      <p className="panel-note">
-        Sprint 9 (EPIC E10): invio segnalazioni ANC, vista Le Mie Segnalazioni e gestione supervisore.<br />
-        <b>Nota:</b> le segnalazioni sono caricate in tempo reale dal backend ANC.
-      </p>
+
 
       {successMessage ? <div className="api-success-box">{successMessage}</div> : null}
       {errorMessage ? <div className="api-error-box">{errorMessage}</div> : null}

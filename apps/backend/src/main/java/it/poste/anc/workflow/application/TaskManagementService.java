@@ -1,6 +1,7 @@
 package it.poste.anc.workflow.application;
 
 import it.poste.anc.workflow.api.TaskAcceptResponse;
+import it.poste.anc.workflow.api.TaskDetailResponse;
 import it.poste.anc.workflow.api.TaskListItem;
 import org.flowable.engine.TaskService;
 import org.flowable.task.api.Task;
@@ -10,7 +11,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
+import java.time.DayOfWeek;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.util.Date;
 import java.util.List;
 
 @Service
@@ -29,7 +34,7 @@ public class TaskManagementService {
     }
 
     @Transactional
-        public List<TaskListItem> listTasksForCurrentOperator(String username, String practiceNumber, String taskState) {
+        public List<TaskListItem> listTasksForCurrentOperator(String username, String practiceNumber, String taskState, boolean assignedToMe) {
         Long userId = findUserId(username);
                 ensureUserIsOperator(userId);
         Long groupId = findOperatorGroupId();
@@ -42,7 +47,7 @@ public class TaskManagementService {
                 StringBuilder sql = new StringBuilder(
                                 "SELECT t.id, t.practice_id, p.num_pratica, p.request_id, p.id_work_item, "
                                                 + "t.stato AS task_state, p.stato AS practice_state, owner.username AS owner_username, "
-                                                + "t.created_at, t.accepted_at "
+                                                + "t.created_at, t.accepted_at, t.sla_due_date "
                                                 + "FROM task t "
                                                 + "JOIN practice p ON p.id = t.practice_id "
                                                 + "LEFT JOIN app_user owner ON owner.id = t.owner_user_id "
@@ -69,24 +74,124 @@ public class TaskManagementService {
                         sql.append("AND t.stato = ? ");
                         params.add(normalizedTaskState);
                 }
+                if (assignedToMe) {
+                        sql.append("AND t.owner_user_id = ? ");
+                        params.add(userId);
+                }
                 sql.append("ORDER BY t.created_at DESC, t.id DESC");
 
         return jdbcTemplate.query(
                                 sql.toString(),
-                (rs, rowNum) -> new TaskListItem(
-                        rs.getLong("id"),
-                        rs.getLong("practice_id"),
-                        rs.getString("num_pratica"),
-                        rs.getString("request_id"),
-                        rs.getString("id_work_item"),
-                        rs.getString("task_state"),
-                        rs.getString("practice_state"),
-                        rs.getString("owner_username"),
-                        toInstant(rs.getTimestamp("created_at")),
-                        toInstant(rs.getTimestamp("accepted_at"))
-                ),
+                (rs, rowNum) -> {
+                        java.time.Instant sla = toInstant(rs.getTimestamp("sla_due_date"));
+                        return new TaskListItem(
+                                rs.getLong("id"),
+                                rs.getLong("practice_id"),
+                                rs.getString("num_pratica"),
+                                rs.getString("request_id"),
+                                rs.getString("id_work_item"),
+                                rs.getString("task_state"),
+                                rs.getString("practice_state"),
+                                rs.getString("owner_username"),
+                                toInstant(rs.getTimestamp("created_at")),
+                                toInstant(rs.getTimestamp("accepted_at")),
+                                sla,
+                                computeSlaStatus(sla)
+                        );
+                },
                 params.toArray()
         );
+    }
+
+    /**
+     * Restituisce il dettaglio di un task con i campi intakeStep e sidebarState.
+     * Sprint 12 — GAP-US-03, GAP-US-04.
+     */
+    @Transactional(readOnly = true)
+    public TaskDetailResponse getTaskDetail(Long taskId, String username) {
+        Long userId = findUserId(username);
+        ensureUserIsOperator(userId);
+
+        List<TaskDetailResponse> results = jdbcTemplate.query(
+                "SELECT t.id, t.practice_id, t.stato AS task_state, "
+                        + "p.stato AS practice_state, p.document_type, "
+                        + "COALESCE(cv.status, cc.status) AS checklist_status, "
+                        + "p.num_pratica, p.request_id, p.id_work_item, "
+                        + "owner.username AS owner_username, "
+                        + "t.created_at, t.accepted_at, t.sla_due_date "
+                        + "FROM task t "
+                        + "JOIN practice p ON p.id = t.practice_id "
+                        + "LEFT JOIN checklist_verbale cv ON cv.practice_id = p.id "
+                        + "LEFT JOIN checklist_carta cc ON cc.practice_id = p.id "
+                        + "LEFT JOIN app_user owner ON owner.id = t.owner_user_id "
+                        + "WHERE t.id = ?",
+                (rs, rowNum) -> {
+                    String documentType = rs.getString("document_type");
+                    String checklistStatus = rs.getString("checklist_status");
+                    String intakeStep = computeIntakeStep(documentType, checklistStatus);
+                    TaskDetailResponse.SidebarState sidebarState = buildSidebarState(intakeStep, checklistStatus);
+                    java.time.Instant slaDueDate = toInstant(rs.getTimestamp("sla_due_date"));
+                    String slaStatus = computeSlaStatus(slaDueDate);
+                    return new TaskDetailResponse(
+                            rs.getLong("id"),
+                            rs.getLong("practice_id"),
+                            rs.getString("num_pratica"),
+                            rs.getString("request_id"),
+                            rs.getString("id_work_item"),
+                            rs.getString("task_state"),
+                            rs.getString("practice_state"),
+                            rs.getString("owner_username"),
+                            toInstant(rs.getTimestamp("created_at")),
+                            toInstant(rs.getTimestamp("accepted_at")),
+                            intakeStep,
+                            documentType,
+                            slaDueDate,
+                            slaStatus,
+                            sidebarState
+                    );
+                },
+                taskId
+        );
+
+        if (results.isEmpty()) {
+            throw new TaskOperationException(HttpStatus.NOT_FOUND, 3012, "Task non trovato");
+        }
+        return results.get(0);
+    }
+
+    /**
+     * Deriva intakeStep in base a document_type e stato checklist.
+     * - document_type IS NULL          → VERIFICA
+     * - document_type IS NOT NULL
+     *   e checklist non ancora salvata → CHECKLIST
+     * - checklist già salvata (status
+     *   BOZZA/RIAPERTA/CONSOLIDATA)    → RIEPILOGO
+     */
+    private String computeIntakeStep(String documentType, String checklistStatus) {
+        if (documentType == null) {
+            return "VERIFICA";
+        }
+        if (checklistStatus == null) {
+            return "CHECKLIST";
+        }
+        return "RIEPILOGO";
+    }
+
+    /**
+     * Costruisce il sidebarState con i 3 step fissi.
+     * RIEPILOGO.enabled = true solo se la checklist ha almeno un record salvato.
+     */
+    private TaskDetailResponse.SidebarState buildSidebarState(String intakeStep, String checklistStatus) {
+        boolean riepilogoEnabled = (checklistStatus != null);
+        boolean verificaCompleted = "RIEPILOGO".equals(intakeStep);
+        String currentStep = "RIEPILOGO".equals(intakeStep) ? "RIEPILOGO" : "VERIFICA_DOCUMENTO";
+
+        List<TaskDetailResponse.StepInfo> steps = List.of(
+                new TaskDetailResponse.StepInfo("DATI_PRATICA",       "Dati Pratica",       true,             true),
+                new TaskDetailResponse.StepInfo("VERIFICA_DOCUMENTO", "Verifica Documento", true,             verificaCompleted),
+                new TaskDetailResponse.StepInfo("RIEPILOGO",          "Riepilogo",          riepilogoEnabled, false)
+        );
+        return new TaskDetailResponse.SidebarState(currentStep, steps);
     }
 
     @Transactional
@@ -179,26 +284,42 @@ public class TaskManagementService {
         );
 
         for (OpenPractice openPractice : openPracticesWithoutTask) {
-            String flowableTaskId = createFlowableAcceptTask(openPractice.practiceId());
+            Instant slaDueDate = addWorkingDays(Instant.now(), 5);
+            String flowableTaskId = createFlowableAcceptTask(openPractice.practiceId(), slaDueDate);
 
             jdbcTemplate.update(
-                    "INSERT INTO task (practice_id, flowable_task_id, tipo_pratica, stato, candidate_group_id, created_at, version) "
-                            + "VALUES (?, ?, 'ANC', 'IN_CODA', ?, CURRENT_TIMESTAMP(3), 0)",
+                    "INSERT INTO task (practice_id, flowable_task_id, tipo_pratica, stato, candidate_group_id, created_at, sla_due_date, version) "
+                            + "VALUES (?, ?, 'ANC', 'IN_CODA', ?, CURRENT_TIMESTAMP(3), ?, 0)",
                     openPractice.practiceId(),
                     flowableTaskId,
-                    candidateGroupId
+                    candidateGroupId,
+                    Timestamp.from(slaDueDate)
             );
         }
     }
 
-    private String createFlowableAcceptTask(Long practiceId) {
+    private String createFlowableAcceptTask(Long practiceId, Instant slaDueDate) {
         Task task = flowableTaskService.newTask();
         task.setName("Accettazione pratica ANC");
         task.setCategory("ANC");
         task.setDescription("Presa in carico pratica " + practiceId);
+        task.setDueDate(Date.from(slaDueDate));
         flowableTaskService.saveTask(task);
         flowableTaskService.addCandidateGroup(task.getId(), OPERATORE_GROUP_CODE);
         return task.getId();
+    }
+
+    private static Instant addWorkingDays(Instant from, int workingDays) {
+        LocalDate date = from.atZone(ZoneOffset.UTC).toLocalDate();
+        int added = 0;
+        while (added < workingDays) {
+            date = date.plusDays(1);
+            DayOfWeek dow = date.getDayOfWeek();
+            if (dow != DayOfWeek.SATURDAY && dow != DayOfWeek.SUNDAY) {
+                added++;
+            }
+        }
+        return date.atTime(23, 59, 59).toInstant(ZoneOffset.UTC);
     }
 
     private void claimFlowableTask(String flowableTaskId, String username) {
@@ -279,9 +400,41 @@ public class TaskManagementService {
         return timestamp.toInstant();
     }
 
+    private String computeSlaStatus(java.time.Instant slaDueDate) {
+        if (slaDueDate == null) return null;
+        return java.time.Instant.now().isAfter(slaDueDate) ? "SCADUTO" : "IN_TEMPO";
+    }
+
     private record CandidateTask(Long taskId, Long practiceId, String flowableTaskId) {
     }
 
     private record OpenPractice(Long practiceId) {
+    }
+
+    @Transactional(readOnly = true)
+    public long[] loadOperatorCounters(String username) {
+        Long userId = findUserId(username);
+        ensureUserIsOperator(userId);
+        Long groupId = findOperatorGroupId();
+
+        long activities = jdbcTemplate.queryForObject(
+                "SELECT COUNT(1) FROM task t "
+                        + "WHERE t.stato IN ('IN_CODA', 'IN_CARICO') "
+                        + "AND ("
+                        + "(t.owner_user_id = ?) "
+                        + "OR (t.owner_user_id IS NULL AND t.candidate_group_id = ? "
+                        + "    AND EXISTS (SELECT 1 FROM user_group_member ugm WHERE ugm.user_id = ? AND ugm.group_id = t.candidate_group_id))"
+                        + ")",
+                Long.class, userId, groupId, userId
+        );
+        long activePractices = jdbcTemplate.queryForObject(
+                "SELECT COUNT(1) FROM practice WHERE stato IN ('APERTA','IN_LAVORAZIONE','IN_ATTESA_CONFERMA_BPM')",
+                Long.class
+        );
+        long closedPractices = jdbcTemplate.queryForObject(
+                "SELECT COUNT(1) FROM practice WHERE stato IN ('CHIUSA_OK','CHIUSA_KO')",
+                Long.class
+        );
+        return new long[]{activities, activePractices, closedPractices};
     }
 }

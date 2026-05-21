@@ -14,7 +14,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @RestController
 @RequestMapping(path = "/api/v1/practices/{id}/intake", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -80,6 +83,13 @@ public class IntakeChecklistController {
             return ResponseEntity.status(ex.getHttpStatus().value())
                     .body(ApiResponse.error(ex.getResultCode(), ex.getMessage()));
         }
+    }
+
+    @GetMapping(path = "/checklist/causali")
+    public ResponseEntity<ApiResponse<List<CausaleChecklistDto>>> getCausaliChecklist(
+            @PathVariable("id") Long practiceId,
+            @RequestParam("categoria") String categoria) {
+        return ResponseEntity.ok(ApiResponse.ok(intakeChecklistService.loadCausali(categoria)));
     }
 
     @GetMapping(path = "/checklist/help/{itemId}")

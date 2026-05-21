@@ -9,6 +9,8 @@ import it.poste.anc.document.ingestion.AttachmentIngestionException;
 import it.poste.anc.document.ingestion.AttachmentStorage;
 import it.poste.anc.document.ingestion.FetchedAttachment;
 import it.poste.anc.shared.common.ApiResponse;
+import it.poste.anc.ticketing.TicketingClient;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
@@ -37,6 +39,8 @@ public class BpmPracticeInboundService {
     private final AttachmentStorage attachmentStorage;
     private final BpmInboundMessageWriter inboundMessageWriter;
     private final TransactionTemplate transactionTemplate;
+    private final TicketingClient ticketingClient;
+    private final boolean ticketingEnabled;
 
     public BpmPracticeInboundService(
             JdbcTemplate jdbcTemplate,
@@ -44,7 +48,9 @@ public class BpmPracticeInboundService {
             AttachmentFetcher attachmentFetcher,
             AttachmentStorage attachmentStorage,
             BpmInboundMessageWriter inboundMessageWriter,
-            PlatformTransactionManager transactionManager
+            PlatformTransactionManager transactionManager,
+            TicketingClient ticketingClient,
+            @Value("${ticketing.enabled:true}") boolean ticketingEnabled
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
@@ -52,6 +58,8 @@ public class BpmPracticeInboundService {
         this.attachmentStorage = attachmentStorage;
         this.inboundMessageWriter = inboundMessageWriter;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
+        this.ticketingClient = ticketingClient;
+        this.ticketingEnabled = ticketingEnabled;
     }
 
     public ApiResponse<BpmPracticeOpenResponse> openPractice(JsonNode payloadNode) {
@@ -125,6 +133,13 @@ public class BpmPracticeInboundService {
     insertStateHistory(practiceId, idWorkItem, "APERTA");
     insertAuditEvent(practiceId, idWorkItem, payloadJson, "PRACTICE_OPENED");
         persistInboundMessage(idWorkItem, payloadJson, 0, "OK", practiceId);
+
+        if (ticketingEnabled) {
+            String ticketId = ticketingClient.openTicket(idWorkItem, canale);
+            if (ticketId != null) {
+                jdbcTemplate.update("UPDATE practice SET ticket_id = ? WHERE id = ?", ticketId, practiceId);
+            }
+        }
 
         return ApiResponse.ok(new BpmPracticeOpenResponse(practiceId, requestId, "APERTA"));
     }

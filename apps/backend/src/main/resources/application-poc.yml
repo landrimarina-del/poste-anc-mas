@@ -20,3 +20,15 @@ anc:
       bucket: ${ANC_ATTACHMENT_STORAGE_BUCKET:anc-attachments}
       access-key: ${ANC_ATTACHMENT_STORAGE_ACCESS_KEY:anc}
       secret-key: ${ANC_ATTACHMENT_STORAGE_SECRET_KEY:anc-poc-minio-secret}
+
+bpm:
+  base-url: ${BPM_STUB_BASE_URL:http://bpm-outbound-stub:8090}
+  receive-outcome-path: ${BPM_RECEIVE_OUTCOME_PATH:/receive-outcome}
+  timeout-ms: ${BPM_TIMEOUT_MS:50000}
+  max-retry: ${BPM_MAX_RETRY:3}
+  retry-interval-ms: ${BPM_RETRY_INTERVAL_MS:2000}
+
+ticketing:
+  base-url: ${TICKETING_BASE_URL:http://bpm-outbound-stub:8090}
+  open-ticket-path: ${TICKETING_OPEN_TICKET_PATH:/ticketing/open-ticket}
+  enabled: ${TICKETING_ENABLED:true}

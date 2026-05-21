@@ -25,8 +25,8 @@ Nessuna modifica agli endpoint già funzionanti da Sprint 1÷10.
 
 | # | Stream | Agente | Output atteso |
 |---|---|---|---|
-| 1 | DB: V15 bpm_outbound retry columns | develop-dba | `infra/db/migrations/V15__gap_us02_bpm_outbound_retry.sql` |
-| 2 | DB: V16 practice.ticket_id | develop-dba | `infra/db/migrations/V16__gap_us01_practice_ticket.sql` |
+| 1 | DB: V101 bpm_outbound retry columns | develop-dba | `infra/db/migrations/V101__gap_us02_bpm_outbound_retry.sql` |
+| 2 | DB: V102 practice.ticket_id | develop-dba | `infra/db/migrations/V102__gap_us01_practice_ticket.sql` |
 | 3 | Backend: BpmOutboundService | develop-backend | `apps/backend/src/main/java/it/poste/anc/bpmgw/outbound/BpmOutboundService.java` |
 | 4 | Backend: TicketingClient | develop-backend | `apps/backend/src/main/java/it/poste/anc/ticketing/TicketingClient.java` |
 | 5 | Backend: modifica openPractice | develop-backend | `BpmPracticeInboundService.java` (aggiunta chiamata TicketingClient) |
@@ -51,13 +51,13 @@ Nessuna modifica agli endpoint già funzionanti da Sprint 1÷10.
 
 ## 4. Specifiche per stream
 
-### Stream 1 — V15
+### Stream 1 — V101
 
-**File**: `infra/db/migrations/V15__gap_us02_bpm_outbound_retry.sql`  
-**Spec completa**: `docs/out-discovery-dba/GAP-DBA.md §V15`
+**File**: `infra/db/migrations/V101__gap_us02_bpm_outbound_retry.sql`  
+**Spec completa**: `docs/out-discovery-dba/GAP-DBA.md §V101`
 
 ```sql
--- V15 — GAP-US-02 — pattern idempotente (IF NOT EXISTS)
+-- V101 — GAP-US-02 — pattern idempotente (IF NOT EXISTS)
 ALTER TABLE bpm_outbound_message
     ADD COLUMN IF NOT EXISTS retry_count      INT           NOT NULL DEFAULT 0
         COMMENT '0=mai tentato; N=numero tentativi effettuati',
@@ -75,13 +75,13 @@ SET @s=IF(@cnt=0,'CREATE INDEX idx_bom_stato_invio ON bpm_outbound_message(stato
 PREPARE p FROM @s; EXECUTE p; DEALLOCATE PREPARE p;
 ```
 
-### Stream 2 — V16
+### Stream 2 — V102
 
-**File**: `infra/db/migrations/V16__gap_us01_practice_ticket.sql`  
-**Spec completa**: `docs/out-discovery-dba/GAP-DBA.md §V16`
+**File**: `infra/db/migrations/V102__gap_us01_practice_ticket.sql`  
+**Spec completa**: `docs/out-discovery-dba/GAP-DBA.md §V102`
 
 ```sql
--- V16 — GAP-US-01 — pattern idempotente
+-- V102 — GAP-US-01 — pattern idempotente
 ALTER TABLE practice
     ADD COLUMN IF NOT EXISTS ticket_id VARCHAR(100) NULL
         COMMENT 'ID ticket sistema di ticketing esterno (mock in POC)';
@@ -191,7 +191,7 @@ environment:
 ## 5. Sequenza esecuzione
 
 ```
-DBA (V15 → V16)
+DBA (V101 → V102)
         │
         ▼
 Backend (BpmOutboundService + TicketingClient + openPractice + BPMN + yml)
@@ -207,8 +207,8 @@ Backend (BpmOutboundService + TicketingClient + openPractice + BPMN + yml)
 
 | ID | AC | Come verificare |
 |---|---|---|
-| AC-S11-DB-1 | V15 applicata: `SHOW COLUMNS FROM bpm_outbound_message` mostra `stato_invio`, `retry_count`, `max_retry`, `response_json`, `error_message`, `last_attempt_at` | `SHOW COLUMNS` |
-| AC-S11-DB-2 | V16 applicata: `SHOW COLUMNS FROM practice` mostra `ticket_id VARCHAR(100) NULL` | `SHOW COLUMNS` |
+| AC-S11-DB-1 | V101 applicata: `SHOW COLUMNS FROM bpm_outbound_message` mostra `stato_invio`, `retry_count`, `max_retry`, `response_json`, `error_message`, `last_attempt_at` | `SHOW COLUMNS` |
+| AC-S11-DB-2 | V102 applicata: `SHOW COLUMNS FROM practice` mostra `ticket_id VARCHAR(100) NULL` | `SHOW COLUMNS` |
 | AC-S11-TICK-1 | POST `/api/v1/bpm/practices` happy path → `SELECT ticket_id FROM practice WHERE id=1` → valore non NULL con prefisso `MOCK-TICKET-` | query DB |
 | AC-S11-TICK-2 | bpm-stub `/ticketing/open-ticket` unavailable → pratica creata con `ticket_id=NULL`, nessuna eccezione, log WARN | log applicativo |
 | AC-S11-BPM-OK | `BPM_STUB_ESITO_MODE=OK` + POST pratica happy path → `practice.stato=CHIUSA_OK`, `bpm_outbound_message.stato_invio=1` | query DB |
@@ -236,6 +236,6 @@ Backend (BpmOutboundService + TicketingClient + openPractice + BPMN + yml)
 | Documento | Sezioni |
 |---|---|
 | `docs/out-discovery-architect/GAP_Architettura.md` | §GAP-US-02, §GAP-US-07, §GAP-US-01 |
-| `docs/out-discovery-dba/GAP-DBA.md` | §V15, §V16 |
+| `docs/out-discovery-dba/GAP-DBA.md` | §V101, §V102 |
 | `docs/out-GAP-Analysis/03_GAP_Coverage_Review.md` | §GAP-US-01, §GAP-US-02, §GAP-US-07 |
 | `docs/out-develop-coordinator/GAP_Roadmap_Sprint11_Sprint16.md` | §Sprint 11 |

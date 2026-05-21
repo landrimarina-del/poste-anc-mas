@@ -183,7 +183,7 @@ public class IntakeChecklistService {
         private java.util.Optional<ChecklistVerbaleRow> loadVerbaleChecklistRow(Long practiceId) {
         List<ChecklistVerbaleRow> rows = jdbcTemplate.query(
                 "SELECT practice_id, document_present, readability_ok, formal_ok, customer_data_ok, "
-                        + "card_number_match_required, card_number_match_ok, ko_reasons_json, internal_notes, status, created_at "
+                        + "card_number_match_required, card_number_match_ok, ko_reasons_json, internal_notes, status, created_at, codice_causale_id "
                         + "FROM checklist_verbale WHERE practice_id = ?",
             (rs, rowNum) -> new ChecklistVerbaleRow(
                         rs.getLong("practice_id"),
@@ -196,7 +196,8 @@ public class IntakeChecklistService {
                         parseJsonArray(rs.getString("ko_reasons_json")),
                         rs.getString("internal_notes"),
                         rs.getString("status"),
-                        rs.getTimestamp("created_at")
+                        rs.getTimestamp("created_at"),
+                        readNullableLong(rs, "codice_causale_id")
                 ),
                 practiceId
         );
@@ -208,7 +209,7 @@ public class IntakeChecklistService {
 
     private java.util.Optional<ChecklistCartaRow> loadCartaChecklistRow(Long practiceId) {
         List<ChecklistCartaRow> rows = jdbcTemplate.query(
-                "SELECT practice_id, card_present, card_conformity_ok, internal_notes, status, created_at "
+                "SELECT practice_id, card_present, card_conformity_ok, internal_notes, status, created_at, codice_causale_id "
                         + "FROM checklist_carta WHERE practice_id = ?",
                 (rs, rowNum) -> new ChecklistCartaRow(
                         rs.getLong("practice_id"),
@@ -216,7 +217,8 @@ public class IntakeChecklistService {
                         readNullableBoolean(rs, "card_conformity_ok"),
                         rs.getString("internal_notes"),
                         rs.getString("status"),
-                        rs.getTimestamp("created_at")
+                        rs.getTimestamp("created_at"),
+                        readNullableLong(rs, "codice_causale_id")
                 ),
                 practiceId
         );
@@ -299,7 +301,8 @@ public class IntakeChecklistService {
                 normalizedReasons,
                 request.internalNotes(),
                 nextStatus,
-                createdAt != null ? createdAt : Timestamp.from(Instant.now())
+                createdAt != null ? createdAt : Timestamp.from(Instant.now()),
+                request.codiceCausaleId()
         );
     }
 
@@ -353,7 +356,8 @@ public class IntakeChecklistService {
                 cardConformityOk,
                 request.internalNotes(),
                 nextStatus,
-                createdAt != null ? createdAt : Timestamp.from(Instant.now())
+                createdAt != null ? createdAt : Timestamp.from(Instant.now()),
+                request.codiceCausaleId()
         );
     }
 
@@ -361,7 +365,7 @@ public class IntakeChecklistService {
         String koReasonsJson = toJsonArray(row.koReasons());
         int updated = jdbcTemplate.update(
                 "UPDATE checklist_verbale SET document_present = ?, readability_ok = ?, formal_ok = ?, customer_data_ok = ?, "
-                        + "card_number_match_required = ?, card_number_match_ok = ?, ko_reasons_json = ?, internal_notes = ?, "
+                        + "card_number_match_required = ?, card_number_match_ok = ?, ko_reasons_json = ?, codice_causale_id = ?, internal_notes = ?, "
                         + "status = ?, updated_at = CURRENT_TIMESTAMP(3) WHERE practice_id = ?",
                 row.documentPresent(),
                 row.readabilityOk(),
@@ -370,6 +374,7 @@ public class IntakeChecklistService {
                 row.cardNumberMatchRequired(),
                 row.cardNumberMatchOk(),
                 koReasonsJson,
+                row.codiceCausaleId(),
                 row.internalNotes(),
                 row.status(),
                 row.practiceId()
@@ -378,8 +383,8 @@ public class IntakeChecklistService {
         if (updated == 0) {
             jdbcTemplate.update(
                     "INSERT INTO checklist_verbale (practice_id, document_present, readability_ok, formal_ok, customer_data_ok, "
-                            + "card_number_match_required, card_number_match_ok, ko_reasons_json, internal_notes, status, created_at, updated_at) "
-                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3))",
+                            + "card_number_match_required, card_number_match_ok, ko_reasons_json, codice_causale_id, internal_notes, status, created_at, updated_at) "
+                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3))",
                     row.practiceId(),
                     row.documentPresent(),
                     row.readabilityOk(),
@@ -388,6 +393,7 @@ public class IntakeChecklistService {
                     row.cardNumberMatchRequired(),
                     row.cardNumberMatchOk(),
                     koReasonsJson,
+                    row.codiceCausaleId(),
                     row.internalNotes(),
                     row.status()
             );
@@ -396,10 +402,11 @@ public class IntakeChecklistService {
 
                 private void upsertCartaChecklist(ChecklistCartaRow row) {
                 int updated = jdbcTemplate.update(
-                    "UPDATE checklist_carta SET card_present = ?, card_conformity_ok = ?, internal_notes = ?, "
+                    "UPDATE checklist_carta SET card_present = ?, card_conformity_ok = ?, codice_causale_id = ?, internal_notes = ?, "
                         + "status = ?, updated_at = CURRENT_TIMESTAMP(3) WHERE practice_id = ?",
                     row.cardPresent(),
                     row.cardConformityOk(),
+                    row.codiceCausaleId(),
                     row.internalNotes(),
                     row.status(),
                     row.practiceId()
@@ -407,11 +414,12 @@ public class IntakeChecklistService {
 
                 if (updated == 0) {
                     jdbcTemplate.update(
-                        "INSERT INTO checklist_carta (practice_id, card_present, card_conformity_ok, internal_notes, status, created_at, updated_at) "
-                            + "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3))",
+                        "INSERT INTO checklist_carta (practice_id, card_present, card_conformity_ok, codice_causale_id, internal_notes, status, created_at, updated_at) "
+                            + "VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3))",
                         row.practiceId(),
                         row.cardPresent(),
                         row.cardConformityOk(),
+                        row.codiceCausaleId(),
                         row.internalNotes(),
                         row.status()
                     );
@@ -510,7 +518,8 @@ public class IntakeChecklistService {
                 checklist.koReasons(),
                 checklist.internalNotes(),
                 outcome != null ? outcome.outcome() : null,
-                outcome != null ? outcome.koCodes() : List.of()
+                outcome != null ? outcome.koCodes() : List.of(),
+                checklist.codiceCausaleId()
         );
     }
 
@@ -532,7 +541,8 @@ public class IntakeChecklistService {
                 List.of(),
                 checklist.internalNotes(),
                 outcome != null ? outcome.outcome() : null,
-                outcome != null ? outcome.koCodes() : List.of()
+                outcome != null ? outcome.koCodes() : List.of(),
+                checklist.codiceCausaleId()
         );
     }
 
@@ -564,6 +574,28 @@ public class IntakeChecklistService {
         return value;
     }
 
+    private Long readNullableLong(java.sql.ResultSet rs, String column) throws java.sql.SQLException {
+        long value = rs.getLong(column);
+        if (rs.wasNull()) {
+            return null;
+        }
+        return value;
+    }
+
+    @Transactional(readOnly = true)
+    public List<it.poste.anc.document.api.CausaleChecklistDto> loadCausali(String categoria) {
+        return jdbcTemplate.query(
+                "SELECT id, codice, descrizione FROM ref_causali_checklist "
+                        + "WHERE categoria = ? AND attivo = 1 ORDER BY codice",
+                (rs, rowNum) -> new it.poste.anc.document.api.CausaleChecklistDto(
+                        rs.getLong("id"),
+                        rs.getString("codice"),
+                        rs.getString("descrizione")
+                ),
+                categoria.toUpperCase(Locale.ROOT)
+        );
+    }
+
     private record ChecklistVerbaleRow(Long practiceId,
                                        boolean documentPresent,
                                        Boolean readabilityOk,
@@ -574,7 +606,8 @@ public class IntakeChecklistService {
                                        List<String> koReasons,
                                        String internalNotes,
                                        String status,
-                                       Timestamp createdAt) {
+                                       Timestamp createdAt,
+                                       Long codiceCausaleId) {
         static ChecklistVerbaleRow defaultFor(Long practiceId) {
             return new ChecklistVerbaleRow(
                     practiceId,
@@ -587,7 +620,8 @@ public class IntakeChecklistService {
                     List.of(),
                     null,
                     STATUS_NON_INIZIATA,
-                    Timestamp.from(Instant.now())
+                    Timestamp.from(Instant.now()),
+                    null
             );
         }
     }
@@ -597,7 +631,8 @@ public class IntakeChecklistService {
                                      Boolean cardConformityOk,
                                      String internalNotes,
                                      String status,
-                                     Timestamp createdAt) {
+                                     Timestamp createdAt,
+                                     Long codiceCausaleId) {
         static ChecklistCartaRow defaultFor(Long practiceId) {
             return new ChecklistCartaRow(
                     practiceId,
@@ -605,7 +640,8 @@ public class IntakeChecklistService {
                     null,
                     null,
                     STATUS_NON_INIZIATA,
-                    Timestamp.from(Instant.now())
+                    Timestamp.from(Instant.now()),
+                    null
             );
         }
     }

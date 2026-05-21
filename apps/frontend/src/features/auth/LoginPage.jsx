@@ -35,7 +35,7 @@ export function LoginPage() {
   return (
     <div className="login-page">
       <div className="login-card">
-        <img src="/poste-logo.png" alt="Logo Poste Italiane" className="poste-logo" style={{ maxWidth: 180, margin: '0 auto 16px', display: 'block' }} />
+        <img src="/poste-logo.svg" alt="Logo Poste Italiane" className="poste-logo" />
         <h1 className="login-title">Scrivania Digitale ANC</h1>
         <p className="login-subtitle">Accesso area riservata</p>
 

@@ -13,6 +13,18 @@ function formatDateTime(value) {
   return date.toLocaleString('it-IT');
 }
 
+function formatStateDateTime(value) {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  const HH = String(date.getHours()).padStart(2, '0');
+  const mm = String(date.getMinutes()).padStart(2, '0');
+  const DD = String(date.getDate()).padStart(2, '0');
+  const MM = String(date.getMonth() + 1).padStart(2, '0');
+  const YYYY = date.getFullYear();
+  return `${HH}:${mm} ${DD}/${MM}/${YYYY}`;
+}
+
 const detailTabs = [
   { key: 'summary', label: 'Riepilogo' },
   { key: 'history', label: 'Cronologia' },
@@ -92,7 +104,7 @@ export function PracticeDetailPage() {
       <div className="detail-header">
         <div>
           <h2>Dettaglio pratica {header.practiceNumber ?? practiceId}</h2>
-          <p className="panel-note">Vista read-only Sprint 2: Riepilogo, Cronologia, Stati.</p>
+
         </div>
 
         <div className="detail-header-actions">
@@ -236,30 +248,24 @@ export function PracticeDetailPage() {
             <table className="practices-table">
               <thead>
                 <tr>
+                  <th>Stato</th>
                   <th>Data/Ora</th>
-                  <th>Da stato</th>
-                  <th>A stato</th>
                   <th>Attore</th>
-                  <th>Correlation ID</th>
-                  <th>Note</th>
                 </tr>
               </thead>
               <tbody>
                 {states.length === 0 ? (
                   <tr>
-                    <td className="empty-row" colSpan={6}>
+                    <td className="empty-row" colSpan={3}>
                       {loading ? 'Caricamento stati...' : 'Nessuna transizione disponibile.'}
                     </td>
                   </tr>
                 ) : (
                   states.map((item) => (
                     <tr key={item.transitionId ?? `${item.toState}-${item.transitionedAt}`}>
-                      <td>{formatDateTime(item.transitionedAt)}</td>
-                      <td>{item.fromState ?? '-'}</td>
-                      <td>{item.toState ?? '-'}</td>
-                      <td>{item.actor ?? '-'}</td>
-                      <td>{item.correlationId ?? '-'}</td>
-                      <td>{item.note ?? '-'}</td>
+                      <td>{item.toState ?? item.stato ?? '-'}</td>
+                      <td>{formatStateDateTime(item.transitionedAt ?? item.dataOra ?? item.at)}</td>
+                      <td>{item.attore ?? item.actor ?? '-'}</td>
                     </tr>
                   ))
                 )}

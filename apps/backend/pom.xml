@@ -75,6 +75,12 @@
             <version>2.25.50</version>
         </dependency>
 
+        <!-- Sprint 11 — GAP-US-02: retry sincrono outbound BPM -->
+        <dependency>
+            <groupId>org.springframework.retry</groupId>
+            <artifactId>spring-retry</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-ooxml</artifactId>

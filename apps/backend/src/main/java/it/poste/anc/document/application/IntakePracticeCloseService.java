@@ -3,19 +3,17 @@ package it.poste.anc.document.application;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import it.poste.anc.bpmgw.outbound.BpmOutcomeOutboundGateway;
+import it.poste.anc.bpmgw.outbound.BpmOutboundService;
 import it.poste.anc.document.api.IntakeCloseResponse;
 import org.flowable.engine.TaskService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.sql.PreparedStatement;
-import java.sql.Statement;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -23,6 +21,8 @@ import java.util.Map;
 
 @Service
 public class IntakePracticeCloseService {
+
+    private static final Logger log = LoggerFactory.getLogger(IntakePracticeCloseService.class);
 
     private static final String GROUP_CODE = "GRUPPO_OPERATORE_ANC";
     private static final String STATE_IN_LAVORAZIONE = "IN_LAVORAZIONE";
@@ -34,16 +34,16 @@ public class IntakePracticeCloseService {
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
     private final TaskService flowableTaskService;
-    private final BpmOutcomeOutboundGateway bpmOutcomeOutboundGateway;
+    private final BpmOutboundService bpmOutboundService;
 
     public IntakePracticeCloseService(JdbcTemplate jdbcTemplate,
                                       ObjectMapper objectMapper,
                                       TaskService flowableTaskService,
-                                      BpmOutcomeOutboundGateway bpmOutcomeOutboundGateway) {
+                                      BpmOutboundService bpmOutboundService) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
         this.flowableTaskService = flowableTaskService;
-        this.bpmOutcomeOutboundGateway = bpmOutcomeOutboundGateway;
+        this.bpmOutboundService = bpmOutboundService;
     }
 
     @Transactional
@@ -82,41 +82,50 @@ public class IntakePracticeCloseService {
                 "Pratica chiusa lato SD, in attesa ACK BPM");
 
         String payloadJson = buildOutboundPayload(practice, outcome, correlationId);
-        long outboundId = insertOutboundMessage(practiceId, practice.requestId(), correlationId, payloadJson);
 
-        sendOutboundSafely(outboundId, payloadJson, actorUsername, practiceId, correlationId);
+        String statoFinale = sendOutboundSafely(payloadJson, actorUsername, practiceId, correlationId,
+                normalizeOutcomeForBpm(outcome));
 
-        return new IntakeCloseResponse(practiceId, STATE_IN_ATTESA_ACK, correlationId);
+        return new IntakeCloseResponse(practiceId, statoFinale, correlationId);
     }
 
-    private void sendOutboundSafely(long outboundId,
-                                    String payloadJson,
-                                    String actorUsername,
-                                    Long practiceId,
-                                    String correlationId) {
+    /**
+     * Invia l'esito a BPM tramite BpmOutboundService e finalizza la pratica in base alla risposta sincrona.
+     * Ritorna lo stato finale della pratica: CHIUSA_OK, CHIUSA_KO oppure IN_ATTESA_CONFERMA_BPM (retry esauriti).
+     */
+    private String sendOutboundSafely(String payloadJson,
+                                      String actorUsername,
+                                      Long practiceId,
+                                      String correlationId,
+                                      String outcomeCode) {
         try {
-            String responseBody = bpmOutcomeOutboundGateway.sendOutcome(payloadJson);
-            jdbcTemplate.update(
-                    "UPDATE bpm_outbound_message SET status = 'SENT', sent_at = CURRENT_TIMESTAMP(3), response_body = ? WHERE id = ?",
-                    truncate(responseBody, 2000),
-                    outboundId
-            );
-        } catch (RuntimeException ex) {
-            jdbcTemplate.update(
-                    "UPDATE bpm_outbound_message SET status = 'FAILED', response_body = ? WHERE id = ?",
-                    truncate(ex.getMessage(), 2000),
-                    outboundId
-            );
-        }
+            String responseBody = bpmOutboundService.sendOutcome(practiceId, outcomeCode, correlationId, payloadJson);
 
-        jdbcTemplate.update(
-                "INSERT INTO audit_event (occurred_at, actor_username, event_type, practice_id, correlation_id, payload_json) "
-                        + "VALUES (CURRENT_TIMESTAMP(3), ?, 'PRACTICE_CLOSE_REQUESTED', ?, ?, ?)",
-                actorUsername,
-                practiceId,
-                correlationId,
-                payloadJson
-        );
+            boolean esito = parseEsitoFromResponse(responseBody);
+            String finalState = esito ? "CHIUSA_OK" : "CHIUSA_KO";
+
+            jdbcTemplate.update(
+                    "UPDATE practice SET stato = ?, data_chiusura = CURRENT_TIMESTAMP(3) WHERE id = ?",
+                    finalState, practiceId
+            );
+            insertStateHistory(practiceId, actorUsername, correlationId, STATE_IN_ATTESA_ACK, finalState,
+                    "Pratica chiusa per esito sincrono BPM: " + finalState);
+            jdbcTemplate.update(
+                    "INSERT INTO audit_event (occurred_at, actor_username, event_type, practice_id, correlation_id, payload_json) "
+                            + "VALUES (CURRENT_TIMESTAMP(3), ?, 'PRACTICE_FINALIZED_BPM', ?, ?, ?)",
+                    actorUsername, practiceId, correlationId, responseBody
+            );
+            return finalState;
+
+        } catch (RuntimeException ex) {
+            // Retry esauriti: la pratica rimane IN_ATTESA_CONFERMA_BPM per rielaborazione manuale
+            jdbcTemplate.update(
+                    "INSERT INTO audit_event (occurred_at, actor_username, event_type, practice_id, correlation_id, payload_json) "
+                            + "VALUES (CURRENT_TIMESTAMP(3), ?, 'PRACTICE_CLOSE_REQUESTED', ?, ?, ?)",
+                    actorUsername, practiceId, correlationId, payloadJson
+            );
+            return STATE_IN_ATTESA_ACK;
+        }
     }
 
     private void validateChecklistForClose(Long practiceId, String documentType) {
@@ -232,31 +241,6 @@ public class IntakePracticeCloseService {
         }
     }
 
-    private long insertOutboundMessage(Long practiceId,
-                                       String requestId,
-                                       String correlationId,
-                                       String payloadJson) {
-        KeyHolder keyHolder = new GeneratedKeyHolder();
-        jdbcTemplate.update(connection -> {
-            PreparedStatement ps = connection.prepareStatement(
-                "INSERT INTO bpm_outbound_message (practice_id, request_id, correlation_id, payload_json, status, created_at) "
-                    + "VALUES (?, ?, ?, ?, 'PENDING', CURRENT_TIMESTAMP(3))",
-                Statement.RETURN_GENERATED_KEYS
-            );
-            ps.setLong(1, practiceId);
-            ps.setString(2, requestId);
-            ps.setString(3, correlationId);
-            ps.setString(4, payloadJson);
-            return ps;
-        }, keyHolder);
-
-        Number id = keyHolder.getKey();
-        if (id == null) {
-            throw new IllegalStateException("Impossibile determinare ID outbound BPM");
-        }
-        return id.longValue();
-    }
-
     private void insertStateHistory(Long practiceId,
                                     String actorUsername,
                                     String correlationId,
@@ -347,11 +331,17 @@ public class IntakePracticeCloseService {
         }
     }
 
-    private String truncate(String value, int maxLength) {
-        if (value == null || value.length() <= maxLength) {
-            return value;
+    private boolean parseEsitoFromResponse(String responseBody) {
+        try {
+            Map<?, ?> map = objectMapper.readValue(responseBody, Map.class);
+            Object esito = map.get("esito");
+            if (esito instanceof Boolean b) return b;
+            if (esito instanceof String s) return "true".equalsIgnoreCase(s);
+            return true; // default sicuro: se non parsabile, considera OK
+        } catch (Exception ex) {
+            log.warn("Risposta BPM non parsabile, assumo esito=true: {}", responseBody);
+            return true;
         }
-        return value.substring(0, maxLength);
     }
 
     private record OwnedTask(Long taskId, String flowableTaskId) {

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import it.poste.anc.document.ingestion.AttachmentFetcher;
 import it.poste.anc.document.ingestion.AttachmentStorage;
 import it.poste.anc.shared.common.ApiResponse;
+import it.poste.anc.ticketing.TicketingClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -66,13 +67,16 @@ class BpmPracticeInboundServiceIdempotencyTest {
                 // no-op
             }
         };
+        TicketingClient ticketingClient = Mockito.mock(TicketingClient.class);
         inboundService = new BpmPracticeInboundService(
                 jdbcTemplate,
                 objectMapper,
                 attachmentFetcher,
                 attachmentStorage,
                 inboundMessageWriter,
-                transactionManager
+                transactionManager,
+                ticketingClient,
+                false  // ticketingEnabled: false nei test di idempotenza per isolare dalla chiamata ticketing
         );
     }
 

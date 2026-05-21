@@ -50,6 +50,7 @@ class IntakeChecklistServiceTest {
                     card_number_match_required BOOLEAN NOT NULL,
                     card_number_match_ok BOOLEAN NULL,
                     ko_reasons_json VARCHAR(2000) NULL,
+                    codice_causale_id BIGINT NULL,
                     internal_notes VARCHAR(2000) NULL,
                     status VARCHAR(20) NOT NULL,
                     created_at TIMESTAMP,
@@ -94,7 +95,8 @@ class IntakeChecklistServiceTest {
                 null,
                 null,
                 List.of(),
-                "Documento assente"
+                "Documento assente",
+                null
         );
 
         IntakeChecklistResponse response = intakeChecklistService.saveDraft(500L, request, "operatore.anc");
@@ -121,7 +123,8 @@ class IntakeChecklistServiceTest {
                 null,
                 null,
                 List.of(),
-                "KO formale"
+                "KO formale",
+                null
         );
 
         assertThatThrownBy(() -> intakeChecklistService.saveDraft(500L, request, "operatore.anc"))
@@ -142,7 +145,8 @@ class IntakeChecklistServiceTest {
                 null,
                 null,
                 List.of(),
-                "Verifiche complete"
+                "Verifiche complete",
+                null
         );
 
         IntakeChecklistResponse response = intakeChecklistService.saveDraft(500L, request, "operatore.anc");
@@ -165,6 +169,7 @@ class IntakeChecklistServiceTest {
                                         practice_id BIGINT PRIMARY KEY,
                                         card_present BOOLEAN NOT NULL,
                                         card_conformity_ok BOOLEAN NULL,
+                                        codice_causale_id BIGINT NULL,
                                         internal_notes VARCHAR(2000) NULL,
                                         status VARCHAR(20) NOT NULL,
                                         created_at TIMESTAMP,
@@ -182,7 +187,8 @@ class IntakeChecklistServiceTest {
                                 false,
                                 null,
                                 List.of(),
-                                "Carta non presente"
+                                "Carta non presente",
+                                null
                 );
 
                 IntakeChecklistResponse response = intakeChecklistService.saveDraft(501L, request, "operatore.anc");

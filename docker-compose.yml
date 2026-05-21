@@ -39,8 +39,8 @@ services:
         condition: service_healthy
       bpm-stub:
         condition: service_started
-      bpm-outbound-fake:
-        condition: service_started
+      bpm-outbound-stub:
+        condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: poc
       SPRING_DATASOURCE_URL: jdbc:mariadb://db:3306/anc?useSSL=false&allowPublicKeyRetrieval=true
@@ -48,8 +48,10 @@ services:
       SPRING_DATASOURCE_PASSWORD: anc
       ANC_BPM_INBOUND_API_KEY: anc-poc-bpm-inbound-key
       ANC_BPM_INBOUND_HEADER_NAME: X-SD-API-Key
-      # Fake outbound endpoint interno Docker per close pratica Sprint 6.
-      ANC_BPM_OUTBOUND_URL: http://bpm-outbound-fake:8080/bpm-stub/outcome
+      # Fake outbound endpoint HTTP per outbound esito BPM (risponde 200 su qualsiasi path).
+      ANC_BPM_OUTBOUND_URL: http://bpm-outbound-stub:8090/receive-outcome
+      BPM_STUB_BASE_URL: http://bpm-outbound-stub:8090
+      TICKETING_BASE_URL: http://bpm-outbound-stub:8090
       # GAP-BLOCKER-001 - trasporto allegati BPM (pull-through sincrono).
       ANC_ATTACHMENT_ALLOWLIST_HOSTS: bpm-stub
       ANC_ATTACHMENT_MAX_BYTES: "26214400"
@@ -102,15 +104,17 @@ services:
       timeout: 5s
       retries: 20
 
-  # Fake endpoint HTTP per outbound esito BPM (risponde 200 su qualsiasi path).
-  bpm-outbound-fake:
-    image: mendhak/http-https-echo:36
-    container_name: anc-bpm-outbound-fake
+  # Stub outbound BPM e ticketing mock (Sprint 11 — GAP-US-01/02).
+  bpm-outbound-stub:
+    build:
+      context: infra/bpm-outbound-stub
+    container_name: anc-bpm-outbound-stub
     restart: unless-stopped
     environment:
-      HTTP_PORT: 8080
+      BPM_STUB_ESITO_MODE: OK
+      BPM_STUB_KO_DESCRIZIONE: "Esito rifiutato da BPM (mock)"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/ > /dev/null || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8090/admin/mode > /dev/null || exit 1"]
       interval: 5s
       timeout: 5s
       retries: 20

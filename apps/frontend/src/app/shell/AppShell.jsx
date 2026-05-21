@@ -1,21 +1,21 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
+import { PhaseProvider } from '../../core/PhaseContext';
 import { workflowTechnicalApi } from '../../core/api/workflowTechnicalApi';
 import { supervisionDashboardApi } from '../../core/api/supervisionDashboardApi';
+import { tasksApi } from '../../core/api/tasksApi';
 
 const operatoreTabs = [
   { to: '/home', label: 'Home' },
   { to: '/attivita', label: 'Attivita' },
-  { to: '/pratiche', label: 'Pratiche' },
-  { to: '/segnalazioni', label: 'Segnalazioni' }
+  { to: '/pratiche', label: 'Pratiche' }
 ];
 
 const supervisoreTabs = [
   { to: '/home', label: 'Home' },
   { to: '/riassegna-attivita', label: 'Riassegna Attivita' },
-  { to: '/pratiche', label: 'Pratiche' },
-  { to: '/segnalazioni', label: 'Segnalazioni' }
+  { to: '/pratiche', label: 'Pratiche' }
 ];
 
 export function AppShell() {
@@ -44,7 +44,7 @@ export function AppShell() {
         const isReady = Boolean(details?.engineActive) && Boolean(details?.placeholderProcessDeployed);
         setWorkflowReadiness({
           status: isReady ? 'ok' : 'warning',
-          label: isReady ? 'WORKFLOW: READY' : 'WORKFLOW: BASELINE NON COMPLETA'
+          label: isReady ? 'WORKFLOW: ATTIVO' : 'WORKFLOW: IN INIZIALIZZAZIONE'
         });
       } catch {
         if (!isCancelled) {
@@ -64,10 +64,21 @@ export function AppShell() {
     let isCancelled = false;
 
     if (!isSupervisore) {
-      setHeaderCounters({ activities: 0, activePractices: 0, closedPractices: 0 });
-      return () => {
-        isCancelled = true;
+      const loadOperatorCounters = async () => {
+        try {
+          const response = await tasksApi.counters();
+          if (isCancelled) return;
+          setHeaderCounters({
+            activities: response?.activities ?? 0,
+            activePractices: response?.activePractices ?? 0,
+            closedPractices: response?.closedPractices ?? 0
+          });
+        } catch {
+          if (!isCancelled) setHeaderCounters({ activities: 0, activePractices: 0, closedPractices: 0 });
+        }
       };
+      void loadOperatorCounters();
+      return () => { isCancelled = true; };
     }
 
     const loadCounters = async () => {
@@ -97,12 +108,12 @@ export function AppShell() {
   }, [isSupervisore]);
 
   return (
+    <PhaseProvider>
     <div className="app-shell">
       <header className="top-header">
         <div className="brand-area">
+          <img src="/poste-logo.svg" alt="Logo Poste Italiane" className="brand-logo" />
           <div className="brand-title">Scrivania Digitale ANC</div>
-          <div className="brand-subtitle">Sprint 0 - Foundation tecnica</div>
-          <div className={`tech-badge tech-badge-${workflowReadiness.status}`}>{workflowReadiness.label}</div>
         </div>
 
         <nav className="tabs-nav" aria-label="Navigazione principale">
@@ -139,18 +150,10 @@ export function AppShell() {
         </div>
       </header>
 
-      <section className="progress-banner" aria-label="Avanzamento processo">
-        <div className="progress-steps">
-          <span>Raccolta input</span>
-          <span>Lavorazione</span>
-          <span>Chiusura Pratica</span>
-        </div>
-        <div className="progress-line" />
-      </section>
-
       <main className="content-area">
         <Outlet />
       </main>
     </div>
+    </PhaseProvider>
   );
 }

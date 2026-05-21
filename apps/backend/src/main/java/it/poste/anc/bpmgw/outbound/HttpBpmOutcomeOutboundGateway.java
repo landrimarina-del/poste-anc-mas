@@ -11,9 +11,12 @@ public class HttpBpmOutcomeOutboundGateway implements BpmOutcomeOutboundGateway 
     private final RestClient restClient;
     private final String outcomeUrl;
 
-    public HttpBpmOutcomeOutboundGateway(@Value("${anc.bpm.outbound.url:http://localhost:18080/bpm-stub/outcome}") String outcomeUrl) {
+    public HttpBpmOutcomeOutboundGateway(
+            @Value("${bpm.base-url:http://bpm-outbound-stub:8090}") String bpmBaseUrl,
+            @Value("${bpm.receive-outcome-path:/receive-outcome}") String receiveOutcomePath
+    ) {
         this.restClient = RestClient.create();
-        this.outcomeUrl = outcomeUrl;
+        this.outcomeUrl = bpmBaseUrl + receiveOutcomePath;
     }
 
     @Override

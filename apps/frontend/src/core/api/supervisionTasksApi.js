@@ -153,5 +153,8 @@ export const supervisionTasksApi = {
           body: JSON.stringify(reason ? { username, reason } : { username })
         })
     );
-  }
+  },
+
+  listOperators: () =>
+    httpClient.request('/api/v1/supervision/tasks/operators', { method: 'GET' })
 };

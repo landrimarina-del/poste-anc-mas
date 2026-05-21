@@ -12,6 +12,8 @@ public record TaskListItem(
         String practiceState,
         String ownerUsername,
         Instant createdAt,
-        Instant acceptedAt
+        Instant acceptedAt,
+        Instant slaDueDate,
+        String slaStatus
 ) {
 }

@@ -24,13 +24,17 @@ export function ReassignActivitiesPage() {
   const [tasks, setTasks] = useState([]);
   const [filtersDraft, setFiltersDraft] = useState(initialFilters);
   const [filtersApplied, setFiltersApplied] = useState(initialFilters);
-  const [assigneeDraftByTaskId, setAssigneeDraftByTaskId] = useState({});
+  const [selectedTaskIds, setSelectedTaskIds] = useState([]);
+  const [reassignType, setReassignType] = useState('GRUPPO');
+  const [targetUser, setTargetUser] = useState('');
 
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
   const [infoMessage, setInfoMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const [reassigningTaskId, setReassigningTaskId] = useState('');
+  const [reassigning, setReassigning] = useState(false);
+  const [reassigningTaskId, setReassigningTaskId] = useState(null);
+  const [operators, setOperators] = useState([]);
 
   const loadTasks = useCallback(async (filters = filtersApplied) => {
     setLoading(true);
@@ -58,6 +62,16 @@ export function ReassignActivitiesPage() {
     loadTasks(filtersApplied);
   }, [filtersApplied, loadTasks]);
 
+  useEffect(() => {
+    supervisionTasksApi.listOperators()
+      .then((result) => {
+        const list = Array.isArray(result) ? result : Array.isArray(result?.items) ? result.items : [];
+        setOperators(list);
+        if (list.length > 0) setTargetUser(list[0]);
+      })
+      .catch(() => setOperators([]));
+  }, []);
+
   const onChangeFilter = (event) => {
     const { name, value } = event.target;
     setFiltersDraft((prev) => ({ ...prev, [name]: value }));
@@ -79,61 +93,107 @@ export function ReassignActivitiesPage() {
     loadTasks(filtersApplied);
   };
 
-  const onChangeAssigneeDraft = (taskId, value) => {
-    setAssigneeDraftByTaskId((prev) => ({ ...prev, [taskId]: value }));
+  const onToggleSelectTask = (taskId) => {
+    setSelectedTaskIds((prev) =>
+      prev.includes(taskId) ? prev.filter((id) => id !== taskId) : [...prev, taskId]
+    );
   };
 
-  const onReassignGroup = async (taskId) => {
-    if (!taskId || reassigningTaskId) {
+  const onToggleSelectAll = () => {
+    if (selectedTaskIds.length === tasks.length) {
+      setSelectedTaskIds([]);
+    } else {
+      setSelectedTaskIds(tasks.map((t) => t.taskId).filter(Boolean));
+    }
+  };
+
+  const onReassign = async () => {
+    if (selectedTaskIds.length === 0 || reassigning) return;
+    if (reassignType === 'UTENTE' && !targetUser.trim()) {
+      setErrorMessage('Indicare un utente destinatario per la riassegnazione.');
       return;
     }
-
-    setReassigningTaskId(taskId);
+    setReassigning(true);
     setErrorMessage('');
     setSuccessMessage('');
-
-    try {
-      await supervisionTasksApi.reassignGroup(taskId);
-      setSuccessMessage('Riassegnazione a Gruppo Operatore ANC completata.');
-      await loadTasks(filtersApplied);
-    } catch (error) {
-      setErrorMessage(error?.message ?? 'Errore durante la riassegnazione a gruppo.');
-    } finally {
-      setReassigningTaskId('');
+    const errors = [];
+    for (const taskId of selectedTaskIds) {
+      try {
+        if (reassignType === 'GRUPPO') {
+          await supervisionTasksApi.reassignGroup(taskId);
+        } else {
+          await supervisionTasksApi.reassignUser(taskId, targetUser.trim());
+        }
+      } catch (err) {
+        errors.push(`${taskId}: ${err?.message ?? 'Errore'}`);
+      }
     }
+    setReassigning(false);
+    setSelectedTaskIds([]);
+    if (errors.length) {
+      setErrorMessage(`Riassegnazione completata con errori: ${errors.join('; ')}`);
+    } else {
+      setSuccessMessage(
+        reassignType === 'GRUPPO'
+          ? `${selectedTaskIds.length} task riassegnati al Gruppo Operatore ANC.`
+          : `${selectedTaskIds.length} task riassegnati all'utente ${targetUser.trim()}.`
+      );
+    }
+    await loadTasks(filtersApplied);
   };
 
-  const onReassignUser = async (taskId) => {
-    if (!taskId || reassigningTaskId) {
-      return;
-    }
-
-    const username = String(assigneeDraftByTaskId[taskId] ?? '').trim();
-    if (!username) {
-      setErrorMessage('Indicare un utente destinatario per la riassegnazione specifica.');
-      setSuccessMessage('');
-      return;
-    }
-
-    setReassigningTaskId(taskId);
-    setErrorMessage('');
-    setSuccessMessage('');
-
-    try {
-      await supervisionTasksApi.reassignUser(taskId, username);
-      setSuccessMessage(`Riassegnazione completata verso utente ${username}.`);
-      await loadTasks(filtersApplied);
-    } catch (error) {
-      setErrorMessage(error?.message ?? 'Errore durante la riassegnazione a utente.');
-    } finally {
-      setReassigningTaskId('');
-    }
-  };
+  const allSelected = tasks.length > 0 && selectedTaskIds.length === tasks.length;
 
   return (
     <section className="panel">
-      <h2>Riassegna Attivita</h2>
-      <p className="panel-note">Sprint 7: supervisione task ANC con azioni di riassegnazione a gruppo o utente.</p>
+      <h2>Riassegna Attività</h2>
+
+      {/* Box Dettagli riassegnazione */}
+      <div className="box-poste reassign-detail-box">
+        <h3 className="box-poste-title">Dettagli riassegnazione</h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+            <input
+              type="radio"
+              name="reassignType"
+              value="GRUPPO"
+              checked={reassignType === 'GRUPPO'}
+              onChange={() => setReassignType('GRUPPO')}
+              disabled={reassigning}
+            />
+            Riassegna al Gruppo Operatore
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+            <input
+              type="radio"
+              name="reassignType"
+              value="UTENTE"
+              checked={reassignType === 'UTENTE'}
+              onChange={() => setReassignType('UTENTE')}
+              disabled={reassigning}
+            />
+            Riassegna a Utente
+          </label>
+          {reassignType === 'UTENTE' && (
+            <div style={{ marginTop: '4px', marginLeft: '24px' }}>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontWeight: 500 }}>
+                Operatore destinatario
+                <select
+                  value={targetUser}
+                  onChange={(e) => setTargetUser(e.target.value)}
+                  disabled={reassigning || operators.length === 0}
+                  style={{ minWidth: '220px' }}
+                >
+                  {operators.length === 0 && <option value="">Caricamento...</option>}
+                  {operators.map((op) => (
+                    <option key={op} value={op}>{op}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          )}
+        </div>
+      </div>
 
       <div className="filters-box" aria-label="Filtri riassegna attivita">
         <div className="filters-grid">
@@ -210,7 +270,15 @@ export function ReassignActivitiesPage() {
       </div>
 
       <div className="practices-toolbar">
-        <div className="panel-note">Task supervisione trovati: {tasks.length}</div>
+        <div className="panel-note">Task trovati: {tasks.length} — Selezionati: {selectedTaskIds.length}</div>
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={onReassign}
+          disabled={selectedTaskIds.length === 0 || reassigning}
+        >
+          {reassigning ? 'RIASSEGNAZIONE IN CORSO...' : 'RIASSEGNA'}
+        </button>
       </div>
 
       {infoMessage ? <div className="info-box">{infoMessage}</div> : null}
@@ -221,13 +289,21 @@ export function ReassignActivitiesPage() {
         <table className="practices-table">
           <thead>
             <tr>
-              <th>Attivita</th>
+              <th>
+                <input
+                  type="checkbox"
+                  aria-label="Seleziona tutti"
+                  checked={allSelected}
+                  onChange={onToggleSelectAll}
+                  disabled={tasks.length === 0 || reassigning}
+                />
+              </th>
+              <th>Attività</th>
               <th>Pratica N.</th>
               <th>Data Assegnazione</th>
               <th>Owner</th>
               <th>Assegnatario</th>
               <th>Stato task</th>
-              <th>Azione</th>
             </tr>
           </thead>
           <tbody>
@@ -240,10 +316,22 @@ export function ReassignActivitiesPage() {
             ) : (
               tasks.map((task) => {
                 const taskId = task.taskId;
-                const isReassigning = reassigningTaskId === taskId;
+                const isSelected = selectedTaskIds.includes(taskId);
 
                 return (
-                  <tr key={taskId || `${task.practiceId}-${task.assignmentDate}`}>
+                  <tr
+                    key={taskId || `${task.practiceId}-${task.assignmentDate}`}
+                    className={isSelected ? 'row-selected' : ''}
+                  >
+                    <td>
+                      <input
+                        type="checkbox"
+                        aria-label={`Seleziona task ${taskId}`}
+                        checked={isSelected}
+                        onChange={() => onToggleSelectTask(taskId)}
+                        disabled={!taskId || reassigning}
+                      />
+                    </td>
                     <td>{task.activityLabel ?? 'Task ANC'}</td>
                     <td>
                       {task.practiceId ? (
@@ -258,37 +346,6 @@ export function ReassignActivitiesPage() {
                     <td>{task.owner ?? '-'}</td>
                     <td>{task.assignee ?? '-'}</td>
                     <td>{task.taskState ?? '-'}</td>
-                    <td>
-                      <div className="reassign-actions">
-                        <button
-                          type="button"
-                          className="btn btn-outline btn-small"
-                          onClick={() => onReassignGroup(taskId)}
-                          disabled={!taskId || Boolean(reassigningTaskId)}
-                        >
-                          {isReassigning ? 'IN CORSO...' : 'RIASSEGNA A GRUPPO'}
-                        </button>
-
-                        <div className="inline-user-reassign">
-                          <input
-                            type="text"
-                            aria-label={`Utente riassegnazione ${taskId}`}
-                            placeholder="utente.destinatario"
-                            value={assigneeDraftByTaskId[taskId] ?? ''}
-                            onChange={(event) => onChangeAssigneeDraft(taskId, event.target.value)}
-                            disabled={!taskId || Boolean(reassigningTaskId)}
-                          />
-                          <button
-                            type="button"
-                            className="btn btn-primary btn-small"
-                            onClick={() => onReassignUser(taskId)}
-                            disabled={!taskId || Boolean(reassigningTaskId)}
-                          >
-                            RIASSEGNA A UTENTE
-                          </button>
-                        </div>
-                      </div>
-                    </td>
                   </tr>
                 );
               })
