@@ -661,10 +661,22 @@ select {
   color: #344054;
 }
 
+.classificazione-control-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+  gap: 10px;
+}
+
 .checklist-fields-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(120px, 1fr));
   gap: 10px;
+}
+
+.checklist-fields-grid-table {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .checklist-meta-row {
@@ -738,6 +750,132 @@ select {
 
 .checklist-checkbox-inline input {
   width: auto;
+}
+
+.verbale-checklist-table-wrapper {
+  width: 100%;
+  overflow-x: hidden;
+}
+
+.verbale-checklist-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  background: #fff;
+  border: 1px solid var(--gray-200);
+}
+
+.verbale-checklist-table th:nth-child(1),
+.verbale-checklist-table td:nth-child(1) {
+  width: 12%;
+}
+
+.verbale-checklist-table th:nth-child(2),
+.verbale-checklist-table td:nth-child(2) {
+  width: 44%;
+}
+
+.verbale-checklist-table th:nth-child(3),
+.verbale-checklist-table td:nth-child(3) {
+  width: 16%;
+}
+
+.verbale-checklist-table th:nth-child(4),
+.verbale-checklist-table td:nth-child(4) {
+  width: 28%;
+}
+
+.verbale-checklist-table th,
+.verbale-checklist-table td {
+  border: 1px solid var(--gray-200);
+  padding: 8px 10px;
+  vertical-align: top;
+  text-align: left;
+  font-size: 0.85rem;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+.verbale-checklist-table th {
+  white-space: normal;
+}
+
+.verbale-checklist-table th {
+  background: #f8fafc;
+  font-weight: 700;
+}
+
+.verbale-description-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.verbale-description-toggle {
+  border: none;
+  background: none;
+  color: var(--poste-blue);
+  cursor: pointer;
+  padding: 0;
+  font-size: 0.8rem;
+  text-decoration: underline;
+}
+
+.verbale-description-toggle:hover {
+  color: var(--poste-blue-dark);
+}
+
+.verbale-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.verbale-note-cell {
+  min-width: 0;
+}
+
+.verbale-note-textarea {
+  width: 100%;
+  border: 1px solid #cfd5df;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 0.82rem;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.verbale-note-textarea:disabled {
+  background: var(--gray-100);
+  color: var(--gray-500);
+  cursor: not-allowed;
+}
+
+.verbale-required-note {
+  margin-top: 4px;
+  font-size: 0.75rem;
+  color: var(--gray-500);
+}
+
+.verbale-description-row td {
+  background: #fbfdff;
+  color: #344054;
+}
+
+.verbale-row-disabled td {
+  background: #f8fafc;
+}
+
+.verbale-esito-causale-card {
+  margin-top: 10px;
+}
+
+.verbale-riepilogo-note {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #344054;
 }
 
 .checklist-actions-row {
@@ -1174,6 +1312,56 @@ select {
   }
 }
 
+.verifica-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.verifica-content-grid-2x2 {
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  grid-template-areas:
+    "top-left top-right"
+    "bottom-left bottom-right";
+  align-items: stretch;
+}
+
+.verifica-area-top-left {
+  grid-area: top-left;
+}
+
+.verifica-area-top-right {
+  grid-area: top-right;
+}
+
+.verifica-area-bottom-left {
+  grid-area: bottom-left;
+}
+
+.verifica-area-bottom-right {
+  grid-area: bottom-right;
+}
+
+@media (max-width: 1440px) {
+  .verifica-content-grid-2x2 {
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 1080px) {
+  .verifica-content-grid-2x2 {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "top-left"
+      "top-right"
+      "bottom-left"
+      "bottom-right";
+  }
+}
+
+.verifica-data-card {
+  height: 100%;
+}
 @media (max-width: 700px) {
   .placeholder-grid {
     grid-template-columns: 1fr;
@@ -1242,6 +1430,32 @@ select {
 
   .signals-form-actions {
     justify-content: flex-start;
+  }
+
+  .verbale-checklist-table th,
+  .verbale-checklist-table td {
+    font-size: 0.8rem;
+    padding: 6px;
+  }
+
+  .verbale-checklist-table th:nth-child(1),
+  .verbale-checklist-table td:nth-child(1) {
+    width: 16%;
+  }
+
+  .verbale-checklist-table th:nth-child(2),
+  .verbale-checklist-table td:nth-child(2) {
+    width: 36%;
+  }
+
+  .verbale-checklist-table th:nth-child(3),
+  .verbale-checklist-table td:nth-child(3) {
+    width: 18%;
+  }
+
+  .verbale-checklist-table th:nth-child(4),
+  .verbale-checklist-table td:nth-child(4) {
+    width: 30%;
   }
 }
 
@@ -1512,8 +1726,9 @@ select {
 
 .verifica-content {
   display: grid;
-  grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
-  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: stretch;
 }
 
 .verifica-content-full {
@@ -1530,7 +1745,52 @@ select {
 }
 
 .verifica-data-card {
-  margin-bottom: 12px;
+  margin-bottom: 0;
+  height: 100%;
+}
+
+.verifica-client-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 20px;
+  margin-top: 8px;
+}
+
+.verifica-client-rows {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.verifica-client-row {
+  margin: 0;
+  display: grid;
+  gap: 10px 20px;
+}
+
+.verifica-client-row-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.verifica-client-row-1 {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.verifica-client-field {
+  min-width: 0;
+}
+
+.verifica-client-field-wide {
+  grid-column: 1 / -1;
+}
+
+.verifica-client-field dt {
+  margin-bottom: 2px;
+}
+
+.verifica-client-field dd {
+  margin: 0;
+  overflow-wrap: anywhere;
 }
 
 /* ── Dialog conferma tipizzazione (S12-FE-3) — AC-S6-07 ── */
@@ -1585,6 +1845,22 @@ select {
   .classificazione-layout,
   .verifica-content {
     grid-template-columns: 1fr;
+  }
+
+  .verifica-client-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .verifica-client-row-3 {
+    grid-template-columns: 1fr;
+  }
+
+  .verifica-content-grid-2x2 {
+    grid-template-areas:
+      "top-left"
+      "top-right"
+      "bottom-left"
+      "bottom-right";
   }
 
   .phase-progress-bar {

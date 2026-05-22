@@ -16,6 +16,7 @@ import java.util.Locale;
 public class IntakeTypingService {
 
     private static final String STATE_IN_LAVORAZIONE = "IN_LAVORAZIONE";
+    private static final String STATE_APERTA = "APERTA";
     private static final String TASK_STATE_IN_CARICO = "IN_CARICO";
     private static final String DOCUMENT_TYPE_VERBALE = "VERBALE";
     private static final String DOCUMENT_TYPE_CARTA = "CARTA";
@@ -32,11 +33,11 @@ public class IntakeTypingService {
         PracticeTypingSnapshot snapshot = readPracticeSnapshot(practiceId);
         String normalizedType = normalizeDocumentType(documentTypeInput);
 
-        if (!STATE_IN_LAVORAZIONE.equals(snapshot.practiceState())) {
+        if (!isTypingAllowedState(snapshot.practiceState())) {
             throw new DocumentOperationException(
                     HttpStatus.CONFLICT,
                     4010,
-                    "Tipizzazione consentita solo per pratiche in stato IN_LAVORAZIONE"
+                "Tipizzazione consentita solo per pratiche in stato IN_LAVORAZIONE o APERTA"
             );
         }
 
@@ -46,8 +47,9 @@ public class IntakeTypingService {
 
         if (snapshot.documentType() == null) {
             int updated = jdbcTemplate.update(
-                "UPDATE practice SET document_type = ? "
-                            + "WHERE id = ? AND stato = 'IN_LAVORAZIONE' AND document_type IS NULL",
+                "UPDATE practice SET document_type = ?, "
+                        + "stato = CASE WHEN stato = 'APERTA' THEN 'IN_LAVORAZIONE' ELSE stato END "
+                        + "WHERE id = ? AND stato IN ('IN_LAVORAZIONE','APERTA') AND document_type IS NULL",
                     normalizedType,
                     practiceId
             );
@@ -169,6 +171,10 @@ public class IntakeTypingService {
 
         throw new DocumentOperationException(HttpStatus.BAD_REQUEST, 4008,
                 "Tipo documento non valido: valori ammessi Verbale o Carta");
+    }
+
+    private boolean isTypingAllowedState(String practiceState) {
+        return STATE_IN_LAVORAZIONE.equals(practiceState) || STATE_APERTA.equals(practiceState);
     }
 
     private List<String> readPracticeColumns() {

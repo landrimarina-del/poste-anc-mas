@@ -183,7 +183,9 @@ public class IntakeChecklistService {
         private java.util.Optional<ChecklistVerbaleRow> loadVerbaleChecklistRow(Long practiceId) {
         List<ChecklistVerbaleRow> rows = jdbcTemplate.query(
                 "SELECT practice_id, document_present, readability_ok, formal_ok, customer_data_ok, "
-                        + "card_number_match_required, card_number_match_ok, ko_reasons_json, internal_notes, status, created_at, codice_causale_id "
+                + "card_number_match_required, card_number_match_ok, ko_reasons_json, internal_notes, "
+                + "note_legibility, note_formal_suitability, note_client_data_consistency, note_card_number_match, final_note_practice, "
+                + "status, created_at, codice_causale_id "
                         + "FROM checklist_verbale WHERE practice_id = ?",
             (rs, rowNum) -> new ChecklistVerbaleRow(
                         rs.getLong("practice_id"),
@@ -195,6 +197,11 @@ public class IntakeChecklistService {
                         readNullableBoolean(rs, "card_number_match_ok"),
                         parseJsonArray(rs.getString("ko_reasons_json")),
                         rs.getString("internal_notes"),
+                        rs.getString("note_legibility"),
+                        rs.getString("note_formal_suitability"),
+                        rs.getString("note_client_data_consistency"),
+                        rs.getString("note_card_number_match"),
+                        rs.getString("final_note_practice"),
                         rs.getString("status"),
                         rs.getTimestamp("created_at"),
                         readNullableLong(rs, "codice_causale_id")
@@ -300,6 +307,11 @@ public class IntakeChecklistService {
                 cardMatch,
                 normalizedReasons,
                 request.internalNotes(),
+                request.noteLegibility(),
+                request.noteFormalSuitability(),
+                request.noteClientDataConsistency(),
+                request.noteCardNumberMatch(),
+                request.finalNotePractice(),
                 nextStatus,
                 createdAt != null ? createdAt : Timestamp.from(Instant.now()),
                 request.codiceCausaleId()
@@ -365,7 +377,8 @@ public class IntakeChecklistService {
         String koReasonsJson = toJsonArray(row.koReasons());
         int updated = jdbcTemplate.update(
                 "UPDATE checklist_verbale SET document_present = ?, readability_ok = ?, formal_ok = ?, customer_data_ok = ?, "
-                        + "card_number_match_required = ?, card_number_match_ok = ?, ko_reasons_json = ?, codice_causale_id = ?, internal_notes = ?, "
+                + "card_number_match_required = ?, card_number_match_ok = ?, ko_reasons_json = ?, codice_causale_id = ?, internal_notes = ?, "
+                + "note_legibility = ?, note_formal_suitability = ?, note_client_data_consistency = ?, note_card_number_match = ?, final_note_practice = ?, "
                         + "status = ?, updated_at = CURRENT_TIMESTAMP(3) WHERE practice_id = ?",
                 row.documentPresent(),
                 row.readabilityOk(),
@@ -376,6 +389,11 @@ public class IntakeChecklistService {
                 koReasonsJson,
                 row.codiceCausaleId(),
                 row.internalNotes(),
+                row.noteLegibility(),
+                row.noteFormalSuitability(),
+                row.noteClientDataConsistency(),
+                row.noteCardNumberMatch(),
+                row.finalNotePractice(),
                 row.status(),
                 row.practiceId()
         );
@@ -383,8 +401,10 @@ public class IntakeChecklistService {
         if (updated == 0) {
             jdbcTemplate.update(
                     "INSERT INTO checklist_verbale (practice_id, document_present, readability_ok, formal_ok, customer_data_ok, "
-                            + "card_number_match_required, card_number_match_ok, ko_reasons_json, codice_causale_id, internal_notes, status, created_at, updated_at) "
-                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3))",
+                        + "card_number_match_required, card_number_match_ok, ko_reasons_json, codice_causale_id, internal_notes, "
+                        + "note_legibility, note_formal_suitability, note_client_data_consistency, note_card_number_match, final_note_practice, "
+                        + "status, created_at, updated_at) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3))",
                     row.practiceId(),
                     row.documentPresent(),
                     row.readabilityOk(),
@@ -395,6 +415,11 @@ public class IntakeChecklistService {
                     koReasonsJson,
                     row.codiceCausaleId(),
                     row.internalNotes(),
+                    row.noteLegibility(),
+                    row.noteFormalSuitability(),
+                    row.noteClientDataConsistency(),
+                    row.noteCardNumberMatch(),
+                    row.finalNotePractice(),
                     row.status()
             );
         }
@@ -503,6 +528,13 @@ public class IntakeChecklistService {
     private IntakeChecklistResponse toVerbaleResponse(String documentType,
                                                       ChecklistVerbaleRow checklist,
                                                       OutcomeRow outcome) {
+        String finalNotePractice = checklist.finalNotePractice();
+        if ((finalNotePractice == null || finalNotePractice.isBlank())
+            && checklist.internalNotes() != null
+            && !checklist.internalNotes().isBlank()) {
+            finalNotePractice = checklist.internalNotes();
+        }
+
         return new IntakeChecklistResponse(
                 checklist.practiceId(),
                 documentType,
@@ -513,6 +545,11 @@ public class IntakeChecklistService {
                 checklist.customerDataOk(),
                 checklist.cardNumberMatchRequired(),
                 checklist.cardNumberMatchOk(),
+            checklist.noteLegibility(),
+            checklist.noteFormalSuitability(),
+            checklist.noteClientDataConsistency(),
+            checklist.noteCardNumberMatch(),
+            finalNotePractice,
                 null,
                 null,
                 checklist.koReasons(),
@@ -536,6 +573,11 @@ public class IntakeChecklistService {
                 null,
                 null,
                 null,
+            null,
+            null,
+            null,
+            null,
+            null,
                 checklist.cardPresent(),
                 checklist.cardConformityOk(),
                 List.of(),
@@ -605,6 +647,11 @@ public class IntakeChecklistService {
                                        Boolean cardNumberMatchOk,
                                        List<String> koReasons,
                                        String internalNotes,
+                                       String noteLegibility,
+                                       String noteFormalSuitability,
+                                       String noteClientDataConsistency,
+                                       String noteCardNumberMatch,
+                                       String finalNotePractice,
                                        String status,
                                        Timestamp createdAt,
                                        Long codiceCausaleId) {
@@ -618,6 +665,11 @@ public class IntakeChecklistService {
                     false,
                     null,
                     List.of(),
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
                     null,
                     STATUS_NON_INIZIATA,
                     Timestamp.from(Instant.now()),

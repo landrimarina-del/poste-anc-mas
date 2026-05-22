@@ -30,10 +30,24 @@ const checklistEmptyForm = {
   cardNumberMatch: '',
   formalKoReasons: [],
   internalNotes: '',
+  finalNotePractice: '',
+  cardNotes: {
+    legibility: '',
+    formalSuitability: ''
+  },
+  verbaleNotes: {
+    legibility: '',
+    formalSuitability: '',
+    clientDataConsistency: '',
+    cardNumberMatch: ''
+  },
   // Sprint 13: campi KO opzionali
   codiceCausaleIdCarta: null,
   codiceCausaleIdVerbale: null
 };
+
+const verbaleNoteKeys = ['legibility', 'formalSuitability', 'clientDataConsistency', 'cardNumberMatch'];
+const cardNoteKeys = ['legibility', 'formalSuitability'];
 
 // ─── Helper functions (allineate con TypingPage) ────────────────────────────
 
@@ -74,6 +88,19 @@ function toBooleanOrNull(value) {
   return null;
 }
 
+function formatDateTime(value) {
+  if (!value) return '-';
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  return new Intl.DateTimeFormat('it-IT', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(date);
+}
+
 // Sprint 13: formattazione data nota (HH:mm DD/MM/YYYY)
 function formatNoteDate(dateStr) {
   if (!dateStr) return '';
@@ -90,6 +117,91 @@ function formatNoteDate(dateStr) {
   }
 }
 
+function normalizeVerbaleNotes(raw) {
+  const normalized = {
+    legibility: '',
+    formalSuitability: '',
+    clientDataConsistency: '',
+    cardNumberMatch: ''
+  };
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return normalized;
+  for (const key of verbaleNoteKeys) {
+    normalized[key] = typeof raw[key] === 'string' ? raw[key] : '';
+  }
+  return normalized;
+}
+
+function normalizeCardNotes(raw) {
+  const normalized = {
+    legibility: '',
+    formalSuitability: ''
+  };
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return normalized;
+  for (const key of cardNoteKeys) {
+    normalized[key] = typeof raw[key] === 'string' ? raw[key] : '';
+  }
+  return normalized;
+}
+
+function pickFirstString(...values) {
+  for (const value of values) {
+    if (typeof value !== 'string') continue;
+    return value;
+  }
+  return '';
+}
+
+function extractInternalNotesEnvelope(rawNotes) {
+  const emptyEnvelope = {
+    legacy: '',
+    finalNotePractice: '',
+    cardKoNote: '',
+    cardNotes: normalizeCardNotes(null),
+    verbaleNotes: normalizeVerbaleNotes(null)
+  };
+
+  if (typeof rawNotes !== 'string') return emptyEnvelope;
+  const trimmed = rawNotes.trim();
+  if (!trimmed) return emptyEnvelope;
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    const isEnvelope = parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      && (Object.prototype.hasOwnProperty.call(parsed, 'legacy')
+        || Object.prototype.hasOwnProperty.call(parsed, 'verbaleNotes')
+        || Object.prototype.hasOwnProperty.call(parsed, 'cardNotes'));
+
+    if (!isEnvelope) {
+      return {
+        legacy: trimmed,
+        finalNotePractice: '',
+        cardKoNote: '',
+        cardNotes: normalizeCardNotes(null),
+        verbaleNotes: normalizeVerbaleNotes(null)
+      };
+    }
+
+    return {
+      legacy: typeof parsed.legacy === 'string' ? parsed.legacy : '',
+      finalNotePractice: typeof parsed.finalNotePractice === 'string'
+        ? parsed.finalNotePractice
+        : (typeof parsed.finalNote === 'string' ? parsed.finalNote : ''),
+      cardKoNote: typeof parsed.cardKoNote === 'string' ? parsed.cardKoNote : '',
+      cardNotes: normalizeCardNotes(parsed.cardNotes),
+      verbaleNotes: normalizeVerbaleNotes(parsed.verbaleNotes)
+    };
+  } catch {
+    // Fallback legacy: stringa non JSON valida
+    return {
+      legacy: trimmed,
+      finalNotePractice: '',
+      cardKoNote: '',
+      cardNotes: normalizeCardNotes(null),
+      verbaleNotes: normalizeVerbaleNotes(null)
+    };
+  }
+}
+
 function mapChecklistToForm(detail) {
   if (!detail || typeof detail !== 'object') {
     return {
@@ -101,15 +213,62 @@ function mapChecklistToForm(detail) {
     };
   }
   const payload = detail.checklist ?? detail;
+  const parsedInternalNotes = extractInternalNotesEnvelope(payload.internalNotes);
+  const legacyVerbaleNotes = parsedInternalNotes.verbaleNotes;
+  const legacyCardNotes = parsedInternalNotes.cardNotes;
+  const sharedCausaleId = payload.codiceCausaleId ?? payload.causaleId ?? null;
+  const causaleCarta = payload.codiceCausaleIdCarta ?? sharedCausaleId;
+  const causaleVerbale = payload.codiceCausaleIdVerbale ?? sharedCausaleId;
   const form = {
-    documentPresent:       normalizeYesNo(payload.documentPresent),
+    documentPresent:       normalizeYesNo(payload.documentPresent ?? payload.cardPresent),
     legibility:            normalizeYesNo(payload.legibility ?? payload.readabilityOk),
     formalSuitability:     normalizeYesNo(payload.formalSuitability ?? payload.formalOk),
     clientDataConsistency: normalizeYesNo(payload.clientDataConsistency ?? payload.customerDataOk),
     cardNumberCheckEnabled: Boolean(payload.cardNumberCheckEnabled ?? payload.cardNumberMatchRequired),
     cardNumberMatch:       normalizeYesNo(payload.cardNumberMatch ?? payload.cardNumberMatchOk),
     formalKoReasons:       normalizeKoReasonList(payload.formalKoReasons ?? payload.koReasons),
-    internalNotes:         typeof payload.internalNotes === 'string' ? payload.internalNotes : ''
+    internalNotes:         pickFirstString(parsedInternalNotes.cardKoNote, parsedInternalNotes.legacy),
+    finalNotePractice:     pickFirstString(
+      payload.finalNotePractice,
+      parsedInternalNotes.finalNotePractice,
+      parsedInternalNotes.legacy
+    ),
+    cardNotes: normalizeCardNotes({
+      legibility: pickFirstString(
+        payload.noteLegibility,
+        payload.cardNotes?.legibility,
+        legacyCardNotes.legibility
+      ),
+      formalSuitability: pickFirstString(
+        payload.noteFormalSuitability,
+        payload.cardNotes?.formalSuitability,
+        legacyCardNotes.formalSuitability
+      )
+    }),
+    verbaleNotes: normalizeVerbaleNotes({
+      legibility: pickFirstString(
+        payload.noteLegibility,
+        payload.verbaleNotes?.legibility,
+        legacyVerbaleNotes.legibility
+      ),
+      formalSuitability: pickFirstString(
+        payload.noteFormalSuitability,
+        payload.verbaleNotes?.formalSuitability,
+        legacyVerbaleNotes.formalSuitability
+      ),
+      clientDataConsistency: pickFirstString(
+        payload.noteClientDataConsistency,
+        payload.verbaleNotes?.clientDataConsistency,
+        legacyVerbaleNotes.clientDataConsistency
+      ),
+      cardNumberMatch: pickFirstString(
+        payload.noteCardNumberMatch,
+        payload.verbaleNotes?.cardNumberMatch,
+        legacyVerbaleNotes.cardNumberMatch
+      )
+    }),
+    codiceCausaleIdCarta: causaleCarta !== null && causaleCarta !== undefined ? String(causaleCarta) : null,
+    codiceCausaleIdVerbale: causaleVerbale !== null && causaleVerbale !== undefined ? String(causaleVerbale) : null
   };
   return {
     form,
@@ -120,15 +279,41 @@ function mapChecklistToForm(detail) {
   };
 }
 
+function buildCardInternalNotesPayload(form) {
+  const cardNotes = normalizeCardNotes(form?.cardNotes);
+  const hasCardNotes = cardNoteKeys.some((key) => String(cardNotes[key] ?? '').trim() !== '');
+  const cardKoNote = String(form?.internalNotes ?? '').trim();
+
+  if (!hasCardNotes) {
+    return cardKoNote;
+  }
+
+  return JSON.stringify({
+    legacy: cardKoNote,
+    cardKoNote,
+    cardNotes
+  });
+}
+
 function buildChecklistSavePayload(form, documentType) {
   if (documentType === 'CARTA') {
     const hasAutoKo = form.documentPresent === 'NO';
+    const legibilityOk = toBooleanOrNull(form.legibility);
+    const formalOk = toBooleanOrNull(form.formalSuitability);
+    const cardConformityOk = hasAutoKo
+      ? null
+      : (legibilityOk === false || formalOk === false)
+        ? false
+        : (legibilityOk === true && formalOk === true)
+          ? true
+          : null;
+
     return {
       // Bug2 fix: backend si aspetta cardPresent (non documentPresent) per CARTA
-      cardPresent:           toBooleanOrNull(form.documentPresent),
-      cardConformityOk:      hasAutoKo ? null : toBooleanOrNull(form.formalSuitability),
+      cardPresent:           hasAutoKo ? false : true,
+      cardConformityOk,
       koReasons:             [],
-      internalNotes:         String(form.internalNotes ?? '').trim(),
+      internalNotes:         buildCardInternalNotesPayload(form),
       // Sprint 13: causale KO opzionale CARTA
       codiceCausaleId:       form.codiceCausaleIdCarta ? Number(form.codiceCausaleIdCarta) : null
     };
@@ -144,6 +329,11 @@ function buildChecklistSavePayload(form, documentType) {
       ? (hasAutoKo ? false : toBooleanOrNull(form.cardNumberMatch))
       : null,
     koReasons:    form.formalSuitability === 'NO' ? form.formalKoReasons : [],
+    noteLegibility: String(form?.verbaleNotes?.legibility ?? '').trim(),
+    noteFormalSuitability: String(form?.verbaleNotes?.formalSuitability ?? '').trim(),
+    noteClientDataConsistency: String(form?.verbaleNotes?.clientDataConsistency ?? '').trim(),
+    noteCardNumberMatch: String(form?.verbaleNotes?.cardNumberMatch ?? '').trim(),
+    finalNotePractice: String(form.finalNotePractice ?? '').trim(),
     internalNotes: String(form.internalNotes ?? '').trim(),
     // Sprint 13: causale KO opzionale VERBALE
     codiceCausaleId: form.codiceCausaleIdVerbale ? Number(form.codiceCausaleIdVerbale) : null
@@ -151,12 +341,14 @@ function buildChecklistSavePayload(form, documentType) {
 }
 
 function getChecklistValidationError(form, documentType) {
-  if (!form.documentPresent) return 'Indicare se il documento è presente.';
-  if (form.documentPresent === 'NO') return '';
   if (documentType === 'CARTA') {
-    if (!form.formalSuitability) return 'Per carta presente, indicare la conformità carta.';
+    if (!form.legibility || !form.formalSuitability) {
+      return 'Compilare tutte le verifiche obbligatorie della checklist CARTA.';
+    }
     return '';
   }
+  if (!form.documentPresent) return 'Indicare se il documento è presente.';
+  if (form.documentPresent === 'NO') return '';
   if (!form.legibility || !form.formalSuitability || !form.clientDataConsistency) {
     return 'Completare i controlli obbligatori della checklist.';
   }
@@ -199,6 +391,7 @@ export function TaskLavorazionePage() {
   const { taskId } = useParams();
   const [searchParams] = useSearchParams();
   const practiceId = searchParams.get('practiceId');
+  const hasPracticeId = Boolean(practiceId);
   const { setFase: setGlobalFase } = usePhase();
 
   // Navigazione workflow
@@ -296,6 +489,10 @@ export function TaskLavorazionePage() {
     try {
       const response = await intakeApi.getChecklist(practiceId);
       const mapped = mapChecklistToForm(response ?? {});
+
+      if (confirmedType === 'CARTA' && !mapped.form.documentPresent) {
+        mapped.form.documentPresent = 'SI';
+      }
 
       setChecklistForm(mapped.form);
       setChecklistStatus(mapped.status);
@@ -410,6 +607,18 @@ export function TaskLavorazionePage() {
     setChecklistInfo('');
     setChecklistForm((current) => {
       const next = { ...current, [field]: value };
+
+      if (field === 'verbaleNotes') {
+        next.verbaleNotes = normalizeVerbaleNotes(value);
+      }
+
+      if (field === 'cardNotes') {
+        next.cardNotes = normalizeCardNotes(value);
+      }
+
+      if (confirmedType === 'CARTA' && (field === 'legibility' || field === 'formalSuitability')) {
+        next.documentPresent = 'SI';
+      }
 
       if (field === 'documentPresent' && value === 'NO') {
         next.formalSuitability = 'NO';
@@ -530,43 +739,87 @@ export function TaskLavorazionePage() {
 
   const onTypingConfirmed = (type) => {
     setConfirmedType(type);
-    // Avvia caricamento checklist per il tipo appena confermato
+    setChecklistError('');
+    setChecklistInfo('');
+    setChecklistOutcome('');
+    setChecklistStatus('NON_INIZIATA');
+    // Evita residui della checklist precedente durante il cambio tipo.
+    setChecklistForm({ ...checklistEmptyForm });
+    setActiveSection(2);
+    // Avvia caricamento checklist per il tipo appena confermato.
+    // Viene anche coperto dall'useEffect dipendente da confirmedType.
+    setTimeout(() => { loadChecklist(); }, 0);
   };
 
   // ─── Render: sezione Dati Pratica (section 1) ───────────────────────────
 
   function renderDatiPratica() {
-    const header      = practiceDetail?.header      ?? {};
-    const client      = practiceDetail?.client      ?? {};
-    const blockedCard = practiceDetail?.blockedCard ?? {};
+    const header = practiceDetail?.header ?? {};
+    const client = practiceDetail?.client ?? {};
+
+    const dataAperturaRaw =
+      header.openedAt
+      ?? header.openingDate
+      ?? header.dataApertura
+      ?? header.createdAt
+      ?? practiceDetail?.openedAt
+      ?? practiceDetail?.openingDate
+      ?? practiceDetail?.dataApertura
+      ?? practiceDetail?.createdAt;
+
+    const dataUltimaModificaRaw =
+      header.lastModifiedAt
+      ?? header.dataUltimaModifica
+      ?? header.updatedAt
+      ?? practiceDetail?.lastModifiedAt
+      ?? practiceDetail?.dataUltimaModifica
+      ?? practiceDetail?.updatedAt;
+
+    const stato =
+      header.state
+      ?? header.stato
+      ?? practiceDetail?.state
+      ?? practiceDetail?.stato
+      ?? '-';
+
+    const codiceCliente =
+      client.customerCode
+      ?? client.codiceCliente
+      ?? header.customerCode
+      ?? header.codiceCliente
+      ?? practiceDetail?.customerCode
+      ?? practiceDetail?.codiceCliente
+      ?? '-';
+
+    const codiceFiscale =
+      client.fiscalCode
+      ?? client.codiceFiscale
+      ?? header.fiscalCode
+      ?? header.codiceFiscale
+      ?? practiceDetail?.fiscalCode
+      ?? practiceDetail?.codiceFiscale
+      ?? '-';
+
+    const canale =
+      header.channel
+      ?? header.canale
+      ?? practiceDetail?.channel
+      ?? practiceDetail?.canale
+      ?? '-';
+
     return (
       <div>
         <h3>Dati Pratica</h3>
         <div className="summary-grid">
           <article className="summary-card">
-            <h4>Testata</h4>
+            <h4>Dati Pratica</h4>
             <dl>
-              <div><dt>Pratica N.</dt><dd>{header.practiceNumber ?? '-'}</dd></div>
-              <div><dt>Stato</dt><dd>{header.state ?? '-'}</dd></div>
-              <div><dt>Esito SD</dt><dd>{header.sdOutcome ?? '-'}</dd></div>
-            </dl>
-          </article>
-          <article className="summary-card">
-            <h4>Cliente</h4>
-            <dl>
-              <div>
-                <dt>Cognome e Nome</dt>
-                <dd>{[client.lastName, client.firstName].filter(Boolean).join(' ') || client.fullName || '-'}</dd>
-              </div>
-              <div><dt>Codice Fiscale</dt><dd>{client.fiscalCode ?? client.codiceFiscale ?? '-'}</dd></div>
-            </dl>
-          </article>
-          <article className="summary-card">
-            <h4>Carta</h4>
-            <dl>
-              <div><dt>Numero carta</dt><dd>{blockedCard.cardNumberMasked ?? blockedCard.cardNumber ?? header.cardNumber ?? '-'}</dd></div>
-              <div><dt>Tipo carta</dt><dd>{blockedCard.cardType ?? '-'}</dd></div>
-              <div><dt>Intestatario</dt><dd>{blockedCard.cardHolder ?? '-'}</dd></div>
+              <div><dt>Data Apertura</dt><dd>{formatDateTime(dataAperturaRaw)}</dd></div>
+              <div><dt>Data Ultima Modifica</dt><dd>{formatDateTime(dataUltimaModificaRaw)}</dd></div>
+              <div><dt>Stato</dt><dd>{stato}</dd></div>
+              <div><dt>Codice Cliente</dt><dd>{codiceCliente}</dd></div>
+              <div><dt>Codice Fiscale</dt><dd>{codiceFiscale}</dd></div>
+              <div><dt>Canale</dt><dd>{canale}</dd></div>
             </dl>
           </article>
         </div>
@@ -742,13 +995,20 @@ export function TaskLavorazionePage() {
             <div className="panel-note">Caricamento in corso...</div>
           ) : null}
 
+          {!loading && activeSection === 2 && !hasPracticeId ? (
+            <div className="api-error-box">
+              Pratica non selezionata. Aprire il task dalla Lista Attivita per includere il riferimento pratica.
+            </div>
+          ) : null}
+
           {/* Sezione 1: Dati Pratica */}
           {!loading && activeSection === 1 ? renderDatiPratica() : null}
 
           {/* Sezione 2: Classificazione (se tipo non ancora confermato) — S12-FE-3 */}
-          {!loading && activeSection === 2 && !confirmedType ? (
+          {!loading && activeSection === 2 && hasPracticeId && !confirmedType ? (
             <ClassificazioneStep
               practiceId={practiceId}
+              practiceDetail={practiceDetail}
               attachments={attachments}
               activeAttachmentId={activeAttachmentId}
               onAttachmentChange={setActiveAttachmentId}
@@ -758,7 +1018,7 @@ export function TaskLavorazionePage() {
           ) : null}
 
           {/* Sezione 2: Verifica Documento (se tipo confermato) — S12-FE-2 */}
-          {!loading && activeSection === 2 && confirmedType ? (
+          {!loading && activeSection === 2 && hasPracticeId && confirmedType ? (
             <>
               {checklistError ? <div className="api-error-box">{checklistError}</div> : null}
               {checklistInfo  ? <div className="info-box">{checklistInfo}</div>         : null}

@@ -378,7 +378,10 @@ export function ActivitiesPage() {
             ) : (
               activities.map((task) => {
                 const canAccept = task.taskState === 'IN_CODA';
-                const canOpenTyping = task.taskState === 'IN_CARICO' && Boolean(task.practiceId);
+                const practiceStateUpper = String(task.practiceState ?? '').toUpperCase();
+                const isOpenPracticeState = practiceStateUpper.startsWith('APERT');
+                const canOpenTyping = Boolean(task.practiceId)
+                  && (task.taskState === 'IN_CARICO' || isOpenPracticeState);
                 const isAccepting = acceptingTaskId === task.taskId;
                 return (
                   <tr key={task.taskId ?? `${task.practiceId}-${task.createdAt}`}>

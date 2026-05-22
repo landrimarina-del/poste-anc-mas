@@ -105,7 +105,10 @@ public class PracticeQueryService {
                 + "" + resolveSelectTimestamp(closedAtColumn) + " AS closed_at, "
                 + "" + resolveSelectTimestamp(lastModifiedAtColumn, openedAtColumn) + " AS last_modified_at, "
                 + resolveSelectString(outcomeColumn) + " AS sd_outcome, "
-                + "c.nome, c.cognome, c.codice_fiscale, "
+            + "c.nome, c.cognome, c.codice_fiscale, c.sesso, c.data_nascita, c.comune_nascita, "
+            + "c.provincia_nascita, c.nazione_nascita, c.telefono, c.cellulare, "
+            + "c.residenza_luogo, c.residenza_comune, c.residenza_provincia, c.residenza_nazione, "
+            + "c.residenza_cap, c.residenza_civico, "
                 + "cd.pan_masked, cd.card_type, cd.intestatario_carta "
                 + "FROM practice p "
                 + "LEFT JOIN client_data c ON c.practice_id = p.id "
@@ -129,7 +132,22 @@ public class PracticeQueryService {
                     rs.getString("nome"),
                     rs.getString("cognome"),
                     rs.getString("codice_fiscale"),
-                    rs.getString("codice_cliente")
+                    rs.getString("codice_cliente"),
+                    rs.getString("sesso"),
+                    rs.getObject("data_nascita", LocalDate.class),
+                    rs.getString("comune_nascita"),
+                    rs.getString("provincia_nascita"),
+                    rs.getString("nazione_nascita"),
+                    rs.getString("telefono"),
+                    rs.getString("cellulare"),
+                    new PracticeDetailResponse.ResidenceAddress(
+                        rs.getString("residenza_luogo"),
+                        rs.getString("residenza_comune"),
+                        rs.getString("residenza_provincia"),
+                        rs.getString("residenza_nazione"),
+                        rs.getString("residenza_cap"),
+                        rs.getString("residenza_civico")
+                    )
             );
 
             PracticeDetailResponse.BlockedCard blockedCard = new PracticeDetailResponse.BlockedCard(

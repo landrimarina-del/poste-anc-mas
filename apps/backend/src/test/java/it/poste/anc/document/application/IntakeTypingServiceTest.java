@@ -97,6 +97,13 @@ class IntakeTypingServiceTest {
                 0
             );
 
+            jdbcTemplate.update("INSERT INTO practice (id, stato, document_type, version) VALUES (?,?,?,?)",
+                102L,
+                "CHIUSA_OK",
+                null,
+                0
+            );
+
             jdbcTemplate.update("INSERT INTO app_user (id, username, active) VALUES (?,?,?)", 1L, "operatore.anc", 1);
             jdbcTemplate.update("INSERT INTO app_user (id, username, active) VALUES (?,?,?)", 2L, "operatore.altro", 1);
             jdbcTemplate.update("INSERT INTO user_group (id, code) VALUES (?,?)", 10L, "GRUPPO_OPERATORE_ANC");
@@ -151,8 +158,29 @@ class IntakeTypingServiceTest {
     }
 
     @Test
-    void practiceNotInInLavorazioneBlocksTyping() {
-        assertThatThrownBy(() -> intakeTypingService.confirmTyping(101L, "Verbale", "operatore.anc"))
+    void practiceApertaAllowsTyping() {
+        IntakeTypingResponse response = intakeTypingService.confirmTyping(101L, "Verbale", "operatore.anc");
+
+        assertThat(response.practiceId()).isEqualTo(101L);
+        assertThat(response.documentType()).isEqualTo("VERBALE");
+        assertThat(response.alreadyConfirmed()).isFalse();
+
+        String documentType = jdbcTemplate.queryForObject(
+                "SELECT document_type FROM practice WHERE id = 101",
+                String.class
+        );
+        assertThat(documentType).isEqualTo("VERBALE");
+
+        String practiceState = jdbcTemplate.queryForObject(
+            "SELECT stato FROM practice WHERE id = 101",
+            String.class
+        );
+        assertThat(practiceState).isEqualTo("IN_LAVORAZIONE");
+    }
+
+    @Test
+    void practiceNotInAllowedStatesBlocksTyping() {
+        assertThatThrownBy(() -> intakeTypingService.confirmTyping(102L, "Verbale", "operatore.anc"))
                 .isInstanceOf(DocumentOperationException.class)
                 .extracting(ex -> ((DocumentOperationException) ex).getResultCode())
                 .isEqualTo(4010);

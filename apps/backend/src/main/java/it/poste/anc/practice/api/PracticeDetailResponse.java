@@ -1,6 +1,7 @@
 package it.poste.anc.practice.api;
 
 import java.time.Instant;
+import java.time.LocalDate;
 
 public record PracticeDetailResponse(
         Header header,
@@ -25,7 +26,25 @@ public record PracticeDetailResponse(
             String firstName,
             String lastName,
             String fiscalCode,
-            String customerCode
+            String customerCode,
+            String gender,
+            LocalDate birthDate,
+            String birthCity,
+            String birthProvince,
+            String birthCountry,
+            String phone,
+            String mobilePhone,
+            ResidenceAddress residenceAddress
+    ) {
+    }
+
+    public record ResidenceAddress(
+            String street,
+            String city,
+            String province,
+            String country,
+            String postalCode,
+            String streetNumber
     ) {
     }
 

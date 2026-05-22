@@ -180,4 +180,5 @@ class IntakePracticeCloseServiceTest {
         Integer taskCount = jdbcTemplate.queryForObject("SELECT COUNT(1) FROM task WHERE practice_id = 500", Integer.class);
         assertThat(taskCount).isEqualTo(0);
     }
+
 }

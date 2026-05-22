@@ -56,7 +56,7 @@ public class IntakePracticeCloseService {
 
         if (!STATE_IN_LAVORAZIONE.equals(practice.state())) {
             throw new DocumentOperationException(HttpStatus.CONFLICT, 4035,
-                    "Chiusura consentita solo per pratiche in stato IN_LAVORAZIONE");
+                "Chiusura consentita solo per pratiche in stato IN_LAVORAZIONE");
         }
 
         validateChecklistForClose(practiceId, practice.documentType());
@@ -67,10 +67,10 @@ public class IntakePracticeCloseService {
         completeFlowableTask(task.flowableTaskId(), actorUsername);
 
         int updatedPractice = jdbcTemplate.update(
-                "UPDATE practice SET stato = ? WHERE id = ? AND stato = ?",
+            "UPDATE practice SET stato = ? WHERE id = ? AND stato = ?",
                 STATE_IN_ATTESA_ACK,
                 practiceId,
-                STATE_IN_LAVORAZIONE
+            STATE_IN_LAVORAZIONE
         );
         if (updatedPractice == 0) {
             throw new DocumentOperationException(HttpStatus.CONFLICT, 4036,
