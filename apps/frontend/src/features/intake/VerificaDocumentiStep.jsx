@@ -221,6 +221,9 @@ export function VerificaDocumentiStep({
   const previewUrl = activeAttachmentId
     ? attachmentsApi.previewUrl(activeAttachmentId)
     : '';
+  const downloadUrl = activeAttachmentId
+    ? attachmentsApi.downloadUrl(activeAttachmentId)
+    : '';
 
   const isConformityDisabled = checklistForm?.documentPresent === 'NO';
 
@@ -414,6 +417,17 @@ export function VerificaDocumentiStep({
 
           <div className="summary-card verifica-data-card verifica-area-bottom-right">
             <h4>{isCardChecklist ? 'Contenuti Carta' : 'Contenuti Verbale di denuncia'}</h4>
+            {!isCardChecklist && downloadUrl ? (
+              <a
+                className="btn btn-outline btn-small"
+                href={downloadUrl}
+                target="_blank"
+                rel="noreferrer"
+                style={{ marginBottom: 12 }}
+              >
+                Download documento
+              </a>
+            ) : null}
             {allegatiVisible ? (
               safeAttachments.length > 0 ? (
                 previewUrl ? (

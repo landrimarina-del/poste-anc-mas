@@ -59,6 +59,9 @@ export function ClassificazioneStep({
   const previewUrl = activeAttachmentId
     ? attachmentsApi.previewUrl(activeAttachmentId)
     : '';
+  const downloadUrl = activeAttachmentId
+    ? attachmentsApi.downloadUrl(activeAttachmentId)
+    : '';
 
   const activeAttachment = attachments.find(
     (a) => String(a.attachmentId ?? a.id) === String(activeAttachmentId)
@@ -190,6 +193,18 @@ export function ClassificazioneStep({
           ) : (
             <div className="panel-note">Nessun allegato disponibile sulla pratica.</div>
           )}
+
+          {downloadUrl ? (
+            <a
+              className="btn btn-outline btn-small"
+              href={downloadUrl}
+              target="_blank"
+              rel="noreferrer"
+              style={{ marginBottom: 12 }}
+            >
+              Download documento
+            </a>
+          ) : null}
 
           {previewUrl && !isUnavailable ? (
             <div className="viewer-frame-shell" style={{ height: 500 }}>

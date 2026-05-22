@@ -320,7 +320,7 @@ export function HomePage() {
           </article>
           <article className="home-chart-card">
             <h3>Pratiche per Stato</h3>
-            {loading ? <div className="chart-empty">Caricamento grafico...</div> : <ByStateChart items={dashboardData.byState} />}
+            {loading ? <div className="chart-empty">Caricamento grafico...</div> : <ByStateChart items={dashboardData.byState} month={selectedMonth} />}
           </article>
         </div>
         <FavoriteLinksSection />
@@ -412,8 +412,70 @@ function maxValue(items, accessor) {
   return items.reduce((acc, item) => Math.max(acc, accessor(item)), 0);
 }
 
+const STATE_SERIES = [
+  { key: 'APERTA', label: 'APERTA', className: 'chart-state-aperta' },
+  { key: 'IN_LAVORAZIONE', label: 'IN_LAVORAZIONE', className: 'chart-state-in-lavorazione' },
+  { key: 'IN_ATTESA_CONFERMA_BPM', label: 'IN_ATTESA_CONFERMA_BPM', className: 'chart-state-in-attesa' },
+  { key: 'CHIUSA_OK', label: 'CHIUSA_OK', className: 'chart-state-chiusa-ok' },
+  { key: 'CHIUSA_KO', label: 'CHIUSA_KO', className: 'chart-state-chiusa-ko' }
+];
+
+const STATE_KEYS = new Set(STATE_SERIES.map((entry) => entry.key));
+
+function normalizeStateKey(state) {
+  return String(state ?? '').trim().toUpperCase().replace(/\s+/g, '_');
+}
+
+function parseDay(value) {
+  if (!value) return 0;
+  if (typeof value === 'number' && Number.isFinite(value)) return Math.trunc(value);
+  const date = new Date(value);
+  if (!Number.isNaN(date.getTime())) return date.getDate();
+  const fromText = Number(String(value).slice(8, 10));
+  return Number.isFinite(fromText) ? fromText : 0;
+}
+
+function getMonthDays(month) {
+  const match = /^(\d{4})-(\d{2})$/.exec(String(month ?? ''));
+  if (!match) return 31;
+  const year = Number(match[1]);
+  const monthIndex = Number(match[2]);
+  if (!year || monthIndex < 1 || monthIndex > 12) return 31;
+  return new Date(year, monthIndex, 0).getDate();
+}
+
+function buildDailyByStateRows(items, month) {
+  const daysInMonth = getMonthDays(month);
+  const rows = Array.from({ length: daysInMonth }, (_, index) => {
+    const row = { day: index + 1 };
+    STATE_SERIES.forEach((entry) => {
+      row[entry.key] = 0;
+    });
+    return row;
+  });
+
+  if (!Array.isArray(items) || !items.length) {
+    return rows;
+  }
+
+  items.forEach((item) => {
+    const stateKey = normalizeStateKey(item?.state);
+    if (!STATE_KEYS.has(stateKey)) {
+      return;
+    }
+
+    const rawDay = Number(item?.day ?? item?.giorno ?? parseDay(item?.date ?? item?.openedAt ?? item?.dayRef));
+    const day = Number.isFinite(rawDay) && rawDay >= 1 && rawDay <= daysInMonth ? rawDay : 1;
+    const count = Number(item?.count ?? item?.value ?? item?.total ?? 0) || 0;
+
+    rows[day - 1][stateKey] += count;
+  });
+
+  return rows;
+}
+
 function shouldShowDailyLabel(index) {
-  return index % 3 === 0;
+  return index >= 0;
 }
 
 function ChartWithAxes({ max, ariaLabel, children }) {
@@ -436,6 +498,19 @@ function DailyWorkedLegend() {
     <div className="chart-legend">
       <span className="chart-legend-item"><span className="chart-legend-swatch chart-segment-ok" />OK</span>
       <span className="chart-legend-item"><span className="chart-legend-swatch chart-segment-ko" />KO</span>
+    </div>
+  );
+}
+
+function ByStateLegend() {
+  return (
+    <div className="chart-legend">
+      {STATE_SERIES.map((entry) => (
+        <span key={`legend-${entry.key}`} className="chart-legend-item">
+          <span className={`chart-legend-swatch ${entry.className}`} />
+          {entry.label}
+        </span>
+      ))}
     </div>
   );
 }
@@ -503,24 +578,46 @@ function DailyWorkedChart({ items }) {
   );
 }
 
-function ByStateChart({ items }) {
-  const max = Math.max(1, maxValue(items, (item) => item.count));
+function ByStateChart({ items, month }) {
+  const rows = buildDailyByStateRows(items, month);
+  const max = Math.max(1, maxValue(rows, (item) => STATE_SERIES.reduce((sum, entry) => sum + (item[entry.key] || 0), 0)));
+  const hasData = rows.some((item) => STATE_SERIES.some((entry) => (item[entry.key] || 0) > 0));
 
-  if (!items.length) {
+  if (!hasData) {
     return <div className="chart-empty">Nessun dato disponibile.</div>;
   }
 
   return (
-    <ChartWithAxes max={max} ariaLabel="Istogramma pratiche per stato">
-      {items.map((item) => {
-        const percentage = Math.max(4, Math.round((item.count / max) * 100));
+    <>
+      <ByStateLegend />
+      <ChartWithAxes max={max} ariaLabel="Istogramma pratiche per stato giornaliere">
+      {rows.map((item) => {
+        const total = STATE_SERIES.reduce((sum, entry) => sum + (item[entry.key] || 0), 0);
+        const totalHeight = total > 0 ? Math.max(2, Math.round((total / max) * 100)) : 0;
         return (
-          <div key={`state-${item.state}`} className="chart-bar-item" title={`${item.state}: ${item.count}`}>
-            <div className="chart-bar-single chart-bar-state" style={{ height: `${percentage}%` }} />
-            <div className="chart-bar-label chart-state-label">{item.state}</div>
+          <div key={`state-day-${item.day}`} className="chart-bar-item" title={`Giorno ${item.day}: ${total} ticket`}>
+            {totalHeight > 0 ? (
+              <div className="chart-bar-stacked" style={{ height: `${totalHeight}%` }}>
+                {STATE_SERIES.map((entry) => {
+                  const value = item[entry.key] || 0;
+                  if (value <= 0) return null;
+                  const segmentHeight = Math.max(2, Math.round((value / total) * 100));
+                  return (
+                    <div
+                      key={`seg-${item.day}-${entry.key}`}
+                      className={`chart-segment-state ${entry.className}`}
+                      style={{ height: `${segmentHeight}%` }}
+                      title={`${entry.label}: ${value}`}
+                    />
+                  );
+                })}
+              </div>
+            ) : null}
+            <div className="chart-bar-label">{item.day}</div>
           </div>
         );
       })}
-    </ChartWithAxes>
+      </ChartWithAxes>
+    </>
   );
 }

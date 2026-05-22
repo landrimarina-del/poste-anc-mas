@@ -113,10 +113,12 @@ function normalizeByState(details) {
 
   return list
     .map((item) => ({
+      day: Number(item?.day ?? item?.giorno ?? toDayOfMonth(item?.date ?? item?.openedAt ?? item?.dayRef)) || 0,
       state: String(item?.state ?? item?.stato ?? item?.label ?? 'N/D'),
       count: Number(item?.count ?? item?.practices ?? item?.value ?? item?.total ?? 0) || 0
     }))
-    .filter((item) => item.state && item.count >= 0);
+    .filter((item) => item.state && item.count >= 0)
+    .sort((a, b) => (a.day - b.day) || a.state.localeCompare(b.state));
 }
 
 const fallbackSnapshotCache = new Map();
@@ -205,14 +207,26 @@ function computeFallbackDailyWorked(snapshot) {
 }
 
 function computeFallbackByState(snapshot) {
-  const byState = new Map();
+  const byStateAndDay = new Map();
 
   snapshot.practiceItems.forEach((item) => {
+    const day = toDayOfMonth(item.openedAt);
+    if (!day) {
+      return;
+    }
     const state = String(item.state || 'N/D');
-    byState.set(state, (byState.get(state) ?? 0) + 1);
+    const key = `${day}|${state}`;
+    byStateAndDay.set(key, (byStateAndDay.get(key) ?? 0) + 1);
   });
 
-  return Array.from(byState.entries()).map(([state, count]) => ({ state, count }));
+  return Array.from(byStateAndDay.entries())
+    .map(([key, count]) => {
+      const separatorIndex = key.indexOf('|');
+      const day = Number(key.slice(0, separatorIndex)) || 0;
+      const state = key.slice(separatorIndex + 1) || 'N/D';
+      return { day, state, count };
+    })
+    .sort((a, b) => (a.day - b.day) || a.state.localeCompare(b.state));
 }
 
 async function withFallback(requestPrimary, requestFallback) {

@@ -1201,6 +1201,30 @@ select {
   background: var(--ko-red);
 }
 
+.chart-segment-state {
+  width: 100%;
+}
+
+.chart-state-aperta {
+  background: #2e5a88;
+}
+
+.chart-state-in-lavorazione {
+  background: #1f8a4c;
+}
+
+.chart-state-in-attesa {
+  background: #f08c2e;
+}
+
+.chart-state-chiusa-ok {
+  background: #4f46e5;
+}
+
+.chart-state-chiusa-ko {
+  background: #cc2f3d;
+}
+
 .chart-bar-label {
   font-size: 0.65rem;
   color: #667085;
