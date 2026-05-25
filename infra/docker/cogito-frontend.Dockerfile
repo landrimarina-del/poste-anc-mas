@@ -1,10 +1,10 @@
 FROM node:20-alpine AS build
-WORKDIR /workspace/apps/flowable/frontend
+WORKDIR /workspace/apps/cogito/frontend
 
-COPY apps/flowable/frontend/package*.json ./
+COPY apps/cogito/frontend/package*.json ./
 RUN npm ci
 
-COPY apps/flowable/frontend/ ./
+COPY apps/cogito/frontend/ ./
 RUN npm run build
 
 FROM alpine:3.20

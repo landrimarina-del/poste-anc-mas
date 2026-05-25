@@ -1,0 +1,161 @@
+# =====================================================================
+# Scrivania Digitale ANC - Stack Cogito (scaffold)
+#
+# Clone dello stack Flowable con backend e frontend sostituibili con Cogito.
+# Usa porte diverse per poter girare in parallelo con lo stack Flowable:
+#   backend  → 8081  (Flowable usa 8080)
+#   frontend → 81    (Flowable usa 80)
+#   db       → 3308  (Flowable usa 3307)
+#   minio    → 9002/9003 (Flowable usa 9000/9001)
+#
+# Avvio: docker compose -f docker-compose.cogito.yml up -d
+# =====================================================================
+
+services:
+
+  cogito-db:
+    image: mariadb:10.11
+    container_name: anc-cogito-db
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: anc
+      MARIADB_USER: anc
+      MARIADB_PASSWORD: anc
+      MARIADB_ROOT_PASSWORD: root
+    ports:
+      - "3308:3306"
+    volumes:
+      - anc-cogito-db-data:/var/lib/mysql
+      - ./infra/db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  cogito-backend:
+    build:
+      context: .
+      dockerfile: infra/docker/cogito-backend.Dockerfile
+    image: anc/cogito-backend:0.1.0
+    container_name: anc-cogito-backend
+    restart: unless-stopped
+    depends_on:
+      cogito-db:
+        condition: service_healthy
+      cogito-minio:
+        condition: service_healthy
+      cogito-bpm-stub:
+        condition: service_started
+      cogito-bpm-outbound-stub:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: poc
+      SPRING_DATASOURCE_URL: jdbc:mariadb://cogito-db:3306/anc?useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: anc
+      SPRING_DATASOURCE_PASSWORD: anc
+      # TODO: rimuovere quando Flowable sarà sostituito da Cogito
+      ANC_FLOWABLE_DATASOURCE_URL: jdbc:mariadb://cogito-db:3306/flowable?useSSL=false&allowPublicKeyRetrieval=true
+      ANC_FLOWABLE_DATASOURCE_USERNAME: anc
+      ANC_FLOWABLE_DATASOURCE_PASSWORD: anc
+      ANC_BPM_INBOUND_API_KEY: anc-poc-bpm-inbound-key
+      ANC_BPM_INBOUND_HEADER_NAME: X-SD-API-Key
+      ANC_BPM_OUTBOUND_URL: http://cogito-bpm-outbound-stub:8090/receive-outcome
+      BPM_STUB_BASE_URL: http://cogito-bpm-outbound-stub:8090
+      TICKETING_BASE_URL: http://cogito-bpm-outbound-stub:8090
+      ANC_ATTACHMENT_ALLOWLIST_HOSTS: cogito-bpm-stub
+      ANC_ATTACHMENT_MAX_BYTES: "26214400"
+      ANC_ATTACHMENT_PULL_TIMEOUT_MS: "5000"
+      ANC_ATTACHMENT_STORAGE_ENDPOINT: http://cogito-minio:9000
+      ANC_ATTACHMENT_STORAGE_REGION: us-east-1
+      ANC_ATTACHMENT_STORAGE_BUCKET: anc-attachments
+      ANC_ATTACHMENT_STORAGE_ACCESS_KEY: anc
+      ANC_ATTACHMENT_STORAGE_SECRET_KEY: anc-poc-minio-secret
+    ports:
+      - "8081:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health/readiness | grep -q '\"status\":\"UP\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  cogito-minio:
+    image: minio/minio:latest
+    container_name: anc-cogito-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: anc
+      MINIO_ROOT_PASSWORD: anc-poc-minio-secret
+    volumes:
+      - anc-cogito-minio-data:/data
+    ports:
+      - "9002:9000"
+      - "9003:9001"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  cogito-bpm-stub:
+    image: nginx:1.27-alpine
+    container_name: anc-cogito-bpm-stub
+    restart: unless-stopped
+    volumes:
+      - ./infra/bpm-stub/files:/usr/share/nginx/html/files:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/files/sample.pdf > /dev/null || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  cogito-bpm-outbound-stub:
+    build:
+      context: infra/bpm-outbound-stub
+    container_name: anc-cogito-bpm-outbound-stub
+    restart: unless-stopped
+    environment:
+      BPM_STUB_ESITO_MODE: OK
+      BPM_STUB_KO_DESCRIZIONE: "Esito rifiutato da Cogito (mock)"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8090/admin/mode > /dev/null || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  cogito-frontend:
+    build:
+      context: .
+      dockerfile: infra/docker/cogito-frontend.Dockerfile
+    image: anc/cogito-frontend:0.1.0
+    container_name: anc-cogito-frontend
+    restart: unless-stopped
+    volumes:
+      - anc-cogito-frontend-static:/frontend-dist
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /frontend-dist/index.html"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  cogito-reverse-proxy:
+    image: nginx:1.27-alpine
+    container_name: anc-cogito-reverse-proxy
+    restart: unless-stopped
+    depends_on:
+      cogito-backend:
+        condition: service_healthy
+      cogito-frontend:
+        condition: service_healthy
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - anc-cogito-frontend-static:/usr/share/nginx/html:ro
+    ports:
+      - "81:80"
+
+volumes:
+  anc-cogito-db-data:
+  anc-cogito-frontend-static:
+  anc-cogito-minio-data:

@@ -8,11 +8,11 @@ FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /workspace
 
 # Cache dipendenze
-COPY apps/flowable/backend/pom.xml ./pom.xml
+COPY apps/cogito/backend/pom.xml ./pom.xml
 RUN mvn -B dependency:go-offline
 
 # Sorgenti applicativi
-COPY apps/flowable/backend/src ./src
+COPY apps/cogito/backend/src ./src
 RUN mvn -B -DskipTests package -e
 
 # ---------- Stage 2: runtime ----------
@@ -25,7 +25,7 @@ RUN apt-get update \
 	&& rm -rf /var/lib/apt/lists/*
 
 # JAR fat
-COPY --from=build /workspace/target/anc-backend-*.jar /app/app.jar
+COPY --from=build /workspace/target/anc-cogito-backend-*.jar /app/app.jar
 
 # Migration SQL versionate (source-of-truth in /infra/db/migrations).
 COPY infra/db/migrations /app/infra/db/migrations
