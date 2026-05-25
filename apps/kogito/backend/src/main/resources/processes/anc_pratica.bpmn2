@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:drools="http://www.jboss.org/drools"
+             targetNamespace="http://poste.it/anc/kogito/pratica"
+             drools:packageName="it.poste.anc.bpm">
+
+  <!--
+    Processo ANC - Gestione Pratica di Blocco Carta (Kogito)
+    =========================================================
+    Variabili dichiarate come <property>: practiceId, numPratica, canale, cfCliente, idWorkItem, esito
+    potentialOwner: formato Kogito/jBPM = "group:NOME_GRUPPO"
+    conditionExpression: MVEL con CDATA, NO ${} wrapper, double-quoted strings
+  -->
+
+  <!-- ===== ITEM DEFINITIONS (tipi variabili) ===== -->
+  <itemDefinition id="_practiceId_type"  structureRef="String"/>
+  <itemDefinition id="_numPratica_type"  structureRef="String"/>
+  <itemDefinition id="_canale_type"      structureRef="String"/>
+  <itemDefinition id="_cfCliente_type"   structureRef="String"/>
+  <itemDefinition id="_idWorkItem_type"  structureRef="String"/>
+  <itemDefinition id="_esito_type"       structureRef="String"/>
+
+  <process id="anc_pratica" name="ANC - Gestione Pratica" isExecutable="true"
+           drools:packageName="it.poste.anc.bpm">
+
+    <!-- ===== VARIABILI DI PROCESSO ===== -->
+    <property id="practiceId" itemSubjectRef="_practiceId_type"/>
+    <property id="numPratica" itemSubjectRef="_numPratica_type"/>
+    <property id="canale"     itemSubjectRef="_canale_type"/>
+    <property id="cfCliente"  itemSubjectRef="_cfCliente_type"/>
+    <property id="idWorkItem" itemSubjectRef="_idWorkItem_type"/>
+    <property id="esito"      itemSubjectRef="_esito_type"/>
+
+    <!-- ===== START ===== -->
+    <startEvent id="start" name="Pratica Aperta"/>
+
+    <sequenceFlow id="flow_start_to_lavorazione" sourceRef="start" targetRef="task_lavorazione"/>
+
+    <!-- ===== LAVORAZIONE OPERATORE ===== -->
+    <userTask id="task_lavorazione" name="Lavorazione Pratica">
+      <documentation>
+        L'operatore ANC verifica la documentazione, compila la checklist
+        e invia la pratica alla conferma supervisore.
+      </documentation>
+      <potentialOwner>
+        <resourceAssignmentExpression>
+          <formalExpression>group:GRUPPO_OPERATORE_ANC</formalExpression>
+        </resourceAssignmentExpression>
+      </potentialOwner>
+    </userTask>
+
+    <sequenceFlow id="flow_lavorazione_to_end" sourceRef="task_lavorazione" targetRef="end_pratica"/>
+
+    <!-- ===== END EVENT ===== -->
+    <endEvent id="end_pratica" name="Pratica Chiusa"/>
+
+  </process>
+
+</definitions>

@@ -1,0 +1,253 @@
+# =====================================================================
+# Scrivania Digitale ANC - Stack Kogito
+#
+# Stack con Kogito come BPM engine al posto di Flowable.
+# Usa porte diverse per girare in parallelo con lo stack Flowable:
+#   backend  → 8081  (Flowable usa 8080)
+#   frontend → 81    (Flowable usa 80)
+#   db ANC   → 3308  (Flowable usa 3307)
+#   kogito-db (PostgreSQL) → 5433  (porta standard 5432 non esposta)
+#   minio    → 9002/9003 (Flowable usa 9000/9001)
+#
+# Avvio: docker compose -f docker-compose.kogito.yml up -d
+# =====================================================================
+
+services:
+
+  kogito-mariadb:
+    image: mariadb:10.11
+    container_name: anc-kogito-mariadb
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: anc
+      MARIADB_USER: anc
+      MARIADB_PASSWORD: anc
+      MARIADB_ROOT_PASSWORD: root
+    ports:
+      - "3308:3306"
+    volumes:
+      - anc-kogito-mariadb-data:/var/lib/mysql
+      - ./infra/db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # DB dedicato per Kogito process persistence (PostgreSQL richiesto da kogito-addons-springboot-persistence-jdbc)
+  kogito-db:
+    image: postgres:16-alpine
+    container_name: anc-kogito-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: kogito
+      POSTGRES_USER: kogito
+      POSTGRES_PASSWORD: kogito
+    ports:
+      - "5433:5432"
+    volumes:
+      - anc-kogito-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kogito -d kogito"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  kogito-backend:
+    build:
+      context: .
+      dockerfile: infra/docker/kogito-backend.Dockerfile
+    image: anc/kogito-backend:0.1.0
+    container_name: anc-kogito-backend
+    restart: unless-stopped
+    depends_on:
+      kogito-mariadb:
+        condition: service_healthy
+      kogito-db:
+        condition: service_healthy
+      kogito-minio:
+        condition: service_healthy
+      kogito-bpm-stub:
+        condition: service_started
+      kogito-bpm-outbound-stub:
+        condition: service_healthy
+      kogito-data-index:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: poc
+      SPRING_DATASOURCE_URL: jdbc:mariadb://kogito-mariadb:3306/anc?useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: anc
+      SPRING_DATASOURCE_PASSWORD: anc
+      # Kogito process persistence su PostgreSQL dedicato
+      KOGITO_DATASOURCE_URL: jdbc:postgresql://kogito-db:5432/kogito
+      KOGITO_DATASOURCE_USERNAME: kogito
+      KOGITO_DATASOURCE_PASSWORD: kogito
+      ANC_BPM_INBOUND_API_KEY: anc-poc-bpm-inbound-key
+      ANC_BPM_INBOUND_HEADER_NAME: X-SD-API-Key
+      ANC_BPM_OUTBOUND_URL: http://kogito-bpm-outbound-stub:8090/receive-outcome
+      BPM_STUB_BASE_URL: http://kogito-bpm-outbound-stub:8090
+      TICKETING_BASE_URL: http://kogito-bpm-outbound-stub:8090
+      ANC_ATTACHMENT_ALLOWLIST_HOSTS: kogito-bpm-stub
+      ANC_ATTACHMENT_MAX_BYTES: "26214400"
+      ANC_ATTACHMENT_PULL_TIMEOUT_MS: "5000"
+      ANC_ATTACHMENT_STORAGE_ENDPOINT: http://kogito-minio:9000
+      ANC_ATTACHMENT_STORAGE_REGION: us-east-1
+      ANC_ATTACHMENT_STORAGE_BUCKET: anc-attachments
+      ANC_ATTACHMENT_STORAGE_ACCESS_KEY: anc
+      ANC_ATTACHMENT_STORAGE_SECRET_KEY: anc-poc-minio-secret
+      # Kogito: URL esposto del servizio (usato da Management Console)
+      KOGITO_SERVICE_URL: http://kogito-backend:8080
+      # Kogito: Data Index URL per pubblicazione CloudEvents di processo
+      KOGITO_DATAINDEX_HTTP_URL: http://kogito-data-index:8080
+    ports:
+      - "8081:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health/readiness | grep -q '\"status\":\"UP\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  kogito-minio:
+    image: minio/minio:latest
+    container_name: anc-kogito-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: anc
+      MINIO_ROOT_PASSWORD: anc-poc-minio-secret
+    volumes:
+      - anc-kogito-minio-data:/data
+    ports:
+      - "9002:9000"
+      - "9003:9001"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  kogito-bpm-stub:
+    image: nginx:1.27-alpine
+    container_name: anc-kogito-bpm-stub
+    restart: unless-stopped
+    volumes:
+      - ./infra/bpm-stub/files:/usr/share/nginx/html/files:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/files/sample.pdf > /dev/null || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  kogito-bpm-outbound-stub:
+    build:
+      context: infra/bpm-outbound-stub
+    container_name: anc-kogito-bpm-outbound-stub
+    restart: unless-stopped
+    environment:
+      BPM_STUB_ESITO_MODE: OK
+      BPM_STUB_KO_DESCRIZIONE: "Esito rifiutato da kogito (mock)"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8090/admin/mode > /dev/null || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  kogito-frontend:
+    build:
+      context: .
+      dockerfile: infra/docker/kogito-frontend.Dockerfile
+    image: anc/kogito-frontend:0.1.0
+    container_name: anc-kogito-frontend
+    restart: unless-stopped
+    volumes:
+      - anc-kogito-frontend-static:/frontend-dist
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /frontend-dist/index.html"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # ── Kogito Observability Stack ─────────────────────────────────────────────
+  # Data Index (ephemeral/in-memory): raccoglie CloudEvents di processo emessi
+  # dal runtime e li espone via GraphQL per Management Console e Task Console.
+  kogito-data-index:
+    image: quay.io/kiegroup/kogito-data-index-ephemeral:1.44.1
+    container_name: anc-kogito-data-index
+    restart: unless-stopped
+    environment:
+      QUARKUS_HTTP_PORT: "8080"
+      KOGITO_DATAINDEX_QUARKUS_PROFILE: http-events-support
+    ports:
+      - "8082:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/q/health/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  # Management Console: UI per monitorare istanze di processo
+  kogito-management-console:
+    image: quay.io/kiegroup/kogito-management-console:1.44.1
+    container_name: anc-kogito-management-console
+    restart: unless-stopped
+    depends_on:
+      kogito-data-index:
+        condition: service_healthy
+    volumes:
+      - ./infra/kogito/console-config/application.properties:/home/kogito/config/application.properties:ro
+      - ./infra/kogito/console-config/jar-patch/management-console-patched.jar:/home/kogito/bin/quarkus-app/app/management-console-1.44.1.Final.jar:ro
+    environment:
+      # URL browser-accessible (non Docker-internal) per il client JS
+      KOGITO_DATAINDEX_HTTP_URL: "http://localhost:8082/graphql"
+      KOGITO_DATAINDEX_WS_URL: "ws://localhost:8082"
+      KOGITO_SERVICE_URL: "http://localhost:8081"
+      KOGITO_MANAGEMENT_CONSOLE_KOGITO_APP_NAME: "ANC Scrivania Digitale"
+      KOGITO_AUTH_ENABLED: "false"
+      KOGITO_CONSOLES_KEYCLOAK_DISABLE_HEALTH_CHECK: "true"
+    ports:
+      - "8083:8080"
+
+  # Task Console: UI per gestire i user task di processo
+  kogito-task-console:
+    image: quay.io/kiegroup/kogito-task-console:1.44.1
+    container_name: anc-kogito-task-console
+    restart: unless-stopped
+    depends_on:
+      kogito-data-index:
+        condition: service_healthy
+    volumes:
+      - ./infra/kogito/console-config/application.properties:/home/kogito/config/application.properties:ro
+      - ./infra/kogito/console-config/jar-patch/task-console-patched.jar:/home/kogito/bin/quarkus-app/app/task-console-1.44.1.Final.jar:ro
+    environment:
+      # URL browser-accessible (non Docker-internal) per il client JS
+      KOGITO_DATAINDEX_HTTP_URL: "http://localhost:8082/graphql"
+      KOGITO_DATAINDEX_WS_URL: "ws://localhost:8082"
+      KOGITO_SERVICE_URL: "http://localhost:8081"
+      KOGITO_TASK_CONSOLE_KOGITO_APP_NAME: "ANC Task Console"
+      KOGITO_AUTH_ENABLED: "false"
+      KOGITO_CONSOLES_KEYCLOAK_DISABLE_HEALTH_CHECK: "true"
+    ports:
+      - "8084:8080"
+
+  kogito-reverse-proxy:
+    image: nginx:1.27-alpine
+    container_name: anc-kogito-reverse-proxy
+    restart: unless-stopped
+    depends_on:
+      kogito-backend:
+        condition: service_healthy
+      kogito-frontend:
+        condition: service_healthy
+    volumes:
+      - ./infra/nginx/nginx.kogito.conf:/etc/nginx/nginx.conf:ro
+      - anc-kogito-frontend-static:/usr/share/nginx/html:ro
+    ports:
+      - "81:80"
+
+volumes:
+  anc-kogito-mariadb-data:
+  anc-kogito-db-data:
+  anc-kogito-frontend-static:
+  anc-kogito-minio-data:
+

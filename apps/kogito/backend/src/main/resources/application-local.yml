@@ -1,0 +1,15 @@
+# Profilo LOCAL: sviluppatore esegue ./mvnw spring-boot:run con DB MariaDB locale (es. docker compose up db).
+spring:
+  datasource:
+    url: jdbc:mariadb://localhost:3307/anc?useSSL=false&allowPublicKeyRetrieval=true
+    username: anc
+    password: anc
+    driver-class-name: org.mariadb.jdbc.Driver
+
+anc:
+  kogito:
+    datasource:
+      jdbc-url: jdbc:mariadb://localhost:3307/anc?useSSL=false&allowPublicKeyRetrieval=true
+      username: anc
+      password: anc
+      driver-class-name: org.mariadb.jdbc.Driver

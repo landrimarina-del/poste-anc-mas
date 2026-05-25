@@ -1,0 +1,37 @@
+# Profilo POC: backend in container, DB risolto via service name docker-compose.
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mariadb://db:3306/anc?useSSL=false&allowPublicKeyRetrieval=true}
+    username: ${SPRING_DATASOURCE_USERNAME:anc}
+    password: ${SPRING_DATASOURCE_PASSWORD:anc}
+    driver-class-name: org.mariadb.jdbc.Driver
+
+# GAP-BLOCKER-001 (Sprint 4): trasporto allegati BPM via metadata + pull-through
+# sincrono su MinIO. Tutte le proprieta' sono override-abili via variabili d'ambiente
+# valorizzate da docker-compose.
+anc:
+  attachment:
+    allowlist-hosts: ${ANC_ATTACHMENT_ALLOWLIST_HOSTS:bpm-stub}
+    max-bytes: ${ANC_ATTACHMENT_MAX_BYTES:26214400}
+    pull-timeout-ms: ${ANC_ATTACHMENT_PULL_TIMEOUT_MS:5000}
+    storage:
+      endpoint: ${ANC_ATTACHMENT_STORAGE_ENDPOINT:http://minio:9000}
+      region: ${ANC_ATTACHMENT_STORAGE_REGION:us-east-1}
+      bucket: ${ANC_ATTACHMENT_STORAGE_BUCKET:anc-attachments}
+      access-key: ${ANC_ATTACHMENT_STORAGE_ACCESS_KEY:anc}
+      secret-key: ${ANC_ATTACHMENT_STORAGE_SECRET_KEY:anc-poc-minio-secret}
+
+bpm:
+  base-url: ${BPM_STUB_BASE_URL:http://bpm-outbound-stub:8090}
+  receive-outcome-path: ${BPM_RECEIVE_OUTCOME_PATH:/receive-outcome}
+  timeout-ms: ${BPM_TIMEOUT_MS:50000}
+  max-retry: ${BPM_MAX_RETRY:3}
+  retry-interval-ms: ${BPM_RETRY_INTERVAL_MS:2000}
+
+kogito:
+  data-index-url: ${KOGITO_DATAINDEX_HTTP_URL:http://kogito-data-index:8080}
+
+ticketing:
+  base-url: ${TICKETING_BASE_URL:http://bpm-outbound-stub:8090}
+  open-ticket-path: ${TICKETING_OPEN_TICKET_PATH:/ticketing/open-ticket}
+  enabled: ${TICKETING_ENABLED:true}

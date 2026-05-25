@@ -171,7 +171,7 @@ services:
       FLOWABLE_COMMON_APP_IDM-ADMIN_USER: admin
       FLOWABLE_COMMON_APP_IDM-ADMIN_PASSWORD: test
       # Pre-configura il server Process Engine nel pannello Admin → punta al backend ANC (Flowable 7.0.1)
-      # Stesso pattern che useremo con Cogito: dashboard esterna → REST API del motore BPM
+      # Stesso pattern che useremo con Kogito: dashboard esterna → REST API del motore BPM
       # context-root vuoto: Flowable Admin chiama /process-api/... direttamente (nessun forwarding)
       # Il backend risponde 401 con WWW-Authenticate: Basic → challenge-response con admin:Demo1234!
       FLOWABLE_ADMIN_APP_SERVER-CONFIG_PROCESS_SERVER-ADDRESS: http://anc-backend
@@ -189,3 +189,4 @@ volumes:
   anc-db-data:
   anc-frontend-static:
   anc-minio-data:
+
