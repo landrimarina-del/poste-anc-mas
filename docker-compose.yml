@@ -176,7 +176,8 @@ services:
       # Il backend risponde 401 con WWW-Authenticate: Basic → challenge-response con admin:Demo1234!
       FLOWABLE_ADMIN_APP_SERVER-CONFIG_PROCESS_SERVER-ADDRESS: http://anc-backend
       FLOWABLE_ADMIN_APP_SERVER-CONFIG_PROCESS_PORT: 8080
-      FLOWABLE_ADMIN_APP_SERVER-CONFIG_PROCESS_CONTEXT-ROOT: ""
+      # hasText() validation richiede stringa non vuota; il valore runtime viene dal DB (CONTEXT_ROOT_ = '')
+      FLOWABLE_ADMIN_APP_SERVER-CONFIG_PROCESS_CONTEXT-ROOT: "flowable-ui"
       FLOWABLE_ADMIN_APP_SERVER-CONFIG_PROCESS_REST-ROOT: process-api
       FLOWABLE_ADMIN_APP_SERVER-CONFIG_PROCESS_USER-NAME: admin
       FLOWABLE_ADMIN_APP_SERVER-CONFIG_PROCESS_PASSWORD: Demo1234!
