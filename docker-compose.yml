@@ -155,7 +155,7 @@ services:
       - "80:80"
       
   flowable-admin:
-    build: ./flowable-ui
+    build: ./apps/flowable/flowable-ui
 
     container_name: flowable-admin
 
