@@ -10,6 +10,7 @@ import it.poste.anc.document.ingestion.AttachmentStorage;
 import it.poste.anc.document.ingestion.FetchedAttachment;
 import it.poste.anc.shared.common.ApiResponse;
 import it.poste.anc.ticketing.TicketingClient;
+import org.flowable.engine.RuntimeService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -27,7 +28,9 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -40,6 +43,7 @@ public class BpmPracticeInboundService {
     private final BpmInboundMessageWriter inboundMessageWriter;
     private final TransactionTemplate transactionTemplate;
     private final TicketingClient ticketingClient;
+    private final RuntimeService runtimeService;
     private final boolean ticketingEnabled;
 
     public BpmPracticeInboundService(
@@ -50,6 +54,7 @@ public class BpmPracticeInboundService {
             BpmInboundMessageWriter inboundMessageWriter,
             PlatformTransactionManager transactionManager,
             TicketingClient ticketingClient,
+            RuntimeService runtimeService,
             @Value("${ticketing.enabled:true}") boolean ticketingEnabled
     ) {
         this.jdbcTemplate = jdbcTemplate;
@@ -59,6 +64,7 @@ public class BpmPracticeInboundService {
         this.inboundMessageWriter = inboundMessageWriter;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.ticketingClient = ticketingClient;
+        this.runtimeService = runtimeService;
         this.ticketingEnabled = ticketingEnabled;
     }
 
@@ -140,6 +146,15 @@ public class BpmPracticeInboundService {
                 jdbcTemplate.update("UPDATE practice SET ticket_id = ? WHERE id = ?", ticketId, practiceId);
             }
         }
+
+        // Avvia il processo BPM Flowable (futuro: sostituire con chiamata Cogito)
+        Map<String, Object> processVars = new HashMap<>();
+        processVars.put("practiceId", practiceId);
+        processVars.put("numPratica", numPratica);
+        processVars.put("canale", canale);
+        processVars.put("cfCliente", cfCliente);
+        processVars.put("idWorkItem", idWorkItem);
+        runtimeService.startProcessInstanceByKey("anc.pratica", numPratica, processVars);
 
         return ApiResponse.ok(new BpmPracticeOpenResponse(practiceId, requestId, "APERTA"));
     }

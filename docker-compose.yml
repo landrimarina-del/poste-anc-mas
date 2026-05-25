@@ -19,6 +19,8 @@ services:
       - "3307:3306"
     volumes:
       - anc-db-data:/var/lib/mysql
+      # Crea gli schemi "flowable" e "flowable_ui" al primo avvio
+      - ./infra/db/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 5s
@@ -46,6 +48,9 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mariadb://db:3306/anc?useSSL=false&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: anc
       SPRING_DATASOURCE_PASSWORD: anc
+      ANC_FLOWABLE_DATASOURCE_URL: jdbc:mariadb://db:3306/flowable?useSSL=false&allowPublicKeyRetrieval=true
+      ANC_FLOWABLE_DATASOURCE_USERNAME: anc
+      ANC_FLOWABLE_DATASOURCE_PASSWORD: anc
       ANC_BPM_INBOUND_API_KEY: anc-poc-bpm-inbound-key
       ANC_BPM_INBOUND_HEADER_NAME: X-SD-API-Key
       # Fake outbound endpoint HTTP per outbound esito BPM (risponde 200 su qualsiasi path).
@@ -148,7 +153,37 @@ services:
       - anc-frontend-static:/usr/share/nginx/html:ro
     ports:
       - "80:80"
+      
+  flowable-admin:
+    build: ./flowable-ui
 
+    container_name: flowable-admin
+
+    ports:
+      - "8090:8080"
+
+    environment:
+      # Flowable UI 6.8.0 usa il proprio schema "flowable_ui", isolato dal backend 7.0.1
+      SPRING_DATASOURCE_URL: jdbc:mariadb://db:3306/flowable_ui?useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: anc
+      SPRING_DATASOURCE_PASSWORD: anc
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.mariadb.jdbc.Driver
+      FLOWABLE_COMMON_APP_IDM-ADMIN_USER: admin
+      FLOWABLE_COMMON_APP_IDM-ADMIN_PASSWORD: test
+      # Pre-configura il server Process Engine nel pannello Admin → punta al backend ANC (Flowable 7.0.1)
+      # Stesso pattern che useremo con Cogito: dashboard esterna → REST API del motore BPM
+      # context-root vuoto: Flowable Admin chiama /process-api/... direttamente (nessun forwarding)
+      # Il backend risponde 401 con WWW-Authenticate: Basic → challenge-response con admin:Demo1234!
+      FLOWABLE_ADMIN_APP_SERVER-CONFIG_PROCESS_SERVER-ADDRESS: http://anc-backend
+      FLOWABLE_ADMIN_APP_SERVER-CONFIG_PROCESS_PORT: 8080
+      FLOWABLE_ADMIN_APP_SERVER-CONFIG_PROCESS_CONTEXT-ROOT: ""
+      FLOWABLE_ADMIN_APP_SERVER-CONFIG_PROCESS_REST-ROOT: process-api
+      FLOWABLE_ADMIN_APP_SERVER-CONFIG_PROCESS_USER-NAME: admin
+      FLOWABLE_ADMIN_APP_SERVER-CONFIG_PROCESS_PASSWORD: Demo1234!
+
+    depends_on:
+      - db
+    
 volumes:
   anc-db-data:
   anc-frontend-static:

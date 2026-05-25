@@ -52,6 +52,14 @@
             <artifactId>flowable-spring-boot-starter-process</artifactId>
             <version>${flowable.version}</version>
         </dependency>
+        <!-- flowable-rest porta sul classpath le classi dei REST controller Flowable
+             (ProcessDefinitionCollectionResource, ecc.) necessarie per attivare
+             la auto-configurazione ProcessRestApiAutoConfiguration. -->
+        <dependency>
+            <groupId>org.flowable</groupId>
+            <artifactId>flowable-rest</artifactId>
+            <version>${flowable.version}</version>
+        </dependency>
 
         <dependency>
             <groupId>org.flywaydb</groupId>
