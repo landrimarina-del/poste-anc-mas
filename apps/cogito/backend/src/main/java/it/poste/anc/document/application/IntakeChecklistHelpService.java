@@ -90,7 +90,7 @@ public class IntakeChecklistHelpService {
                 itemId
             );
             if (!rows.isEmpty()) {
-            return rows.getFirst();
+            return rows.get(0);
             }
         }
 

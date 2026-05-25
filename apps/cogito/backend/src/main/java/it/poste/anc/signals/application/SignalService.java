@@ -382,7 +382,7 @@ public class SignalService {
             throw new SignalOperationException(HttpStatus.NOT_FOUND, 7011, "Segnalazione non trovata");
         }
 
-        return signals.getFirst();
+        return signals.get(0);
     }
 
     private Long findActiveUserId(String username) {
@@ -437,7 +437,7 @@ public class SignalService {
                     "Utente destinatario non valido o non appartenente al gruppo operatore ANC");
         }
 
-        return users.getFirst();
+        return users.get(0);
     }
 
     private void ensurePracticeExists(Long practiceId) {

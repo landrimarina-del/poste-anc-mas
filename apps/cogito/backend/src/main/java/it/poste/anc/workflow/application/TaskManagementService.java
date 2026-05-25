@@ -270,7 +270,7 @@ public class TaskManagementService {
             throw new TaskOperationException(HttpStatus.NOT_FOUND, 3004, "Task non trovato o non assegnabile all'utente");
         }
 
-        return tasks.getFirst();
+        return tasks.get(0);
     }
 
     private void syncOpenPracticesAsQueuedTasks(Long candidateGroupId) {

@@ -323,7 +323,7 @@ public class SupervisionTaskService {
             throw new TaskOperationException(HttpStatus.NOT_FOUND, 6004,
                     "Task non trovato o non riassegnabile");
         }
-        return tasks.getFirst();
+        return tasks.get(0);
     }
 
     private Long findActiveUserId(String username) {
@@ -385,7 +385,7 @@ public class SupervisionTaskService {
             throw new TaskOperationException(HttpStatus.BAD_REQUEST, 6003,
                     "Utente destinatario non valido o non appartenente al gruppo operatore ANC");
         }
-        return users.getFirst();
+        return users.get(0);
     }
 
     private String normalizeFilter(String value) {

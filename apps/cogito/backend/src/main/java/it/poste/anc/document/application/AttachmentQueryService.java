@@ -83,7 +83,7 @@ public class AttachmentQueryService {
             throw new DocumentOperationException(HttpStatus.NOT_FOUND, 4004, TECHNICAL_ATTACHMENT_ERROR);
         }
 
-        AttachmentRow row = rows.getFirst();
+        AttachmentRow row = rows.get(0);
         if (row.ingestionStatus() != null && !"AVAILABLE".equalsIgnoreCase(row.ingestionStatus())) {
             throw new DocumentOperationException(HttpStatus.NOT_FOUND, 4004, UNAVAILABLE_ATTACHMENT_ERROR);
         }

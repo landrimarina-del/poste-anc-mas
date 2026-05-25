@@ -185,12 +185,12 @@ public class IntakePracticeCloseService {
                 practiceId
         );
 
-        if (rows.isEmpty() || rows.getFirst().outcome() == null) {
+        if (rows.isEmpty() || rows.get(0).outcome() == null) {
             throw new DocumentOperationException(HttpStatus.CONFLICT, 4033,
                     "Outcome non disponibile: completare checklist prima della chiusura");
         }
 
-        return rows.getFirst();
+        return rows.get(0);
     }
 
     private PracticeSnapshot readPracticeSnapshot(Long practiceId) {
@@ -223,7 +223,7 @@ public class IntakePracticeCloseService {
                     "Chiusura non autorizzata: task non in carico all'utente corrente");
         }
 
-        return tasks.getFirst();
+        return tasks.get(0);
     }
 
     private void deleteTask(Long taskId) {

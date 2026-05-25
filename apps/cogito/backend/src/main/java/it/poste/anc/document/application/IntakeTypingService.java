@@ -152,7 +152,7 @@ public class IntakeTypingService {
             throw new DocumentOperationException(HttpStatus.NOT_FOUND, 2004, "Pratica non trovata");
         }
 
-        return rows.getFirst();
+        return rows.get(0);
     }
 
     private String normalizeDocumentType(String input) {

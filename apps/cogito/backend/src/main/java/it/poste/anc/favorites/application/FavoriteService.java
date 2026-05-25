@@ -155,7 +155,7 @@ public class FavoriteService {
             throw new FavoriteOperationException(HttpStatus.NOT_FOUND, 8106, "Favorito non trovato");
         }
 
-        return items.getFirst();
+        return items.get(0);
     }
 
     private void ensureFavoriteExistsForUser(Long favoriteId, Long userId) {

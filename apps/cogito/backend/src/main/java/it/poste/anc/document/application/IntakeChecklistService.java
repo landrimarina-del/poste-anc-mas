@@ -211,7 +211,7 @@ public class IntakeChecklistService {
         if (rows.isEmpty()) {
             return java.util.Optional.empty();
         }
-        return java.util.Optional.of(rows.getFirst());
+        return java.util.Optional.of(rows.get(0));
     }
 
     private java.util.Optional<ChecklistCartaRow> loadCartaChecklistRow(Long practiceId) {
@@ -232,7 +232,7 @@ public class IntakeChecklistService {
         if (rows.isEmpty()) {
             return java.util.Optional.empty();
         }
-        return java.util.Optional.of(rows.getFirst());
+        return java.util.Optional.of(rows.get(0));
     }
 
     private java.util.Optional<OutcomeRow> loadOutcomeRow(Long practiceId) {
@@ -248,7 +248,7 @@ public class IntakeChecklistService {
         if (rows.isEmpty()) {
             return java.util.Optional.empty();
         }
-        return java.util.Optional.of(rows.getFirst());
+        return java.util.Optional.of(rows.get(0));
     }
 
     private ChecklistVerbaleRow validateAndNormalizeVerbale(Long practiceId,

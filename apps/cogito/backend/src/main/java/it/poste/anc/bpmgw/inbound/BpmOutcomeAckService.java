@@ -153,7 +153,7 @@ public class BpmOutcomeAckService {
                 requestId,
                 requestId
         );
-        return rows.isEmpty() ? null : rows.getFirst();
+        return rows.isEmpty() ? null : rows.get(0);
     }
 
     private PracticeRef resolvePractice(BpmOutcomeAckRequest request) {
@@ -178,7 +178,7 @@ public class BpmOutcomeAckService {
         if (rows.isEmpty()) {
             throw new BpmAckOperationException(HttpStatus.NOT_FOUND, 2004, "Pratica non trovata");
         }
-        return rows.getFirst();
+        return rows.get(0);
     }
 
     private String normalizeOutcome(String input) {
