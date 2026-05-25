@@ -9,6 +9,6 @@ RUN npm run build
 
 FROM alpine:3.20
 WORKDIR /opt/frontend
-COPY --from=build /workspace/apps/frontend/dist ./dist
+COPY --from=build /workspace/apps/flowable/frontend/dist ./dist
 
 CMD ["sh", "-c", "mkdir -p /frontend-dist && rm -rf /frontend-dist/* && cp -r /opt/frontend/dist/. /frontend-dist/ && chmod -R a+r /frontend-dist && tail -f /dev/null"]
