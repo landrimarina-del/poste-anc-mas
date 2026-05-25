@@ -1,11 +1,12 @@
 # =====================================================================
-# Scrivania Digitale ANC - Stack Cogito (scaffold)
+# Scrivania Digitale ANC - Stack Kogito
 #
-# Clone dello stack Flowable con backend e frontend sostituibili con Cogito.
-# Usa porte diverse per poter girare in parallelo con lo stack Flowable:
+# Stack con Kogito come BPM engine al posto di Flowable.
+# Usa porte diverse per girare in parallelo con lo stack Flowable:
 #   backend  → 8081  (Flowable usa 8080)
 #   frontend → 81    (Flowable usa 80)
-#   db       → 3308  (Flowable usa 3307)
+#   db ANC   → 3308  (Flowable usa 3307)
+#   kogito-db (PostgreSQL) → 5433  (porta standard 5432 non esposta)
 #   minio    → 9002/9003 (Flowable usa 9000/9001)
 #
 # Avvio: docker compose -f docker-compose.cogito.yml up -d
@@ -33,6 +34,25 @@ services:
       timeout: 5s
       retries: 20
 
+  # DB dedicato per Kogito process persistence (PostgreSQL richiesto da kogito-addons-springboot-persistence-jdbc)
+  kogito-db:
+    image: postgres:16-alpine
+    container_name: anc-kogito-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: kogito
+      POSTGRES_USER: kogito
+      POSTGRES_PASSWORD: kogito
+    ports:
+      - "5433:5432"
+    volumes:
+      - anc-kogito-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kogito -d kogito"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
   cogito-backend:
     build:
       context: .
@@ -42,6 +62,8 @@ services:
     restart: unless-stopped
     depends_on:
       cogito-db:
+        condition: service_healthy
+      kogito-db:
         condition: service_healthy
       cogito-minio:
         condition: service_healthy
@@ -54,10 +76,10 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mariadb://cogito-db:3306/anc?useSSL=false&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: anc
       SPRING_DATASOURCE_PASSWORD: anc
-      # TODO: rimuovere quando Flowable sarà sostituito da Cogito
-      ANC_FLOWABLE_DATASOURCE_URL: jdbc:mariadb://cogito-db:3306/flowable?useSSL=false&allowPublicKeyRetrieval=true
-      ANC_FLOWABLE_DATASOURCE_USERNAME: anc
-      ANC_FLOWABLE_DATASOURCE_PASSWORD: anc
+      # Kogito process persistence su PostgreSQL dedicato
+      KOGITO_DATASOURCE_URL: jdbc:postgresql://kogito-db:5432/kogito
+      KOGITO_DATASOURCE_USERNAME: kogito
+      KOGITO_DATASOURCE_PASSWORD: kogito
       ANC_BPM_INBOUND_API_KEY: anc-poc-bpm-inbound-key
       ANC_BPM_INBOUND_HEADER_NAME: X-SD-API-Key
       ANC_BPM_OUTBOUND_URL: http://cogito-bpm-outbound-stub:8090/receive-outcome
@@ -157,5 +179,6 @@ services:
 
 volumes:
   anc-cogito-db-data:
+  anc-kogito-db-data:
   anc-cogito-frontend-static:
   anc-cogito-minio-data:

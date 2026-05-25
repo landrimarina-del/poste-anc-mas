@@ -2,7 +2,7 @@ package it.poste.anc.supervision.application;
 
 import it.poste.anc.supervision.api.SupervisionTaskReassignResponse;
 import it.poste.anc.workflow.application.TaskOperationException;
-import org.flowable.engine.TaskService;
+import it.poste.anc.workflow.engine.BpmEngineAdapter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,7 +25,7 @@ class SupervisionTaskServiceTest {
     private SupervisionTaskService supervisionTaskService;
 
     @MockBean
-    private TaskService flowableTaskService;
+    private BpmEngineAdapter bpmEngineAdapter;
 
     @BeforeEach
     void setUpSchema() {

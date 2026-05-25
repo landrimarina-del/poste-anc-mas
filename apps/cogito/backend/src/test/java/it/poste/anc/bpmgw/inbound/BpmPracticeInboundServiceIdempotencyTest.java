@@ -6,7 +6,7 @@ import it.poste.anc.document.ingestion.AttachmentFetcher;
 import it.poste.anc.document.ingestion.AttachmentStorage;
 import it.poste.anc.shared.common.ApiResponse;
 import it.poste.anc.ticketing.TicketingClient;
-import org.flowable.engine.RuntimeService;
+import it.poste.anc.workflow.engine.BpmEngineAdapter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -69,7 +69,7 @@ class BpmPracticeInboundServiceIdempotencyTest {
             }
         };
         TicketingClient ticketingClient = Mockito.mock(TicketingClient.class);
-        RuntimeService runtimeService = Mockito.mock(RuntimeService.class);
+        BpmEngineAdapter bpmEngineAdapter = Mockito.mock(BpmEngineAdapter.class);
         inboundService = new BpmPracticeInboundService(
                 jdbcTemplate,
                 objectMapper,
@@ -78,7 +78,7 @@ class BpmPracticeInboundServiceIdempotencyTest {
                 inboundMessageWriter,
                 transactionManager,
                 ticketingClient,
-                runtimeService,
+                bpmEngineAdapter,
                 false  // ticketingEnabled: false nei test di idempotenza per isolare dalla chiamata ticketing
         );
     }

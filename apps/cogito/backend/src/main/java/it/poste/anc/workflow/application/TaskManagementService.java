@@ -3,8 +3,7 @@ package it.poste.anc.workflow.application;
 import it.poste.anc.workflow.api.TaskAcceptResponse;
 import it.poste.anc.workflow.api.TaskDetailResponse;
 import it.poste.anc.workflow.api.TaskListItem;
-import org.flowable.engine.TaskService;
-import org.flowable.task.api.Task;
+import it.poste.anc.workflow.engine.BpmEngineAdapter;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -26,11 +25,11 @@ public class TaskManagementService {
         private static final String TASK_STATE_IN_CARICO = "IN_CARICO";
 
     private final JdbcTemplate jdbcTemplate;
-    private final TaskService flowableTaskService;
+    private final BpmEngineAdapter bpmEngineAdapter;
 
-    public TaskManagementService(JdbcTemplate jdbcTemplate, TaskService flowableTaskService) {
+    public TaskManagementService(JdbcTemplate jdbcTemplate, BpmEngineAdapter bpmEngineAdapter) {
         this.jdbcTemplate = jdbcTemplate;
-        this.flowableTaskService = flowableTaskService;
+        this.bpmEngineAdapter = bpmEngineAdapter;
     }
 
     @Transactional
@@ -242,7 +241,7 @@ public class TaskManagementService {
                 String.valueOf(taskId)
         );
 
-        claimFlowableTask(candidateTask.flowableTaskId(), username);
+        claimBpmTask(candidateTask.flowableTaskId(), username);
 
         return new TaskAcceptResponse(taskId, candidateTask.practiceId(), "IN_LAVORAZIONE", username);
     }
@@ -285,7 +284,7 @@ public class TaskManagementService {
 
         for (OpenPractice openPractice : openPracticesWithoutTask) {
             Instant slaDueDate = addWorkingDays(Instant.now(), 5);
-            String flowableTaskId = createFlowableAcceptTask(openPractice.practiceId(), slaDueDate);
+            String flowableTaskId = createBpmUserTask(openPractice.practiceId(), slaDueDate);
 
             jdbcTemplate.update(
                     "INSERT INTO task (practice_id, flowable_task_id, tipo_pratica, stato, candidate_group_id, created_at, sla_due_date, version) "
@@ -298,15 +297,13 @@ public class TaskManagementService {
         }
     }
 
-    private String createFlowableAcceptTask(Long practiceId, Instant slaDueDate) {
-        Task task = flowableTaskService.newTask();
-        task.setName("Accettazione pratica ANC");
-        task.setCategory("ANC");
-        task.setDescription("Presa in carico pratica " + practiceId);
-        task.setDueDate(Date.from(slaDueDate));
-        flowableTaskService.saveTask(task);
-        flowableTaskService.addCandidateGroup(task.getId(), OPERATORE_GROUP_CODE);
-        return task.getId();
+    private String createBpmUserTask(Long practiceId, Instant slaDueDate) {
+        return bpmEngineAdapter.createUserTask(
+                "Accettazione pratica ANC",
+                "Presa in carico pratica " + practiceId,
+                OPERATORE_GROUP_CODE,
+                slaDueDate
+        );
     }
 
     private static Instant addWorkingDays(Instant from, int workingDays) {
@@ -322,15 +319,15 @@ public class TaskManagementService {
         return date.atTime(23, 59, 59).toInstant(ZoneOffset.UTC);
     }
 
-    private void claimFlowableTask(String flowableTaskId, String username) {
-        if (flowableTaskId == null || flowableTaskId.isBlank()) {
+    private void claimBpmTask(String taskId, String username) {
+        if (taskId == null || taskId.isBlank()) {
             return;
         }
         try {
-            flowableTaskService.claim(flowableTaskId, username);
+            bpmEngineAdapter.claimTask(taskId, username);
         } catch (RuntimeException ex) {
             throw new TaskOperationException(HttpStatus.INTERNAL_SERVER_ERROR, 3011,
-                    "Task Flowable non reclamabile: " + ex.getClass().getSimpleName());
+                    "Task BPM non reclamabile: " + ex.getClass().getSimpleName());
         }
     }
 

@@ -5,7 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.poste.anc.bpmgw.outbound.BpmOutboundService;
 import it.poste.anc.document.api.IntakeCloseResponse;
-import org.flowable.engine.TaskService;
+import it.poste.anc.workflow.engine.BpmEngineAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -33,16 +33,16 @@ public class IntakePracticeCloseService {
 
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
-    private final TaskService flowableTaskService;
+    private final BpmEngineAdapter bpmEngineAdapter;
     private final BpmOutboundService bpmOutboundService;
 
     public IntakePracticeCloseService(JdbcTemplate jdbcTemplate,
                                       ObjectMapper objectMapper,
-                                      TaskService flowableTaskService,
+                                      BpmEngineAdapter bpmEngineAdapter,
                                       BpmOutboundService bpmOutboundService) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
-        this.flowableTaskService = flowableTaskService;
+        this.bpmEngineAdapter = bpmEngineAdapter;
         this.bpmOutboundService = bpmOutboundService;
     }
 
@@ -235,9 +235,9 @@ public class IntakePracticeCloseService {
             return;
         }
         try {
-            flowableTaskService.complete(flowableTaskId, Map.of("closedBy", actorUsername));
+            bpmEngineAdapter.completeTask(flowableTaskId, Map.of("closedBy", actorUsername));
         } catch (RuntimeException ex) {
-            // Task gia' chiuso/assente su Flowable non blocca il close DB locale in POC light.
+            // Task già chiuso/assente non blocca il close DB locale in POC light.
         }
     }
 

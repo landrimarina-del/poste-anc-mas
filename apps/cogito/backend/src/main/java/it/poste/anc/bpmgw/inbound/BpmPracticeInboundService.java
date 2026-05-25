@@ -10,7 +10,7 @@ import it.poste.anc.document.ingestion.AttachmentStorage;
 import it.poste.anc.document.ingestion.FetchedAttachment;
 import it.poste.anc.shared.common.ApiResponse;
 import it.poste.anc.ticketing.TicketingClient;
-import org.flowable.engine.RuntimeService;
+import it.poste.anc.workflow.engine.BpmEngineAdapter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -43,7 +43,7 @@ public class BpmPracticeInboundService {
     private final BpmInboundMessageWriter inboundMessageWriter;
     private final TransactionTemplate transactionTemplate;
     private final TicketingClient ticketingClient;
-    private final RuntimeService runtimeService;
+    private final BpmEngineAdapter bpmEngineAdapter;
     private final boolean ticketingEnabled;
 
     public BpmPracticeInboundService(
@@ -54,7 +54,7 @@ public class BpmPracticeInboundService {
             BpmInboundMessageWriter inboundMessageWriter,
             PlatformTransactionManager transactionManager,
             TicketingClient ticketingClient,
-            RuntimeService runtimeService,
+            BpmEngineAdapter bpmEngineAdapter,
             @Value("${ticketing.enabled:true}") boolean ticketingEnabled
     ) {
         this.jdbcTemplate = jdbcTemplate;
@@ -64,7 +64,7 @@ public class BpmPracticeInboundService {
         this.inboundMessageWriter = inboundMessageWriter;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.ticketingClient = ticketingClient;
-        this.runtimeService = runtimeService;
+        this.bpmEngineAdapter = bpmEngineAdapter;
         this.ticketingEnabled = ticketingEnabled;
     }
 
@@ -147,14 +147,14 @@ public class BpmPracticeInboundService {
             }
         }
 
-        // Avvia il processo BPM Flowable (futuro: sostituire con chiamata Cogito)
+        // Avvia l'istanza di processo Kogito
         Map<String, Object> processVars = new HashMap<>();
         processVars.put("practiceId", practiceId);
         processVars.put("numPratica", numPratica);
         processVars.put("canale", canale);
         processVars.put("cfCliente", cfCliente);
         processVars.put("idWorkItem", idWorkItem);
-        runtimeService.startProcessInstanceByKey("anc.pratica", numPratica, processVars);
+        bpmEngineAdapter.startProcess("anc_pratica", numPratica, processVars);
 
         return ApiResponse.ok(new BpmPracticeOpenResponse(practiceId, requestId, "APERTA"));
     }

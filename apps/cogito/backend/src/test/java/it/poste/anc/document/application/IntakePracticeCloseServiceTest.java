@@ -3,7 +3,7 @@ package it.poste.anc.document.application;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.poste.anc.bpmgw.outbound.BpmOutcomeOutboundGateway;
 import it.poste.anc.document.api.IntakeCloseResponse;
-import org.flowable.engine.TaskService;
+import it.poste.anc.workflow.engine.BpmEngineAdapter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,7 +27,7 @@ class IntakePracticeCloseServiceTest {
     private IntakePracticeCloseService closeService;
 
     @MockBean
-    private TaskService taskService;
+    private BpmEngineAdapter bpmEngineAdapter;
 
     @MockBean
     private BpmOutcomeOutboundGateway bpmOutcomeOutboundGateway;

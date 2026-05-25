@@ -3,7 +3,7 @@ package it.poste.anc.supervision.application;
 import it.poste.anc.supervision.api.SupervisionTaskListItem;
 import it.poste.anc.supervision.api.SupervisionTaskReassignResponse;
 import it.poste.anc.workflow.application.TaskOperationException;
-import org.flowable.engine.TaskService;
+import it.poste.anc.workflow.engine.BpmEngineAdapter;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -23,11 +23,11 @@ public class SupervisionTaskService {
     private static final String SUPERVISORE_ROLE_CODE = "SUPERVISORE_ANC";
 
     private final JdbcTemplate jdbcTemplate;
-    private final TaskService flowableTaskService;
+    private final BpmEngineAdapter bpmEngineAdapter;
 
-    public SupervisionTaskService(JdbcTemplate jdbcTemplate, TaskService flowableTaskService) {
+    public SupervisionTaskService(JdbcTemplate jdbcTemplate, BpmEngineAdapter bpmEngineAdapter) {
         this.jdbcTemplate = jdbcTemplate;
-        this.flowableTaskService = flowableTaskService;
+        this.bpmEngineAdapter = bpmEngineAdapter;
     }
 
     @Transactional(readOnly = true)
@@ -284,11 +284,12 @@ public class SupervisionTaskService {
             return;
         }
         try {
-            flowableTaskService.unclaim(flowableTaskId);
-            flowableTaskService.addCandidateGroup(flowableTaskId, OPERATORE_GROUP_CODE);
+            // Kogito: task standalone (manual-*) non ha lifecycle BPM da resettare
+            // Per task process-linked il claim state è gestito dall'applicazione
+            bpmEngineAdapter.claimTask(flowableTaskId, null);
         } catch (RuntimeException ex) {
             throw new TaskOperationException(HttpStatus.INTERNAL_SERVER_ERROR, 6008,
-                    "Riassegnazione Flowable a gruppo non riuscita: " + ex.getClass().getSimpleName());
+                    "Riassegnazione BPM a gruppo non riuscita: " + ex.getClass().getSimpleName());
         }
     }
 
@@ -297,10 +298,10 @@ public class SupervisionTaskService {
             return;
         }
         try {
-            flowableTaskService.setAssignee(flowableTaskId, targetUsername);
+            bpmEngineAdapter.claimTask(flowableTaskId, targetUsername);
         } catch (RuntimeException ex) {
             throw new TaskOperationException(HttpStatus.INTERNAL_SERVER_ERROR, 6009,
-                    "Riassegnazione Flowable a utente non riuscita: " + ex.getClass().getSimpleName());
+                    "Riassegnazione BPM a utente non riuscita: " + ex.getClass().getSimpleName());
         }
     }
 

@@ -41,15 +41,18 @@ management:
     readinessstate:
       enabled: true
 
-# Datasource dedicato per le tabelle Flowable (schema "flowable", separato da "anc").
-# Il bean flowableDataSource in FlowableEngineConfig legge questo prefisso.
+# Datasource dedicato per Kogito process persistence (PostgreSQL).
+# Il bean kogitoDataSource in KogitoDataSourceConfig legge questo prefisso.
+kogito:
+  datasource:
+    jdbc-url: ${KOGITO_DATASOURCE_URL:jdbc:postgresql://localhost:5433/kogito}
+    username: ${KOGITO_DATASOURCE_USERNAME:kogito}
+    password: ${KOGITO_DATASOURCE_PASSWORD:kogito}
+    driver-class-name: org.postgresql.Driver
+  persistence:
+    type: jdbc
+
 anc:
-  flowable:
-    datasource:
-      jdbc-url: ${ANC_FLOWABLE_DATASOURCE_URL:jdbc:mariadb://localhost:3307/flowable?useSSL=false&allowPublicKeyRetrieval=true}
-      username: ${ANC_FLOWABLE_DATASOURCE_USERNAME:anc}
-      password: ${ANC_FLOWABLE_DATASOURCE_PASSWORD:anc}
-      driver-class-name: org.mariadb.jdbc.Driver
   security:
     bpm:
       inbound:
@@ -59,18 +62,9 @@ anc:
     outbound:
       url: ${ANC_BPM_OUTBOUND_URL:http://localhost:18080/bpm-stub/outcome}
 
-flowable:
-  database-schema-update: true
-  async-executor-activate: false
-  check-process-definitions: true
-  process-definition-location-prefix: classpath:/processes/
-  process-definition-location-suffixes:
-    - '**.bpmn20.xml'
-    - '**.bpmn'
-
 logging:
   level:
     root: INFO
     it.poste.anc: DEBUG
     org.springframework.security: DEBUG
-    org.flowable.rest: DEBUG
+    org.kie.kogito: DEBUG
