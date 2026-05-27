@@ -8,8 +8,11 @@ const koDescription = process.env.BPM_STUB_KO_DESCRIZIONE || 'Esito rifiutato da
 
 // POST /receive-outcome
 app.post('/receive-outcome', (req, res) => {
-    const esito = currentMode === 'OK';
-    res.json({ esito, descrizioneEsito: esito ? 'ACK OK' : koDescription });
+    const body = req.body || {};
+    const outcome = String(body.outcome || '').toUpperCase();
+    const esito = outcome === 'OK';
+    console.log(`[STUB] receive-outcome: practiceId=${body.practiceId} outcome=${outcome} koCodes=${JSON.stringify(body.koCodes)} → esito=${esito}`);
+    res.json({ esito, descrizioneEsito: esito ? 'ACK OK' : 'Esito rifiutato da BPM (mock)' });
 });
 
 // POST /ticketing/open-ticket

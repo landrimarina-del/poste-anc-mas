@@ -208,7 +208,9 @@ public class IntakeChecklistService {
                         rs.getString("final_note_practice"),
                         rs.getString("status"),
                         rs.getTimestamp("created_at"),
-                        readNullableLong(rs, "codice_causale_id")
+                        readNullableLong(rs, "codice_causale_id"),
+                        // Sotto-voci non persistite come colonne separate: null al caricamento
+                        null, null, null, null, null
                 ),
                 practiceId
         );
@@ -220,12 +222,13 @@ public class IntakeChecklistService {
 
     private java.util.Optional<ChecklistCartaRow> loadCartaChecklistRow(Long practiceId) {
         List<ChecklistCartaRow> rows = jdbcTemplate.query(
-                "SELECT practice_id, card_present, card_conformity_ok, internal_notes, status, created_at, codice_causale_id "
+                "SELECT practice_id, card_present, card_conformity_ok, card_legibility_ok, internal_notes, status, created_at, codice_causale_id "
                         + "FROM checklist_carta WHERE practice_id = ?",
                 (rs, rowNum) -> new ChecklistCartaRow(
                         rs.getLong("practice_id"),
                         rs.getBoolean("card_present"),
                         readNullableBoolean(rs, "card_conformity_ok"),
+                        readNullableBoolean(rs, "card_legibility_ok"),
                         rs.getString("internal_notes"),
                         rs.getString("status"),
                         rs.getTimestamp("created_at"),
@@ -266,23 +269,33 @@ public class IntakeChecklistService {
 
         boolean documentPresent = request.documentPresent();
         boolean cardRequired = request.cardNumberMatchRequired() != null && request.cardNumberMatchRequired();
-        List<String> normalizedReasons = normalizeFormalReasons(request.koReasons());
 
         Boolean readability = request.readabilityOk();
-        Boolean formal = request.formalOk();
+        Boolean intestazione = request.intestazioneOk();
+        Boolean firme = request.firmeOk();
+        Boolean intestazioneConformeTimbro = request.intestazioneConformeAlTimbroOk();
+        Boolean dichiarazioneConformeFirme = request.dichiarazioneConformeAlleFirmeOk();
+        Boolean cartaPosteItaliane = request.cartaPosteItalianeOk();
         Boolean customerData = request.customerDataOk();
         Boolean cardMatch = request.cardNumberMatchOk();
 
         if (!documentPresent) {
             readability = null;
-            formal = null;
+            intestazione = null;
+            firme = null;
+            intestazioneConformeTimbro = null;
+            dichiarazioneConformeFirme = null;
+            cartaPosteItaliane = null;
             customerData = null;
             cardRequired = false;
             cardMatch = null;
-            normalizedReasons = List.of();
         } else {
             requireNotNull(readability, "readabilityOk");
-            requireNotNull(formal, "formalOk");
+            requireNotNull(intestazione, "intestazioneOk");
+            requireNotNull(firme, "firmeOk");
+            requireNotNull(intestazioneConformeTimbro, "intestazioneConformeAlTimbroOk");
+            requireNotNull(dichiarazioneConformeFirme, "dichiarazioneConformeAlleFirmeOk");
+            requireNotNull(cartaPosteItaliane, "cartaPosteItalianeOk");
             requireNotNull(customerData, "customerDataOk");
 
             if (cardRequired) {
@@ -290,16 +303,13 @@ public class IntakeChecklistService {
             } else {
                 cardMatch = null;
             }
-
-            if (!formal) {
-                if (normalizedReasons.isEmpty()) {
-                    throw new DocumentOperationException(HttpStatus.BAD_REQUEST, 4021,
-                            "Se formalOk = NO almeno una causale KO e' obbligatoria");
-                }
-            } else {
-                normalizedReasons = List.of();
-            }
         }
+
+        // Aggrega formalOk per compatibilità con la colonna DB (formal_ok)
+        Boolean formal = (intestazione != null)
+                ? (intestazione && firme && intestazioneConformeTimbro
+                   && dichiarazioneConformeFirme && cartaPosteItaliane)
+                : null;
 
         return new ChecklistVerbaleRow(
                 practiceId,
@@ -309,7 +319,7 @@ public class IntakeChecklistService {
                 customerData,
                 cardRequired,
                 cardMatch,
-                normalizedReasons,
+                List.of(),
                 request.internalNotes(),
                 request.noteLegibility(),
                 request.noteFormalSuitability(),
@@ -318,7 +328,12 @@ public class IntakeChecklistService {
                 request.finalNotePractice(),
                 nextStatus,
                 createdAt != null ? createdAt : Timestamp.from(Instant.now()),
-                request.codiceCausaleId()
+                request.codiceCausaleId(),
+                intestazione,
+                firme,
+                intestazioneConformeTimbro,
+                dichiarazioneConformeFirme,
+                cartaPosteItaliane
         );
     }
 
@@ -360,16 +375,20 @@ public class IntakeChecklistService {
 
         boolean cardPresent = request.cardPresent();
         Boolean cardConformityOk = request.cardConformityOk();
+        Boolean legibilityOk = request.cardLegibilityOk();
         if (!cardPresent) {
             cardConformityOk = null;
+            legibilityOk = null;
         } else {
             requireNotNull(cardConformityOk, "cardConformityOk");
+            requireNotNull(legibilityOk, "cardLegibilityOk");
         }
 
         return new ChecklistCartaRow(
                 practiceId,
                 cardPresent,
                 cardConformityOk,
+                legibilityOk,
                 request.internalNotes(),
                 nextStatus,
                 createdAt != null ? createdAt : Timestamp.from(Instant.now()),
@@ -431,10 +450,11 @@ public class IntakeChecklistService {
 
                 private void upsertCartaChecklist(ChecklistCartaRow row) {
                 int updated = jdbcTemplate.update(
-                    "UPDATE checklist_carta SET card_present = ?, card_conformity_ok = ?, codice_causale_id = ?, internal_notes = ?, "
+                    "UPDATE checklist_carta SET card_present = ?, card_conformity_ok = ?, card_legibility_ok = ?, codice_causale_id = ?, internal_notes = ?, "
                         + "status = ?, updated_at = CURRENT_TIMESTAMP(3) WHERE practice_id = ?",
                     row.cardPresent(),
                     row.cardConformityOk(),
+                    row.legibilityOk(),
                     row.codiceCausaleId(),
                     row.internalNotes(),
                     row.status(),
@@ -443,11 +463,12 @@ public class IntakeChecklistService {
 
                 if (updated == 0) {
                     jdbcTemplate.update(
-                        "INSERT INTO checklist_carta (practice_id, card_present, card_conformity_ok, codice_causale_id, internal_notes, status, created_at, updated_at) "
-                            + "VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3))",
+                        "INSERT INTO checklist_carta (practice_id, card_present, card_conformity_ok, card_legibility_ok, codice_causale_id, internal_notes, status, created_at, updated_at) "
+                            + "VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3))",
                         row.practiceId(),
                         row.cardPresent(),
                         row.cardConformityOk(),
+                        row.legibilityOk(),
                         row.codiceCausaleId(),
                         row.internalNotes(),
                         row.status()
@@ -459,17 +480,21 @@ public class IntakeChecklistService {
         return outcomeDmnService.computeVerbaleOutcome(
                 row.documentPresent(),
                 row.readabilityOk(),
-                row.formalOk(),
+                row.intestazioneOk(),
+                row.firmeOk(),
+                row.intestazioneConformeAlTimbroOk(),
+                row.dichiarazioneConformeAlleFirmeOk(),
+                row.cartaPosteItalianeOk(),
                 row.customerDataOk(),
                 row.cardNumberMatchRequired(),
-                row.cardNumberMatchOk(),
-                row.koReasons()
+                row.cardNumberMatchOk()
         );
     }
 
     private OutcomeComputed computeCartaOutcome(ChecklistCartaRow row) {
         return outcomeDmnService.computeCartaOutcome(
                 row.cardPresent(),
+                row.legibilityOk(),
                 row.cardConformityOk()
         );
     }
@@ -516,11 +541,6 @@ public class IntakeChecklistService {
                                                       ChecklistVerbaleRow checklist,
                                                       OutcomeRow outcome) {
         String finalNotePractice = checklist.finalNotePractice();
-        if ((finalNotePractice == null || finalNotePractice.isBlank())
-            && checklist.internalNotes() != null
-            && !checklist.internalNotes().isBlank()) {
-            finalNotePractice = checklist.internalNotes();
-        }
 
         return new IntakeChecklistResponse(
                 checklist.practiceId(),
@@ -543,7 +563,8 @@ public class IntakeChecklistService {
                 checklist.internalNotes(),
                 outcome != null ? outcome.outcome() : null,
                 outcome != null ? outcome.koCodes() : List.of(),
-                checklist.codiceCausaleId()
+                checklist.codiceCausaleId(),
+                null // cardLegibilityOk: non applicabile per VERBALE
         );
     }
 
@@ -571,7 +592,8 @@ public class IntakeChecklistService {
                 checklist.internalNotes(),
                 outcome != null ? outcome.outcome() : null,
                 outcome != null ? outcome.koCodes() : List.of(),
-                checklist.codiceCausaleId()
+                checklist.codiceCausaleId(),
+                checklist.legibilityOk()
         );
     }
 
@@ -641,7 +663,13 @@ public class IntakeChecklistService {
                                        String finalNotePractice,
                                        String status,
                                        Timestamp createdAt,
-                                       Long codiceCausaleId) {
+                                       Long codiceCausaleId,
+                                       // Sotto-voci VERBALE (non persistite come colonne separate)
+                                       Boolean intestazioneOk,
+                                       Boolean firmeOk,
+                                       Boolean intestazioneConformeAlTimbroOk,
+                                       Boolean dichiarazioneConformeAlleFirmeOk,
+                                       Boolean cartaPosteItalianeOk) {
         static ChecklistVerbaleRow defaultFor(Long practiceId) {
             return new ChecklistVerbaleRow(
                     practiceId,
@@ -660,7 +688,8 @@ public class IntakeChecklistService {
                     null,
                     STATUS_NON_INIZIATA,
                     Timestamp.from(Instant.now()),
-                    null
+                    null,
+                    null, null, null, null, null
             );
         }
     }
@@ -668,6 +697,8 @@ public class IntakeChecklistService {
     private record ChecklistCartaRow(Long practiceId,
                                      boolean cardPresent,
                                      Boolean cardConformityOk,
+                                     // legibilityOk: leggibilità carta (PPEZ034), non persistita come colonna separata
+                                     Boolean legibilityOk,
                                      String internalNotes,
                                      String status,
                                      Timestamp createdAt,
@@ -676,6 +707,7 @@ public class IntakeChecklistService {
             return new ChecklistCartaRow(
                     practiceId,
                     true,
+                    null,
                     null,
                     null,
                     STATUS_NON_INIZIATA,

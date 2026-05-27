@@ -23,6 +23,8 @@ public record IntakeChecklistResponse(
         String internalNotes,
         String outcome,
         List<String> koCodes,
-        Long codiceCausaleId
+        Long codiceCausaleId,
+        // Leggibilità CARTA separata
+        Boolean cardLegibilityOk
 ) {
 }

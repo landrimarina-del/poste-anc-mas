@@ -18,6 +18,14 @@ public record IntakeChecklistRequest(
         Boolean cardConformityOk,
         List<String> koReasons,
         String internalNotes,
-        Long codiceCausaleId
+        Long codiceCausaleId,
+        // Sotto-voci VERBALE "idoneo al controllo formale" (PPEZ027–PPEZ031)
+        Boolean intestazioneOk,
+        Boolean firmeOk,
+        Boolean intestazioneConformeAlTimbroOk,
+        Boolean dichiarazioneConformeAlleFirmeOk,
+        Boolean cartaPosteItalianeOk,
+        // Leggibilità CARTA (PPEZ034)
+        Boolean cardLegibilityOk
 ) {
 }

@@ -101,6 +101,8 @@ class IntakeChecklistServiceTest {
                 null,
                 List.of(),
                 "Documento assente",
+                null,
+                null, null, null, null, null,
                 null
         );
 
@@ -134,6 +136,8 @@ class IntakeChecklistServiceTest {
                 null,
                 List.of(),
                 "KO formale",
+                null,
+                null, null, null, null, null,
                 null
         );
 
@@ -161,6 +165,8 @@ class IntakeChecklistServiceTest {
                 null,
                 List.of(),
                 "Verifiche complete",
+                null,
+                true, true, true, true, true,
                 null
         );
 
@@ -208,6 +214,8 @@ class IntakeChecklistServiceTest {
                                 null,
                                 List.of(),
                                 "Carta non presente",
+                                null,
+                                null, null, null, null, null,
                                 null
                 );
 

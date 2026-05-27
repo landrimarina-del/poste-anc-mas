@@ -10,6 +10,9 @@
     <informationRequirement id="ir_cp">
       <requiredInput href="#input_cardPresent"/>
     </informationRequirement>
+    <informationRequirement id="ir_cl">
+      <requiredInput href="#input_legibilityOk"/>
+    </informationRequirement>
     <informationRequirement id="ir_cc">
       <requiredInput href="#input_cardConformityOk"/>
     </informationRequirement>
@@ -18,12 +21,14 @@
         {
           koCodes:
             if not(cardPresent) then ["CARTA_ASSENTE"]
-            else if not(cardConformityOk) then ["CARTA_NON_CONFORME"]
-            else [],
+            else
+              (if not(legibilityOk) then ["PPEZ034"] else [])
+              + (if not(cardConformityOk) then ["PPEZ035"] else []),
           outcome: if count(
             if not(cardPresent) then ["CARTA_ASSENTE"]
-            else if not(cardConformityOk) then ["CARTA_NON_CONFORME"]
-            else []
+            else
+              (if not(legibilityOk) then ["PPEZ034"] else [])
+              + (if not(cardConformityOk) then ["PPEZ035"] else [])
           ) = 0 then "APPROVATA" else "RESPINTA"
         }
       ]]></text>
@@ -32,6 +37,9 @@
 
   <inputData id="input_cardPresent" name="cardPresent">
     <variable name="cardPresent" typeRef="boolean"/>
+  </inputData>
+  <inputData id="input_legibilityOk" name="legibilityOk">
+    <variable name="legibilityOk" typeRef="boolean"/>
   </inputData>
   <inputData id="input_cardConformityOk" name="cardConformityOk">
     <variable name="cardConformityOk" typeRef="boolean"/>

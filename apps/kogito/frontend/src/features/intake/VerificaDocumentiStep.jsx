@@ -11,6 +11,19 @@ const yesNoOptions = [
   { value: 'NO', label: 'No' }
 ];
 
+const PPEZ_DESCRIPTIONS = {
+  PPEZ026: 'Verbale Denuncia non leggibile',
+  PPEZ027: 'Intestazione mancante nel Verbale Denuncia',
+  PPEZ028: 'Firme mancanti nel Verbale Denuncia',
+  PPEZ029: 'Intestazione non conforme al Timbro nel Verbale Denuncia',
+  PPEZ030: 'Dichiarazione non conforme alle firme nel Verbale Denuncia',
+  PPEZ031: 'Mancata descrizione emissione Carta da Poste Italiane',
+  PPEZ032: 'Incoerenza dati Denunciante con dati Cliente',
+  PPEZ033: 'Incorenza numero Carta nel Verbale Denuncia',
+  PPEZ034: 'Carta non leggibile',
+  PPEZ035: 'Carta non tagliata o incorenza numero Carta',
+};
+
 const formalKoReasonOptions = [
   { value: 'INTESTAZIONE', label: 'Intestazione' },
   { value: 'FIRME',        label: 'Firme' },
@@ -30,7 +43,15 @@ const verbaleChecklistRows = [
     key: 'formalSuitability',
     required: 'SI',
     title: 'Il Verbale di Denuncia è idoneo al controllo formale?',
-    detail: 'Verificare la presenza e la qualità degli elementi formali richiesti (es. intestazione, firme, timbro, dichiarazione) utili alla validazione documentale.'
+    detail: 'Verificare la presenza e la qualità degli elementi formali richiesti (es. intestazione, firme, timbro, dichiarazione) utili alla validazione documentale.',
+    isGroupHeader: true,
+    subRows: [
+      { key: 'intestazioneOk',                    label: '• Intestazione' },
+      { key: 'firmeOk',                            label: '• Firme' },
+      { key: 'intestazioneConformeAlTimbroOk',     label: '• Intestazione Conforme al Timbro' },
+      { key: 'dichiarazioneConformeAlleFirmeOk',   label: '• Dichiarazione Conforme alle Firme' },
+      { key: 'cartaPosteItalianeOk',               label: '• Carta Poste Italiane' },
+    ]
   },
   {
     key: 'clientDataConsistency',
@@ -93,7 +114,8 @@ export function VerificaDocumentiStep({
   checklistLoading,
   checklistSaving,
   canSaveChecklist,
-  isCardChecklist
+  isCardChecklist,
+  koCodes
 }) {
   function pickValue(...values) {
     for (const value of values) {
@@ -229,14 +251,6 @@ export function VerificaDocumentiStep({
 
   const isBusy = checklistLoading || checklistSaving;
 
-  // Almeno un item della checklist è NO → mostra la unica dropdown causale
-  const hasAnyNo = !isConformityDisabled && (isCardChecklist
-    ? (checklistForm?.formalSuitability === 'NO' || checklistForm?.legibility === 'NO')
-    : (checklistForm?.legibility === 'NO'
-      || checklistForm?.formalSuitability === 'NO'
-      || checklistForm?.clientDataConsistency === 'NO'
-      || (checklistForm?.cardNumberCheckEnabled && checklistForm?.cardNumberMatch === 'NO')));
-
   // Sprint 13: stato causali e toggle aree KO
   const [causaliCarta,   setCausaliCarta]   = useState([]);
   const [causaliVerbale, setCausaliVerbale] = useState([]);
@@ -277,9 +291,18 @@ export function VerificaDocumentiStep({
   ]);
 
 
-  const esitoControllo = checklistOutcome
-    ? (checklistOutcome === 'APPROVATA' ? 'OK' : 'KO')
-    : '-';
+  // Esito live: KO se almeno un campo è NO, OK se tutto valorizzato senza KO
+  const esitoControllo = (() => {
+    if (koCodes && koCodes.length > 0) return 'KO';
+    if (isCardChecklist) {
+      // CARTA: OK quando legibility e formalSuitability sono entrambe valorizzate a SI
+      if (checklistForm.legibility === 'SI' && checklistForm.formalSuitability === 'SI') return 'OK';
+    } else {
+      // VERBALE: OK quando il documento è presente (documentPresent='SI') e nessun KO
+      if (checklistForm.documentPresent === 'SI') return 'OK';
+    }
+    return checklistOutcome ? (checklistOutcome === 'APPROVATA' ? 'OK' : 'KO') : '-';
+  })();
   const selectedCausaleId = isCardChecklist
     ? checklistForm.codiceCausaleIdCarta
     : checklistForm.codiceCausaleIdVerbale;
@@ -492,86 +515,161 @@ export function VerificaDocumentiStep({
 
                         return (
                           <Fragment key={row.key}>
-                            <tr className={!isRowEnabled ? 'verbale-row-disabled' : ''}>
-                              <td>
-                                <strong>{row.required}</strong>
-                                {isVerbaleCardRow ? (
-                                  <div className="verbale-required-note">
-                                    Da valorizzare solo se presente il numero carta nel verbale.
+                            {row.isGroupHeader ? (
+                              // Riga intestazione gruppo: solo label, senza radio SI/NO
+                              <tr>
+                                <td><strong>{row.required}</strong></td>
+                                <td><div className="verbale-description-title">{row.title}</div></td>
+                                <td></td>
+                                <td></td>
+                              </tr>
+                            ) : (
+                              <tr className={!isRowEnabled ? 'verbale-row-disabled' : ''}>
+                                <td>
+                                  <strong>{row.required}</strong>
+                                  {isVerbaleCardRow ? (
+                                    <div className="verbale-required-note">
+                                      Da valorizzare solo se presente il numero carta nel verbale.
+                                      <label style={{ display: 'block', marginTop: 4 }}>
+                                        <input
+                                          type="checkbox"
+                                          checked={!!checklistForm.cardNumberCheckEnabled}
+                                          onChange={(e) => onChecklistChange('cardNumberCheckEnabled', e.target.checked)}
+                                          disabled={isBusy || !canSaveChecklist}
+                                        />
+                                        {' '}Abilita controllo
+                                      </label>
+                                    </div>
+                                  ) : null}
+                                </td>
+                                <td>
+                                  <div className="verbale-description-title">{row.title}</div>
+                                  <button
+                                    type="button"
+                                    className="verbale-description-toggle"
+                                    onClick={() => {
+                                      if (isCardChecklist) {
+                                        setCartaDescriptionOpen((prev) => ({ ...prev, [row.key]: !prev[row.key] }));
+                                        return;
+                                      }
+                                      setVerbaleDescriptionOpen((prev) => ({ ...prev, [row.key]: !prev[row.key] }));
+                                    }}
+                                  >
+                                    {isDescriptionOpen ? 'Nascondi descrizione' : 'Mostra descrizione'}
+                                  </button>
+                                </td>
+                                <td>
+                                  <div className="verbale-radio-group" role="radiogroup" aria-label={`Conforme ${row.title}`}>
+                                    <label className="checklist-checkbox-inline">
+                                      <input
+                                        type="radio"
+                                        name={radioGroupName}
+                                        value="SI"
+                                        checked={checklistForm[row.key] === 'SI'}
+                                        onChange={(e) => onChecklistChange(row.key, e.target.value)}
+                                        disabled={rowDisabled}
+                                      />
+                                      SI
+                                    </label>
+                                    <label className="checklist-checkbox-inline">
+                                      <input
+                                        type="radio"
+                                        name={radioGroupName}
+                                        value="NO"
+                                        checked={checklistForm[row.key] === 'NO'}
+                                        onChange={(e) => onChecklistChange(row.key, e.target.value)}
+                                        disabled={rowDisabled}
+                                      />
+                                      NO
+                                    </label>
                                   </div>
-                                ) : null}
-                              </td>
-                              <td>
-                                <div className="verbale-description-title">{row.title}</div>
-                                <button
-                                  type="button"
-                                  className="verbale-description-toggle"
-                                  onClick={() => {
-                                    if (isCardChecklist) {
-                                      setCartaDescriptionOpen((prev) => ({ ...prev, [row.key]: !prev[row.key] }));
-                                      return;
-                                    }
-                                    setVerbaleDescriptionOpen((prev) => ({ ...prev, [row.key]: !prev[row.key] }));
-                                  }}
-                                >
-                                  {isDescriptionOpen ? 'Nascondi descrizione' : 'Mostra descrizione'}
-                                </button>
-                              </td>
-                              <td>
-                                <div className="verbale-radio-group" role="radiogroup" aria-label={`Conforme ${row.title}`}>
-                                  <label className="checklist-checkbox-inline">
-                                    <input
-                                      type="radio"
-                                      name={radioGroupName}
-                                      value="SI"
-                                      checked={checklistForm[row.key] === 'SI'}
-                                      onChange={(e) => onChecklistChange(row.key, e.target.value)}
-                                      disabled={rowDisabled}
-                                    />
-                                    SI
-                                  </label>
-                                  <label className="checklist-checkbox-inline">
-                                    <input
-                                      type="radio"
-                                      name={radioGroupName}
-                                      value="NO"
-                                      checked={checklistForm[row.key] === 'NO'}
-                                      onChange={(e) => onChecklistChange(row.key, e.target.value)}
-                                      disabled={rowDisabled}
-                                    />
-                                    NO
-                                  </label>
-                                </div>
-                              </td>
-                              <td className="verbale-note-cell">
-                                <textarea
-                                  className="verbale-note-textarea"
-                                  value={isCardChecklist
-                                    ? (checklistForm?.cardNotes?.[row.key] ?? '')
-                                    : (checklistForm?.verbaleNotes?.[row.key] ?? '')}
-                                  onChange={(e) => {
-                                    if (isCardChecklist) {
-                                      const nextCardNotes = {
-                                        ...(checklistForm?.cardNotes ?? {}),
+                                </td>
+                                <td className="verbale-note-cell">
+                                  <textarea
+                                    className="verbale-note-textarea"
+                                    value={isCardChecklist
+                                      ? (checklistForm?.cardNotes?.[row.key] ?? '')
+                                      : (checklistForm?.verbaleNotes?.[row.key] ?? '')}
+                                    onChange={(e) => {
+                                      if (isCardChecklist) {
+                                        const nextCardNotes = {
+                                          ...(checklistForm?.cardNotes ?? {}),
+                                          [row.key]: e.target.value
+                                        };
+                                        onChecklistChange('cardNotes', nextCardNotes);
+                                        return;
+                                      }
+                                      const nextVerbaleNotes = {
+                                        ...(checklistForm?.verbaleNotes ?? {}),
                                         [row.key]: e.target.value
                                       };
-                                      onChecklistChange('cardNotes', nextCardNotes);
-                                      return;
-                                    }
-                                    const nextVerbaleNotes = {
-                                      ...(checklistForm?.verbaleNotes ?? {}),
-                                      [row.key]: e.target.value
-                                    };
-                                    onChecklistChange('verbaleNotes', nextVerbaleNotes);
-                                  }}
-                                  placeholder="Inserisci note per la riga"
-                                  maxLength={1000}
-                                  rows={2}
-                                  disabled={rowDisabled}
-                                />
-                              </td>
-                            </tr>
-                            {isDescriptionOpen ? (
+                                      onChecklistChange('verbaleNotes', nextVerbaleNotes);
+                                    }}
+                                    placeholder="Inserisci note per la riga"
+                                    maxLength={1000}
+                                    rows={2}
+                                    disabled={rowDisabled}
+                                  />
+                                </td>
+                              </tr>
+                            )}
+                            {/* Sotto-righe del gruppo formalSuitability */}
+                            {row.isGroupHeader && row.subRows ? row.subRows.map((sub) => {
+                              const subDisabled = (!isCardChecklist && isConformityDisabled) || isBusy || !canSaveChecklist;
+                              const subRadioName = `vd-conforme-${sub.key}`;
+                              return (
+                                <tr key={sub.key}>
+                                  <td></td>
+                                  <td>
+                                    <div className="verbale-description-title" style={{ paddingLeft: '1.5rem' }}>{sub.label}</div>
+                                  </td>
+                                  <td>
+                                    <div className="verbale-radio-group" role="radiogroup" aria-label={`Conforme ${sub.label}`}>
+                                      <label className="checklist-checkbox-inline">
+                                        <input
+                                          type="radio"
+                                          name={subRadioName}
+                                          value="SI"
+                                          checked={checklistForm[sub.key] === 'SI'}
+                                          onChange={(e) => onChecklistChange(sub.key, e.target.value)}
+                                          disabled={subDisabled}
+                                        />
+                                        SI
+                                      </label>
+                                      <label className="checklist-checkbox-inline">
+                                        <input
+                                          type="radio"
+                                          name={subRadioName}
+                                          value="NO"
+                                          checked={checklistForm[sub.key] === 'NO'}
+                                          onChange={(e) => onChecklistChange(sub.key, e.target.value)}
+                                          disabled={subDisabled}
+                                        />
+                                        NO
+                                      </label>
+                                    </div>
+                                  </td>
+                                  <td className="verbale-note-cell">
+                                    <textarea
+                                      className="verbale-note-textarea"
+                                      value={checklistForm?.verbaleNotes?.[sub.key] ?? ''}
+                                      onChange={(e) => {
+                                        const nextVerbaleNotes = {
+                                          ...(checklistForm?.verbaleNotes ?? {}),
+                                          [sub.key]: e.target.value
+                                        };
+                                        onChecklistChange('verbaleNotes', nextVerbaleNotes);
+                                      }}
+                                      placeholder="Inserisci note per la riga"
+                                      maxLength={1000}
+                                      rows={2}
+                                      disabled={subDisabled}
+                                    />
+                                  </td>
+                                </tr>
+                              );
+                            }) : null}
+                            {!row.isGroupHeader && isDescriptionOpen ? (
                               <tr className="verbale-description-row">
                                 <td colSpan={4}>{row.detail}</td>
                               </tr>
@@ -593,82 +691,6 @@ export function VerificaDocumentiStep({
               </div>
             ) : null}
 
-            {isCardChecklist && (checklistForm.formalSuitability === 'NO' || checklistForm.legibility === 'NO') ? (
-              <div className="ko-area-expandable">
-                <button
-                  type="button"
-                  className="ko-area-toggle"
-                  onClick={() => setKoCartaOpen((v) => !v)}
-                >
-                  {koCartaOpen ? '\u25b2' : '\u25bc'} Dettaglio KO conformità
-                </button>
-                {koCartaOpen ? (
-                  <div className="ko-area-body">
-                    <label htmlFor="vd-nota-ko-carta">
-                      Note aggiuntive
-                      <textarea
-                        id="vd-nota-ko-carta"
-                        value={checklistForm.internalNotes}
-                        onChange={(e) => onChecklistChange('internalNotes', e.target.value)}
-                        placeholder="Inserisci note opzionali..."
-                        maxLength={500}
-                        rows={3}
-                        disabled={isBusy || !canSaveChecklist}
-                      />
-                    </label>
-
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-
-            {/* Unica dropdown causale — visibile quando almeno un campo è NO */}
-            {hasAnyNo ? (
-              <div className="ko-causale-single">
-                <label htmlFor="vd-causale-ko">
-                  Causale KO
-                  <select
-                    id="vd-causale-ko"
-                    value={(isCardChecklist
-                      ? checklistForm.codiceCausaleIdCarta
-                      : checklistForm.codiceCausaleIdVerbale) ?? ''}
-                    onChange={(e) => {
-                      const val = e.target.value || null;
-                      onChecklistChange(
-                        isCardChecklist ? 'codiceCausaleIdCarta' : 'codiceCausaleIdVerbale',
-                        val
-                      );
-                    }}
-                    disabled={isBusy || !canSaveChecklist}
-                  >
-                    <option value="">-- Seleziona causale --</option>
-                    {(isCardChecklist ? causaliCarta : causaliVerbale).map((c) => (
-                      <option key={c.id} value={c.id}>{c.descrizione}</option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-            ) : null}
-
-            {!isCardChecklist && checklistForm.formalSuitability === 'NO' ? (
-              <div className="checklist-ko-group" role="group" aria-label="Causali KO formali">
-                <h5>Causali KO formali obbligatorie</h5>
-                <div className="checklist-ko-options">
-                  {formalKoReasonOptions.map((item) => (
-                    <label key={item.value} className="checklist-checkbox-inline">
-                      <input
-                        type="checkbox"
-                        checked={checklistForm.formalKoReasons?.includes(item.value)}
-                        onChange={() => onToggleKoReason(item.value)}
-                        disabled={isBusy || !canSaveChecklist}
-                      />
-                      {item.label}
-                    </label>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-
             {checklistOutcome ? (
               <div
                 className={`outcome-card ${
@@ -681,31 +703,25 @@ export function VerificaDocumentiStep({
               </div>
             ) : null}
 
-            <div className="summary-card verbale-esito-causale-card">
+            <div className={`summary-card verbale-esito-causale-card${esitoControllo === 'OK' ? ' outcome-card-ok' : esitoControllo === 'KO' ? ' outcome-card-ko' : ''}`}>
               <dl>
                 <div>
                   <dt>Esito Controllo</dt>
                   <dd>{esitoControllo}</dd>
                 </div>
                 <div>
-                  <dt>Causale</dt>
-                  <dd>{causaleDescription || 'Non selezionata'}</dd>
+                  <dt>Causali KO</dt>
+                  <dd>
+                    {koCodes && koCodes.length > 0 ? (
+                      <ul style={{ margin: 0, paddingLeft: '1.2rem' }}>
+                        {koCodes.map((code) => (
+                          <li key={code}>{PPEZ_DESCRIPTIONS[code] || code}</li>
+                        ))}
+                      </ul>
+                    ) : '-'}
+                  </dd>
                 </div>
               </dl>
-              {esitoControllo === 'KO' ? (
-                <label htmlFor="vd-riepilogo-notes" className="verbale-riepilogo-note">
-                  Note
-                  <textarea
-                    id="vd-riepilogo-notes"
-                    value={checklistForm.finalNotePractice ?? ''}
-                    onChange={(e) => onChecklistChange('finalNotePractice', e.target.value)}
-                    placeholder="Inserisci una nota unica legata alla pratica"
-                    maxLength={2000}
-                    rows={3}
-                    disabled={isBusy || !canSaveChecklist}
-                  />
-                </label>
-              ) : null}
             </div>
           </div>
         </div>

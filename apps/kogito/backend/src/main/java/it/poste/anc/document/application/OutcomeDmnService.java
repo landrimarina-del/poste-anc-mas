@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 /**
  * Wrapper per le decisioni DMN di esito checklist.
@@ -40,32 +39,42 @@ public class OutcomeDmnService {
 
     /**
      * Calcola esito checklist VERBALE tramite DMN.
+     * Le sotto-voci di "idoneo al controllo formale" sono valorizzate individualmente
+     * e mappate ai codici PPEZ027–PPEZ031.
      */
     @SuppressWarnings("unchecked")
     public OutcomeComputed computeVerbaleOutcome(
             boolean documentPresent,
             Boolean readabilityOk,
-            Boolean formalOk,
+            Boolean intestazioneOk,
+            Boolean firmeOk,
+            Boolean intestazioneConformeAlTimbroOk,
+            Boolean dichiarazioneConformeAlleFirmeOk,
+            Boolean cartaPosteItalianeOk,
             Boolean customerDataOk,
             boolean cardNumberMatchRequired,
-            Boolean cardNumberMatchOk,
-            List<String> koReasons) {
+            Boolean cardNumberMatchOk) {
 
             boolean safeReadabilityOk = Boolean.TRUE.equals(readabilityOk);
-            boolean safeFormalOk = Boolean.TRUE.equals(formalOk);
+            boolean safeIntestazione = Boolean.TRUE.equals(intestazioneOk);
+            boolean safeFirme = Boolean.TRUE.equals(firmeOk);
+            boolean safeConformeTimbro = Boolean.TRUE.equals(intestazioneConformeAlTimbroOk);
+            boolean safeConformeFirme = Boolean.TRUE.equals(dichiarazioneConformeAlleFirmeOk);
+            boolean safeCartaPI = Boolean.TRUE.equals(cartaPosteItalianeOk);
             boolean safeCustomerDataOk = Boolean.TRUE.equals(customerDataOk);
             boolean safeCardNumberMatchOk = Boolean.TRUE.equals(cardNumberMatchOk);
-            List<String> safeKoReasons = koReasons != null ? koReasons : List.of();
 
-            Map<String, Object> input = Map.of(
-                "documentPresent", documentPresent,
-                "readabilityOk", safeReadabilityOk,
-                "formalOk", safeFormalOk,
-                "customerDataOk", safeCustomerDataOk,
-                "cardNumberMatchRequired", cardNumberMatchRequired,
-                "cardNumberMatchOk", safeCardNumberMatchOk,
-                "koReasons", safeKoReasons
-            );
+            Map<String, Object> input = new java.util.HashMap<>();
+            input.put("documentPresent", documentPresent);
+            input.put("readabilityOk", safeReadabilityOk);
+            input.put("intestazioneOk", safeIntestazione);
+            input.put("firmeOk", safeFirme);
+            input.put("intestazioneConformeAlTimbroOk", safeConformeTimbro);
+            input.put("dichiarazioneConformeAlleFirmeOk", safeConformeFirme);
+            input.put("cartaPosteItalianeOk", safeCartaPI);
+            input.put("customerDataOk", safeCustomerDataOk);
+            input.put("cardNumberMatchRequired", cardNumberMatchRequired);
+            input.put("cardNumberMatchOk", safeCardNumberMatchOk);
 
             OutcomeComputed dmnResult = evaluateOutcomeDecision(NS_VERBALE, MODEL_VERBALE, DECISION_VERBALE, input);
             if (dmnResult != null) {
@@ -75,23 +84,29 @@ public class OutcomeDmnService {
             return computeVerbaleFallback(
                 documentPresent,
                 safeReadabilityOk,
-                safeFormalOk,
+                safeIntestazione,
+                safeFirme,
+                safeConformeTimbro,
+                safeConformeFirme,
+                safeCartaPI,
                 safeCustomerDataOk,
                 cardNumberMatchRequired,
-                safeCardNumberMatchOk,
-                safeKoReasons
+                safeCardNumberMatchOk
             );
     }
 
     /**
      * Calcola esito checklist CARTA tramite DMN.
+     * legibilityOk → PPEZ034, cardConformityOk → PPEZ035.
      */
     @SuppressWarnings("unchecked")
-    public OutcomeComputed computeCartaOutcome(boolean cardPresent, Boolean cardConformityOk) {
+    public OutcomeComputed computeCartaOutcome(boolean cardPresent, Boolean legibilityOk, Boolean cardConformityOk) {
 
+        boolean safeLegibilityOk = Boolean.TRUE.equals(legibilityOk);
         boolean safeCardConformityOk = Boolean.TRUE.equals(cardConformityOk);
         Map<String, Object> input = Map.of(
                 "cardPresent", cardPresent,
+                "legibilityOk", safeLegibilityOk,
                 "cardConformityOk", safeCardConformityOk
         );
 
@@ -100,7 +115,7 @@ public class OutcomeDmnService {
             return dmnResult;
         }
 
-        return computeCartaFallback(cardPresent, safeCardConformityOk);
+        return computeCartaFallback(cardPresent, safeLegibilityOk, safeCardConformityOk);
     }
 
     @SuppressWarnings("unchecked")
@@ -157,39 +172,41 @@ public class OutcomeDmnService {
 
     private OutcomeComputed computeVerbaleFallback(boolean documentPresent,
                                                    boolean readabilityOk,
-                                                   boolean formalOk,
+                                                   boolean intestazioneOk,
+                                                   boolean firmeOk,
+                                                   boolean intestazioneConformeAlTimbroOk,
+                                                   boolean dichiarazioneConformeAlleFirmeOk,
+                                                   boolean cartaPosteItalianeOk,
                                                    boolean customerDataOk,
                                                    boolean cardNumberMatchRequired,
-                                                   boolean cardNumberMatchOk,
-                                                   List<String> koReasons) {
+                                                   boolean cardNumberMatchOk) {
         List<String> koCodes = new ArrayList<>();
         if (!documentPresent) {
             koCodes.add("DOCUMENTO_ASSENTE");
         } else {
-            if (!readabilityOk) {
-                koCodes.add("LEGGIBILITA_KO");
-            }
-            if (!formalOk) {
-                koCodes.addAll(koReasons.stream().filter(Objects::nonNull).toList());
-            }
-            if (!customerDataOk) {
-                koCodes.add("DATI_CLIENTE_KO");
-            }
-            if (cardNumberMatchRequired && !cardNumberMatchOk) {
-                koCodes.add("NUMERO_CARTA_KO");
-            }
+            if (!readabilityOk) koCodes.add("PPEZ026");
+            if (!intestazioneOk) koCodes.add("PPEZ027");
+            if (!firmeOk) koCodes.add("PPEZ028");
+            if (!intestazioneConformeAlTimbroOk) koCodes.add("PPEZ029");
+            if (!dichiarazioneConformeAlleFirmeOk) koCodes.add("PPEZ030");
+            if (!cartaPosteItalianeOk) koCodes.add("PPEZ031");
+            if (!customerDataOk) koCodes.add("PPEZ032");
+            if (cardNumberMatchRequired && !cardNumberMatchOk) koCodes.add("PPEZ033");
         }
 
         String outcome = koCodes.isEmpty() ? "APPROVATA" : "RESPINTA";
         return new OutcomeComputed(outcome, List.copyOf(koCodes));
     }
 
-    private OutcomeComputed computeCartaFallback(boolean cardPresent, boolean cardConformityOk) {
+    private OutcomeComputed computeCartaFallback(boolean cardPresent, boolean legibilityOk, boolean cardConformityOk) {
         if (!cardPresent) {
             return new OutcomeComputed("RESPINTA", List.of("CARTA_ASSENTE"));
         }
-        if (!cardConformityOk) {
-            return new OutcomeComputed("RESPINTA", List.of("CARTA_NON_CONFORME"));
+        List<String> koCodes = new ArrayList<>();
+        if (!legibilityOk) koCodes.add("PPEZ034");
+        if (!cardConformityOk) koCodes.add("PPEZ035");
+        if (!koCodes.isEmpty()) {
+            return new OutcomeComputed("RESPINTA", List.copyOf(koCodes));
         }
         return new OutcomeComputed("APPROVATA", List.of());
     }

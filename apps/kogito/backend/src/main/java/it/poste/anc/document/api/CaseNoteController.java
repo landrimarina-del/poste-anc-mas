@@ -10,6 +10,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -48,6 +49,19 @@ public class CaseNoteController {
         try {
             CaseNoteDto dto = caseNoteService.createNote(practiceId, request.testo(), authentication.getName());
             return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(dto));
+        } catch (DocumentOperationException ex) {
+            return ResponseEntity.status(ex.getHttpStatus().value())
+                    .body(ApiResponse.error(ex.getResultCode(), ex.getMessage()));
+        }
+    }
+
+    @PutMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ApiResponse<CaseNoteDto>> upsertNote(@PathVariable("id") Long practiceId,
+                                                               @RequestBody CaseNoteRequest request,
+                                                               Authentication authentication) {
+        try {
+            CaseNoteDto dto = caseNoteService.upsertNote(practiceId, request.testo(), authentication.getName());
+            return ResponseEntity.ok(ApiResponse.ok(dto));
         } catch (DocumentOperationException ex) {
             return ResponseEntity.status(ex.getHttpStatus().value())
                     .body(ApiResponse.error(ex.getResultCode(), ex.getMessage()));

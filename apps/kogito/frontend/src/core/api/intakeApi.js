@@ -35,5 +35,10 @@ export const intakeApi = {
     httpClient.request(`/api/v1/practices/${practiceId}/notes`, {
       method: 'POST',
       body: JSON.stringify({ testo })
+    }),
+  upsertNote: (practiceId, testo) =>
+    httpClient.request(`/api/v1/practices/${practiceId}/notes`, {
+      method: 'PUT',
+      body: JSON.stringify({ testo })
     })
 };

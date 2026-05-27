@@ -15,19 +15,28 @@
       <requiredInput href="#input_readabilityOk"/>
     </informationRequirement>
     <informationRequirement id="ir3">
-      <requiredInput href="#input_formalOk"/>
+      <requiredInput href="#input_intestazioneOk"/>
     </informationRequirement>
     <informationRequirement id="ir4">
-      <requiredInput href="#input_customerDataOk"/>
+      <requiredInput href="#input_firmeOk"/>
     </informationRequirement>
     <informationRequirement id="ir5">
-      <requiredInput href="#input_cardNumberMatchRequired"/>
+      <requiredInput href="#input_intestazioneConformeAlTimbroOk"/>
     </informationRequirement>
     <informationRequirement id="ir6">
-      <requiredInput href="#input_cardNumberMatchOk"/>
+      <requiredInput href="#input_dichiarazioneConformeAlleFirmeOk"/>
     </informationRequirement>
     <informationRequirement id="ir7">
-      <requiredInput href="#input_koReasons"/>
+      <requiredInput href="#input_cartaPosteItalianeOk"/>
+    </informationRequirement>
+    <informationRequirement id="ir8">
+      <requiredInput href="#input_customerDataOk"/>
+    </informationRequirement>
+    <informationRequirement id="ir9">
+      <requiredInput href="#input_cardNumberMatchRequired"/>
+    </informationRequirement>
+    <informationRequirement id="ir10">
+      <requiredInput href="#input_cardNumberMatchOk"/>
     </informationRequirement>
     <literalExpression id="le_verbale">
       <text><![CDATA[
@@ -35,10 +44,14 @@
           koCodes:
             if not(documentPresent) then ["DOCUMENTO_ASSENTE"]
             else
-              (if not(readabilityOk) then ["LEGGIBILITA_KO"] else [])
-              + (if not(formalOk) then koReasons else [])
-              + (if not(customerDataOk) then ["DATI_CLIENTE_KO"] else [])
-              + (if cardNumberMatchRequired and not(cardNumberMatchOk) then ["NUMERO_CARTA_KO"] else []),
+              (if not(readabilityOk) then ["PPEZ026"] else [])
+              + (if not(intestazioneOk) then ["PPEZ027"] else [])
+              + (if not(firmeOk) then ["PPEZ028"] else [])
+              + (if not(intestazioneConformeAlTimbroOk) then ["PPEZ029"] else [])
+              + (if not(dichiarazioneConformeAlleFirmeOk) then ["PPEZ030"] else [])
+              + (if not(cartaPosteItalianeOk) then ["PPEZ031"] else [])
+              + (if not(customerDataOk) then ["PPEZ032"] else [])
+              + (if cardNumberMatchRequired and not(cardNumberMatchOk) then ["PPEZ033"] else []),
           outcome: if count(koCodes) = 0 then "APPROVATA" else "RESPINTA"
         }
       ]]></text>
@@ -51,8 +64,20 @@
   <inputData id="input_readabilityOk" name="readabilityOk">
     <variable name="readabilityOk" typeRef="boolean"/>
   </inputData>
-  <inputData id="input_formalOk" name="formalOk">
-    <variable name="formalOk" typeRef="boolean"/>
+  <inputData id="input_intestazioneOk" name="intestazioneOk">
+    <variable name="intestazioneOk" typeRef="boolean"/>
+  </inputData>
+  <inputData id="input_firmeOk" name="firmeOk">
+    <variable name="firmeOk" typeRef="boolean"/>
+  </inputData>
+  <inputData id="input_intestazioneConformeAlTimbroOk" name="intestazioneConformeAlTimbroOk">
+    <variable name="intestazioneConformeAlTimbroOk" typeRef="boolean"/>
+  </inputData>
+  <inputData id="input_dichiarazioneConformeAlleFirmeOk" name="dichiarazioneConformeAlleFirmeOk">
+    <variable name="dichiarazioneConformeAlleFirmeOk" typeRef="boolean"/>
+  </inputData>
+  <inputData id="input_cartaPosteItalianeOk" name="cartaPosteItalianeOk">
+    <variable name="cartaPosteItalianeOk" typeRef="boolean"/>
   </inputData>
   <inputData id="input_customerDataOk" name="customerDataOk">
     <variable name="customerDataOk" typeRef="boolean"/>
@@ -62,9 +87,6 @@
   </inputData>
   <inputData id="input_cardNumberMatchOk" name="cardNumberMatchOk">
     <variable name="cardNumberMatchOk" typeRef="boolean"/>
-  </inputData>
-  <inputData id="input_koReasons" name="koReasons">
-    <variable name="koReasons" typeRef="Any"/>
   </inputData>
 
 </definitions>

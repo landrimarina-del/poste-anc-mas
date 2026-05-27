@@ -8,8 +8,8 @@ const FASI = [
 // Sostituisce TypingPage con layout sidebar + milestone bar + step navigation
 // Ref: GAP-US-03, GAP-US-04, GAP-US-06 | GAP-UX.md §4 §6 §8 | GAP-UI.md §2.4
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { attachmentsApi } from '../../core/api/attachmentsApi';
 import { intakeApi } from '../../core/api/intakeApi';
 import { practicesApi } from '../../core/api/practicesApi';
@@ -20,6 +20,19 @@ import { VerificaDocumentiStep } from './VerificaDocumentiStep';
 import { WorkflowSidebar } from './WorkflowSidebar';
 
 // ─── Costanti ───────────────────────────────────────────────────────────────
+
+const PPEZ_DESCRIPTIONS = {
+  PPEZ026: 'Verbale Denuncia non leggibile',
+  PPEZ027: 'Intestazione mancante nel Verbale Denuncia',
+  PPEZ028: 'Firme mancanti nel Verbale Denuncia',
+  PPEZ029: 'Intestazione non conforme al Timbro nel Verbale Denuncia',
+  PPEZ030: 'Dichiarazione non conforme alle firme nel Verbale Denuncia',
+  PPEZ031: 'Mancata descrizione emissione Carta da Poste Italiane',
+  PPEZ032: 'Incoerenza dati Denunciante con dati Cliente',
+  PPEZ033: 'Incorenza numero Carta nel Verbale Denuncia',
+  PPEZ034: 'Carta non leggibile',
+  PPEZ035: 'Carta non tagliata o incorenza numero Carta',
+};
 
 const checklistEmptyForm = {
   documentPresent: '',
@@ -43,10 +56,16 @@ const checklistEmptyForm = {
   },
   // Sprint 13: campi KO opzionali
   codiceCausaleIdCarta: null,
-  codiceCausaleIdVerbale: null
+  codiceCausaleIdVerbale: null,
+  // Sprint 16: sotto-righe formalSuitability verbale
+  intestazioneOk: null,
+  firmeOk: null,
+  intestazioneConformeAlTimbroOk: null,
+  dichiarazioneConformeAlleFirmeOk: null,
+  cartaPosteItalianeOk: null,
 };
 
-const verbaleNoteKeys = ['legibility', 'formalSuitability', 'clientDataConsistency', 'cardNumberMatch'];
+const verbaleNoteKeys = ['legibility', 'formalSuitability', 'clientDataConsistency', 'cardNumberMatch', 'intestazioneOk', 'firmeOk', 'intestazioneConformeAlTimbroOk', 'dichiarazioneConformeAlleFirmeOk', 'cartaPosteItalianeOk'];
 const cardNoteKeys = ['legibility', 'formalSuitability'];
 
 // ─── Helper functions (allineate con TypingPage) ────────────────────────────
@@ -122,7 +141,12 @@ function normalizeVerbaleNotes(raw) {
     legibility: '',
     formalSuitability: '',
     clientDataConsistency: '',
-    cardNumberMatch: ''
+    cardNumberMatch: '',
+    intestazioneOk: '',
+    firmeOk: '',
+    intestazioneConformeAlTimbroOk: '',
+    dichiarazioneConformeAlleFirmeOk: '',
+    cartaPosteItalianeOk: '',
   };
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return normalized;
   for (const key of verbaleNoteKeys) {
@@ -202,6 +226,30 @@ function extractInternalNotesEnvelope(rawNotes) {
   }
 }
 
+function computeKoCodesFromForm(form, documentType) {
+  if (!form || !documentType) return [];
+  if (documentType === 'CARTA') {
+    if (form.documentPresent === 'NO') return ['DOCUMENTO_ASSENTE'];
+    const codes = [];
+    if (form.legibility === 'NO') codes.push('PPEZ034');
+    // cardConformityOk = false se legibility o formalSuitability è NO
+    if (form.legibility === 'NO' || form.formalSuitability === 'NO') codes.push('PPEZ035');
+    return codes;
+  }
+  // VERBALE
+  if (form.documentPresent === 'NO') return ['DOCUMENTO_ASSENTE'];
+  const codes = [];
+  if (form.legibility === 'NO') codes.push('PPEZ026');
+  if (form.intestazioneOk === 'NO') codes.push('PPEZ027');
+  if (form.firmeOk === 'NO') codes.push('PPEZ028');
+  if (form.intestazioneConformeAlTimbroOk === 'NO') codes.push('PPEZ029');
+  if (form.dichiarazioneConformeAlleFirmeOk === 'NO') codes.push('PPEZ030');
+  if (form.cartaPosteItalianeOk === 'NO') codes.push('PPEZ031');
+  if (form.clientDataConsistency === 'NO') codes.push('PPEZ032');
+  if (form.cardNumberCheckEnabled && form.cardNumberMatch === 'NO') codes.push('PPEZ033');
+  return codes;
+}
+
 function mapChecklistToForm(detail) {
   if (!detail || typeof detail !== 'object') {
     return {
@@ -221,8 +269,24 @@ function mapChecklistToForm(detail) {
   const causaleVerbale = payload.codiceCausaleIdVerbale ?? sharedCausaleId;
   const form = {
     documentPresent:       normalizeYesNo(payload.documentPresent ?? payload.cardPresent),
-    legibility:            normalizeYesNo(payload.legibility ?? payload.readabilityOk),
-    formalSuitability:     normalizeYesNo(payload.formalSuitability ?? payload.formalOk),
+    // CARTA: legibility da cardLegibilityOk; VERBALE: da legibility ?? readabilityOk
+    legibility:            normalizeYesNo(payload.cardLegibilityOk ?? payload.legibility ?? payload.readabilityOk),
+    // CARTA: formalSuitability derivata da cardConformityOk + cardLegibilityOk
+    formalSuitability:     (() => {
+      const fromPayload = normalizeYesNo(payload.formalSuitability ?? payload.formalOk);
+      if (fromPayload) return fromPayload;
+      // Derivazione per CARTA da cardConformityOk
+      const conformity = payload.cardConformityOk;
+      const legibility = payload.cardLegibilityOk;
+      if (conformity === true) return 'SI';
+      if (conformity === false) {
+        // Se legibilità è OK, allora è la conformità formale il problema
+        if (legibility === true) return 'NO';
+        // Altrimenti entrambe NO
+        return 'NO';
+      }
+      return '';
+    })(),
     clientDataConsistency: normalizeYesNo(payload.clientDataConsistency ?? payload.customerDataOk),
     cardNumberCheckEnabled: Boolean(payload.cardNumberCheckEnabled ?? payload.cardNumberMatchRequired),
     cardNumberMatch:       normalizeYesNo(payload.cardNumberMatch ?? payload.cardNumberMatchOk),
@@ -265,18 +329,38 @@ function mapChecklistToForm(detail) {
         payload.noteCardNumberMatch,
         payload.verbaleNotes?.cardNumberMatch,
         legacyVerbaleNotes.cardNumberMatch
-      )
+      ),
+      intestazioneOk: pickFirstString(payload.verbaleNotes?.intestazioneOk, legacyVerbaleNotes.intestazioneOk),
+      firmeOk: pickFirstString(payload.verbaleNotes?.firmeOk, legacyVerbaleNotes.firmeOk),
+      intestazioneConformeAlTimbroOk: pickFirstString(payload.verbaleNotes?.intestazioneConformeAlTimbroOk, legacyVerbaleNotes.intestazioneConformeAlTimbroOk),
+      dichiarazioneConformeAlleFirmeOk: pickFirstString(payload.verbaleNotes?.dichiarazioneConformeAlleFirmeOk, legacyVerbaleNotes.dichiarazioneConformeAlleFirmeOk),
+      cartaPosteItalianeOk: pickFirstString(payload.verbaleNotes?.cartaPosteItalianeOk, legacyVerbaleNotes.cartaPosteItalianeOk)
     }),
     codiceCausaleIdCarta: causaleCarta !== null && causaleCarta !== undefined ? String(causaleCarta) : null,
-    codiceCausaleIdVerbale: causaleVerbale !== null && causaleVerbale !== undefined ? String(causaleVerbale) : null
+    codiceCausaleIdVerbale: causaleVerbale !== null && causaleVerbale !== undefined ? String(causaleVerbale) : null,
+    // Sprint 16: sotto-righe formalSuitability verbale — derivate da koCodes se non persistite
+    intestazioneOk: (() => { const d = normalizeYesNo(payload.intestazioneOk); if (d) return d; const fs = normalizeYesNo(payload.formalSuitability ?? payload.formalOk); const kc = Array.isArray(payload.koCodes) ? payload.koCodes : []; if (fs === 'SI') return 'SI'; if (fs === 'NO') return kc.includes('PPEZ027') ? 'NO' : 'SI'; return ''; })(),
+    firmeOk: (() => { const d = normalizeYesNo(payload.firmeOk); if (d) return d; const fs = normalizeYesNo(payload.formalSuitability ?? payload.formalOk); const kc = Array.isArray(payload.koCodes) ? payload.koCodes : []; if (fs === 'SI') return 'SI'; if (fs === 'NO') return kc.includes('PPEZ028') ? 'NO' : 'SI'; return ''; })(),
+    intestazioneConformeAlTimbroOk: (() => { const d = normalizeYesNo(payload.intestazioneConformeAlTimbroOk); if (d) return d; const fs = normalizeYesNo(payload.formalSuitability ?? payload.formalOk); const kc = Array.isArray(payload.koCodes) ? payload.koCodes : []; if (fs === 'SI') return 'SI'; if (fs === 'NO') return kc.includes('PPEZ029') ? 'NO' : 'SI'; return ''; })(),
+    dichiarazioneConformeAlleFirmeOk: (() => { const d = normalizeYesNo(payload.dichiarazioneConformeAlleFirmeOk); if (d) return d; const fs = normalizeYesNo(payload.formalSuitability ?? payload.formalOk); const kc = Array.isArray(payload.koCodes) ? payload.koCodes : []; if (fs === 'SI') return 'SI'; if (fs === 'NO') return kc.includes('PPEZ030') ? 'NO' : 'SI'; return ''; })(),
+    cartaPosteItalianeOk: (() => { const d = normalizeYesNo(payload.cartaPosteItalianeOk); if (d) return d; const fs = normalizeYesNo(payload.formalSuitability ?? payload.formalOk); const kc = Array.isArray(payload.koCodes) ? payload.koCodes : []; if (fs === 'SI') return 'SI'; if (fs === 'NO') return kc.includes('PPEZ031') ? 'NO' : 'SI'; return ''; })()
   };
   return {
     form,
     status:    payload.status ?? payload.stato ?? 'NON_INIZIATA',
     draftSaved: Boolean(payload.draftSaved ?? false),
     outcome:   normalizeOutcome(payload.outcome ?? payload.esito),
-    isEditable: payload.isEditable !== false
+    isEditable: payload.isEditable !== false,
+    koCodes: Array.isArray(payload.koCodes) ? payload.koCodes : []
   };
+}
+
+function buildVerbaleInternalNotesPayload(form) {
+  const verbaleNotes = normalizeVerbaleNotes(form?.verbaleNotes);
+  const hasVerbaleNotes = verbaleNoteKeys.some((key) => String(verbaleNotes[key] ?? '').trim() !== '');
+  const koNote = String(form?.internalNotes ?? '').trim();
+  if (!hasVerbaleNotes) return koNote;
+  return JSON.stringify({ legacy: koNote, verbaleNotes });
 }
 
 function buildCardInternalNotesPayload(form) {
@@ -312,6 +396,7 @@ function buildChecklistSavePayload(form, documentType) {
       // Bug2 fix: backend si aspetta cardPresent (non documentPresent) per CARTA
       cardPresent:           hasAutoKo ? false : true,
       cardConformityOk,
+      cardLegibilityOk:      hasAutoKo ? false : legibilityOk,
       koReasons:             [],
       internalNotes:         buildCardInternalNotesPayload(form),
       // Sprint 13: causale KO opzionale CARTA
@@ -334,9 +419,15 @@ function buildChecklistSavePayload(form, documentType) {
     noteClientDataConsistency: String(form?.verbaleNotes?.clientDataConsistency ?? '').trim(),
     noteCardNumberMatch: String(form?.verbaleNotes?.cardNumberMatch ?? '').trim(),
     finalNotePractice: String(form.finalNotePractice ?? '').trim(),
-    internalNotes: String(form.internalNotes ?? '').trim(),
+    internalNotes: buildVerbaleInternalNotesPayload(form),
     // Sprint 13: causale KO opzionale VERBALE
-    codiceCausaleId: form.codiceCausaleIdVerbale ? Number(form.codiceCausaleIdVerbale) : null
+    codiceCausaleId: form.codiceCausaleIdVerbale ? Number(form.codiceCausaleIdVerbale) : null,
+    // Sprint 16: sotto-righe formalSuitability
+    intestazioneOk: toBooleanOrNull(form.intestazioneOk),
+    firmeOk: toBooleanOrNull(form.firmeOk),
+    intestazioneConformeAlTimbroOk: toBooleanOrNull(form.intestazioneConformeAlTimbroOk),
+    dichiarazioneConformeAlleFirmeOk: toBooleanOrNull(form.dichiarazioneConformeAlleFirmeOk),
+    cartaPosteItalianeOk: toBooleanOrNull(form.cartaPosteItalianeOk)
   };
 }
 
@@ -354,9 +445,6 @@ function getChecklistValidationError(form, documentType) {
   }
   if (form.cardNumberCheckEnabled && !form.cardNumberMatch) {
     return 'Compilare la corrispondenza numero carta oppure disattivare il controllo facoltativo.';
-  }
-  if (form.formalSuitability === 'NO' && form.formalKoReasons.length === 0) {
-    return 'Se idoneità formale è NO, selezionare almeno una causale KO formale.';
   }
   return '';
 }
@@ -390,6 +478,7 @@ function deriveFase(detail) {
 export function TaskLavorazionePage() {
   const { taskId } = useParams();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const practiceId = searchParams.get('practiceId');
   const hasPracticeId = Boolean(practiceId);
   const { setFase: setGlobalFase } = usePhase();
@@ -437,6 +526,10 @@ export function TaskLavorazionePage() {
   const [notesError,   setNotesError]   = useState('');
   const [newNoteText,  setNewNoteText]  = useState('');
   const [noteSaving,   setNoteSaving]   = useState(false);
+  const noteTextRef = useRef(''); // ref sincrono per onSalvaRiepilogo
+
+  // Sprint 16: codici KO pratica — calcolati live dal form state
+  const koCodes = useMemo(() => computeKoCodesFromForm(checklistForm, confirmedType), [checklistForm, confirmedType]);
 
   // ─── Derived state ──────────────────────────────────────────────────────
 
@@ -516,7 +609,14 @@ export function TaskLavorazionePage() {
     setNotesError('');
     try {
       const response = await intakeApi.getNotes(practiceId);
-      setNotes(Array.isArray(response) ? response : []);
+      const list = Array.isArray(response) ? response : [];
+      setNotes(list);
+      // Pre-carica solo se l'utente non ha ancora scritto nulla
+      if (list.length > 0 && !noteTextRef.current) {
+        const lastText = list[0].testo ?? ''; // backend: ORDER BY created_at DESC
+        noteTextRef.current = lastText;
+        setNewNoteText(lastText);
+      }
     } catch (err) {
       setNotesError(err?.message ?? 'Errore nel caricamento delle note.');
     } finally {
@@ -637,6 +737,19 @@ export function TaskLavorazionePage() {
       if (field === 'formalSuitability' && value !== 'NO') {
         next.formalKoReasons = [];
       }
+      // Sprint 16: auto-deriva formalSuitability dalle sotto-righe verbale
+      const subRowKeys = ['intestazioneOk', 'firmeOk', 'intestazioneConformeAlTimbroOk', 'dichiarazioneConformeAlleFirmeOk', 'cartaPosteItalianeOk'];
+      if (subRowKeys.includes(field)) {
+        const subValues = subRowKeys.map((k) => next[k]);
+        if (subValues.some((v) => v === 'NO')) {
+          next.formalSuitability = 'NO';
+        } else if (subValues.every((v) => v === 'SI')) {
+          next.formalSuitability = 'SI';
+          next.formalKoReasons = [];
+        } else {
+          next.formalSuitability = '';
+        }
+      }
       return next;
     });
   };
@@ -656,6 +769,40 @@ export function TaskLavorazionePage() {
 
   // ─── Footer actions (S12-FE-5) ──────────────────────────────────────────
 
+  // Salva checklist e torna alla lista attività
+  const onSalvaEChiudi = async () => {
+    setChecklistError('');
+    setFooterError('');
+    const validationError = getChecklistValidationError(checklistForm, confirmedType);
+    if (validationError) { setChecklistError(validationError); return; }
+    setChecklistSaving(true);
+    try {
+      await intakeApi.saveChecklist(practiceId, buildChecklistSavePayload(checklistForm, confirmedType));
+      navigate('/attivita');
+    } catch (err) {
+      setChecklistError(err?.message ?? 'Errore tecnico durante il salvataggio checklist.');
+    } finally {
+      setChecklistSaving(false);
+    }
+  };
+
+  // Salva nota riepilogo e torna alla lista attività
+  const onSalvaRiepilogo = async () => {
+    const testo = noteTextRef.current.trim();
+    if (testo && practiceId) {
+      setNoteSaving(true);
+      try {
+        await intakeApi.upsertNote(practiceId, testo);
+      } catch (err) {
+        setNotesError(err?.message ?? "Errore nel salvataggio della nota.");
+        setNoteSaving(false);
+        return;
+      }
+      setNoteSaving(false);
+    }
+    navigate('/attivita');
+  };
+
   // N-03/AC-S6-05: "SALVA E PROSEGUI" — visibile su section=2, disabled se esitoSD valorizzato
   const onSalvaEProsegui = async () => {
     setChecklistError('');
@@ -674,7 +821,6 @@ export function TaskLavorazionePage() {
         buildChecklistSavePayload(checklistForm, confirmedType)
       );
       const latestOutcome = await loadChecklist();
-      setChecklistEditable(false); // blocca il form dopo il salvataggio; MODIFICA lo sblocca
       setChecklistInfo('Checklist salvata.');
       if (latestOutcome) {
         setActiveSection(3);
@@ -702,36 +848,17 @@ export function TaskLavorazionePage() {
     }
   };
 
-  // N-05: "MODIFICA" — sempre visibile; resetta esitoSD e torna a sezione 2
-  const onModifica = async () => {
-    setChecklistError('');
-    setFooterError('');
-    setChecklistEditing(true);
-    try {
-      await intakeApi.editChecklist(practiceId);
-      await loadChecklist();
-      setChecklistEditable(true); // sblocca il form per la modifica
-      setChecklistInfo('Checklist riaperta in modifica.');
-      setActiveSection(2);
-    } catch (err) {
-      setFooterError(err?.message ?? 'Impossibile riaprire la checklist in modifica.');
-    } finally {
-      setChecklistEditing(false);
-    }
-  };
-
   // Sprint 13: aggiunta nota di lavorazione
   const onAddNote = async () => {
-    const testo = newNoteText.trim();
+    const testo = noteTextRef.current.trim();
     if (!testo || !practiceId) return;
     setNoteSaving(true);
     setNotesError('');
     try {
-      await intakeApi.addNote(practiceId, testo);
-      setNewNoteText('');
+      await intakeApi.upsertNote(practiceId, testo);
       await loadNotes();
     } catch (err) {
-      setNotesError(err?.message ?? "Errore nell'aggiunta della nota.");
+      setNotesError(err?.message ?? "Errore nel salvataggio della nota.");
     } finally {
       setNoteSaving(false);
     }
@@ -859,6 +986,18 @@ export function TaskLavorazionePage() {
                 <dt>Stato checklist</dt>
                 <dd>{checklistStatus || 'NON_INIZIATA'}</dd>
               </div>
+              <div>
+                <dt>Causali KO</dt>
+                <dd>
+                  {koCodes && koCodes.length > 0 ? (
+                    <ul style={{ margin: 0, paddingLeft: '1.2rem' }}>
+                      {koCodes.map((code) => (
+                        <li key={code}>{PPEZ_DESCRIPTIONS[code] || code}</li>
+                      ))}
+                    </ul>
+                  ) : '-'}
+                </dd>
+              </div>
             </dl>
           </article>
         </div>
@@ -883,43 +1022,20 @@ export function TaskLavorazionePage() {
           {notesError ? (
             <div className="api-error-box">{notesError}</div>
           ) : null}
-          {!notesLoading && notes.length === 0 ? (
-            <div className="panel-note">Nessuna nota presente.</div>
+          {!notesLoading ? (
+            <div>
+              <textarea
+                id="riepilogo-nota-input"
+                value={newNoteText}
+                onChange={(e) => { noteTextRef.current = e.target.value; setNewNoteText(e.target.value); }}
+                placeholder="Inserisci una nota..."
+                rows={4}
+                maxLength={1000}
+                style={{ width: '100%', marginTop: 4, boxSizing: 'border-box' }}
+                disabled={noteSaving || isPracticeClosedForEditing}
+              />
+            </div>
           ) : null}
-          {notes.length > 0 ? (
-            <ul style={{ listStyle: 'none', padding: 0, margin: '8px 0' }}>
-              {notes.map((n) => (
-                <li key={n.id} style={{ borderBottom: '1px solid var(--gray-200)', padding: '6px 0' }}>
-                  <div style={{ fontSize: 13, color: 'var(--gray-600)' }}>
-                    {n.autore} &mdash; {formatNoteDate(n.createdAt)}
-                  </div>
-                  <div>{n.testo}</div>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-          <div style={{ marginTop: 12 }}>
-            <label htmlFor="riepilogo-nota-input">Aggiungi nota</label>
-            <textarea
-              id="riepilogo-nota-input"
-              value={newNoteText}
-              onChange={(e) => setNewNoteText(e.target.value)}
-              placeholder="Inserisci una nota..."
-              rows={3}
-              maxLength={1000}
-              style={{ width: '100%', marginTop: 4, boxSizing: 'border-box' }}
-              disabled={noteSaving}
-            />
-            <button
-              type="button"
-              className="btn btn-primary btn-small"
-              onClick={onAddNote}
-              disabled={noteSaving || !newNoteText.trim()}
-              style={{ marginTop: 8 }}
-            >
-              {noteSaving ? 'Salvataggio...' : 'Aggiungi Nota'}
-            </button>
-          </div>
         </div>
       </div>
     );
@@ -944,17 +1060,6 @@ export function TaskLavorazionePage() {
             )}
           </div>
           <div className="detail-header-actions">
-            <button
-              type="button"
-              className="btn btn-outline btn-small"
-              onClick={loadPage}
-              disabled={loading}
-            >
-              {loading ? 'Caricamento...' : 'Aggiorna'}
-            </button>
-            <Link className="btn btn-outline btn-small" to="/attivita">
-              Indietro
-            </Link>
           </div>
         </div>
         {pageError ? <div className="api-error-box" style={{ margin: '8px 0' }}>{pageError}</div> : null}
@@ -1040,6 +1145,7 @@ export function TaskLavorazionePage() {
                 checklistSaving={checklistSaving}
                 canSaveChecklist={canSaveChecklist}
                 isCardChecklist={isCardChecklist}
+                koCodes={koCodes}
               />
             </>
           ) : null}
@@ -1053,6 +1159,18 @@ export function TaskLavorazionePage() {
       <div className="workflow-footer">
         {footerError ? <span className="form-error">{footerError}</span> : null}
 
+        {/* SALVA E CHIUDI — salva checklist e torna alla lista */}
+        {activeSection === 2 && confirmedType ? (
+          <button
+            type="button"
+            className="btn btn-secondary btn-squared"
+            onClick={onSalvaEChiudi}
+            disabled={isBusy || !canSaveChecklist}
+          >
+            {checklistSaving ? 'SALVATAGGIO...' : 'SALVA E CHIUDI'}
+          </button>
+        ) : null}
+
         {/* N-05/AC-S6-05: "SALVA E PROSEGUI" — visible section=2, disabled se checklist non editabile */}
         {activeSection === 2 && confirmedType ? (
           <button
@@ -1065,8 +1183,20 @@ export function TaskLavorazionePage() {
           </button>
         ) : null}
 
-        {/* N-04/AC-S6-06: "CHIUDI PRATICA" — visible solo section=3 */}
-        {activeSection === 3 ? (
+        {/* SALVA E CHIUDI — riepilogo: salva nota e torna alla lista (nascosto se già chiusa) */}
+        {activeSection === 3 && !['CHIUSA_OK', 'CHIUSA_KO'].includes(practiceState) ? (
+          <button
+            type="button"
+            className="btn btn-secondary btn-squared"
+            onClick={onSalvaRiepilogo}
+            disabled={isBusy}
+          >
+            {noteSaving ? 'SALVATAGGIO...' : 'SALVA E CHIUDI'}
+          </button>
+        ) : null}
+
+        {/* N-04/AC-S6-06: "CHIUDI PRATICA" — visible solo section=3, pratica non ancora chiusa */}
+        {activeSection === 3 && !['CHIUSA_OK', 'CHIUSA_KO'].includes(practiceState) ? (
           <button
             type="button"
             className="btn btn-primary btn-squared"
@@ -1077,15 +1207,16 @@ export function TaskLavorazionePage() {
           </button>
         ) : null}
 
-        {/* "MODIFICA" — sempre visibile */}
-        <button
-          type="button"
-          className="btn btn-outline btn-squared"
-          onClick={onModifica}
-          disabled={isBusy || !confirmedType}
-        >
-          {checklistEditing ? 'MODIFICA IN CORSO...' : 'MODIFICA'}
-        </button>
+        {/* Tasto CHIUDI — visibile dopo risposta BPM (stato finale CHIUSA_OK / CHIUSA_KO) */}
+        {activeSection === 3 && ['CHIUSA_OK', 'CHIUSA_KO'].includes(practiceState) ? (
+          <button
+            type="button"
+            className="btn btn-primary btn-squared"
+            onClick={() => navigate('/attivita')}
+          >
+            CHIUDI
+          </button>
+        ) : null}
       </div>
     </div>
   );

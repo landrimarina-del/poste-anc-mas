@@ -83,6 +83,9 @@ public class IntakePracticeCloseService {
 
         String payloadJson = buildOutboundPayload(practice, outcome, correlationId);
 
+        log.info("[BPM-OUTBOUND] practiceId={} correlationId={} payload={}",
+                practiceId, correlationId, payloadJson);
+
         String statoFinale = sendOutboundSafely(payloadJson, actorUsername, practiceId, correlationId,
                 normalizeOutcomeForBpm(outcome));
 
