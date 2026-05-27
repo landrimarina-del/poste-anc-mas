@@ -43,7 +43,9 @@ const checklistEmptyForm = {
   },
   // Sprint 13: campi KO opzionali
   codiceCausaleIdCarta: null,
-  codiceCausaleIdVerbale: null
+  codiceCausaleIdVerbale: null,
+  // Sprint 16: carta scaduta
+  cardExpired: ''
 };
 
 const verbaleNoteKeys = ['legibility', 'formalSuitability', 'clientDataConsistency', 'cardNumberMatch'];
@@ -268,7 +270,8 @@ function mapChecklistToForm(detail) {
       )
     }),
     codiceCausaleIdCarta: causaleCarta !== null && causaleCarta !== undefined ? String(causaleCarta) : null,
-    codiceCausaleIdVerbale: causaleVerbale !== null && causaleVerbale !== undefined ? String(causaleVerbale) : null
+    codiceCausaleIdVerbale: causaleVerbale !== null && causaleVerbale !== undefined ? String(causaleVerbale) : null,
+    cardExpired: normalizeYesNo(payload.cardExpired)
   };
   return {
     form,
@@ -312,6 +315,8 @@ function buildChecklistSavePayload(form, documentType) {
       // Bug2 fix: backend si aspetta cardPresent (non documentPresent) per CARTA
       cardPresent:           hasAutoKo ? false : true,
       cardConformityOk,
+      // Sprint 16: carta scaduta
+      cardExpired:           hasAutoKo ? null : toBooleanOrNull(form.cardExpired),
       koReasons:             [],
       internalNotes:         buildCardInternalNotesPayload(form),
       // Sprint 13: causale KO opzionale CARTA

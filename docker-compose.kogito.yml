@@ -6,7 +6,6 @@
 #   backend  → 8081  (Flowable usa 8080)
 #   frontend → 81    (Flowable usa 80)
 #   db ANC   → 3308  (Flowable usa 3307)
-#   kogito-db (PostgreSQL) → 5433  (porta standard 5432 non esposta)
 #   minio    → 9002/9003 (Flowable usa 9000/9001)
 #
 # Avvio: docker compose -f docker-compose.kogito.yml up -d
@@ -34,25 +33,6 @@ services:
       timeout: 5s
       retries: 20
 
-  # DB dedicato per Kogito process persistence (PostgreSQL richiesto da kogito-addons-springboot-persistence-jdbc)
-  kogito-db:
-    image: postgres:16-alpine
-    container_name: anc-kogito-db
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: kogito
-      POSTGRES_USER: kogito
-      POSTGRES_PASSWORD: kogito
-    ports:
-      - "5433:5432"
-    volumes:
-      - anc-kogito-db-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U kogito -d kogito"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-
   kogito-backend:
     build:
       context: .
@@ -62,8 +42,6 @@ services:
     restart: unless-stopped
     depends_on:
       kogito-mariadb:
-        condition: service_healthy
-      kogito-db:
         condition: service_healthy
       kogito-minio:
         condition: service_healthy
@@ -78,10 +56,10 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mariadb://kogito-mariadb:3306/anc?useSSL=false&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: anc
       SPRING_DATASOURCE_PASSWORD: anc
-      # Kogito process persistence su PostgreSQL dedicato
-      KOGITO_DATASOURCE_URL: jdbc:postgresql://kogito-db:5432/kogito
-      KOGITO_DATASOURCE_USERNAME: kogito
-      KOGITO_DATASOURCE_PASSWORD: kogito
+      # Kogito process persistence su schema dedicato "kogito" nella stessa istanza MariaDB
+      KOGITO_DATASOURCE_URL: jdbc:mariadb://kogito-mariadb:3306/kogito?useSSL=false&allowPublicKeyRetrieval=true
+      KOGITO_DATASOURCE_USERNAME: anc
+      KOGITO_DATASOURCE_PASSWORD: anc
       ANC_BPM_INBOUND_API_KEY: anc-poc-bpm-inbound-key
       ANC_BPM_INBOUND_HEADER_NAME: X-SD-API-Key
       ANC_BPM_OUTBOUND_URL: http://kogito-bpm-outbound-stub:8090/receive-outcome
@@ -247,7 +225,6 @@ services:
 
 volumes:
   anc-kogito-mariadb-data:
-  anc-kogito-db-data:
   anc-kogito-frontend-static:
   anc-kogito-minio-data:
 

@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/"
+             xmlns:dmndi="https://www.omg.org/spec/DMN/20191111/DMNDI/"
+             xmlns:dc="http://www.omg.org/spec/DMN/20180521/DC/"
+             id="anc-outcome-verbale"
+             name="anc_outcome_verbale"
+             namespace="https://poste.it/anc/dmn/outcome-verbale">
+
+  <decision id="decision_verbale_outcome" name="VerbaleOutcome">
+    <variable id="var_outcome" name="VerbaleOutcome" typeRef="Any"/>
+    <informationRequirement id="ir1">
+      <requiredInput href="#input_documentPresent"/>
+    </informationRequirement>
+    <informationRequirement id="ir2">
+      <requiredInput href="#input_readabilityOk"/>
+    </informationRequirement>
+    <informationRequirement id="ir3">
+      <requiredInput href="#input_formalOk"/>
+    </informationRequirement>
+    <informationRequirement id="ir4">
+      <requiredInput href="#input_customerDataOk"/>
+    </informationRequirement>
+    <informationRequirement id="ir5">
+      <requiredInput href="#input_cardNumberMatchRequired"/>
+    </informationRequirement>
+    <informationRequirement id="ir6">
+      <requiredInput href="#input_cardNumberMatchOk"/>
+    </informationRequirement>
+    <informationRequirement id="ir7">
+      <requiredInput href="#input_koReasons"/>
+    </informationRequirement>
+    <literalExpression id="le_verbale">
+      <text><![CDATA[
+        {
+          koCodes:
+            if not(documentPresent) then ["DOCUMENTO_ASSENTE"]
+            else
+              (if not(readabilityOk) then ["LEGGIBILITA_KO"] else [])
+              + (if not(formalOk) then koReasons else [])
+              + (if not(customerDataOk) then ["DATI_CLIENTE_KO"] else [])
+              + (if cardNumberMatchRequired and not(cardNumberMatchOk) then ["NUMERO_CARTA_KO"] else []),
+          outcome: if count(koCodes) = 0 then "APPROVATA" else "RESPINTA"
+        }
+      ]]></text>
+    </literalExpression>
+  </decision>
+
+  <inputData id="input_documentPresent" name="documentPresent">
+    <variable name="documentPresent" typeRef="boolean"/>
+  </inputData>
+  <inputData id="input_readabilityOk" name="readabilityOk">
+    <variable name="readabilityOk" typeRef="boolean"/>
+  </inputData>
+  <inputData id="input_formalOk" name="formalOk">
+    <variable name="formalOk" typeRef="boolean"/>
+  </inputData>
+  <inputData id="input_customerDataOk" name="customerDataOk">
+    <variable name="customerDataOk" typeRef="boolean"/>
+  </inputData>
+  <inputData id="input_cardNumberMatchRequired" name="cardNumberMatchRequired">
+    <variable name="cardNumberMatchRequired" typeRef="boolean"/>
+  </inputData>
+  <inputData id="input_cardNumberMatchOk" name="cardNumberMatchOk">
+    <variable name="cardNumberMatchOk" typeRef="boolean"/>
+  </inputData>
+  <inputData id="input_koReasons" name="koReasons">
+    <variable name="koReasons" typeRef="Any"/>
+  </inputData>
+
+</definitions>

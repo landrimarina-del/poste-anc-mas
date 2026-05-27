@@ -17,7 +17,7 @@ spring:
     enabled: true
     baseline-on-migrate: true
     baseline-version: "0"
-    # Flyway deve sempre usare MariaDB (ANC datasource), non il PostgreSQL di Kogito
+    # Flyway deve sempre usare il datasource ANC (MariaDB)
     url: ${SPRING_DATASOURCE_URL:jdbc:mariadb://localhost:3307/anc?useSSL=false&allowPublicKeyRetrieval=true}
     user: ${SPRING_DATASOURCE_USERNAME:anc}
     password: ${SPRING_DATASOURCE_PASSWORD:anc}
@@ -46,14 +46,14 @@ management:
     readinessstate:
       enabled: true
 
-# Datasource dedicato per Kogito process persistence (PostgreSQL).
+# Datasource dedicato per Kogito process persistence (MariaDB schema kogito).
 # Il bean kogitoDataSource in KogitoDataSourceConfig legge questo prefisso.
 kogito:
   datasource:
-    jdbc-url: ${KOGITO_DATASOURCE_URL:jdbc:postgresql://localhost:5433/kogito}
-    username: ${KOGITO_DATASOURCE_USERNAME:kogito}
-    password: ${KOGITO_DATASOURCE_PASSWORD:kogito}
-    driver-class-name: org.postgresql.Driver
+    jdbc-url: ${KOGITO_DATASOURCE_URL:jdbc:mariadb://localhost:3307/kogito}
+    username: ${KOGITO_DATASOURCE_USERNAME:anc}
+    password: ${KOGITO_DATASOURCE_PASSWORD:anc}
+    driver-class-name: org.mariadb.jdbc.Driver
   persistence:
     type: jdbc
   # URL esposto da questo servizio (usato da Management Console per operazioni dirette)

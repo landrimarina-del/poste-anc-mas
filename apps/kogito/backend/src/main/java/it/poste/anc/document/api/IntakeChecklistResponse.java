@@ -19,6 +19,7 @@ public record IntakeChecklistResponse(
         String finalNotePractice,
         Boolean cardPresent,
         Boolean cardConformityOk,
+        Boolean cardExpired,
         List<String> koReasons,
         String internalNotes,
         String outcome,

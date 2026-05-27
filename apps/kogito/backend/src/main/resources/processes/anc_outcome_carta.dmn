@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/"
+             xmlns:dmndi="https://www.omg.org/spec/DMN/20191111/DMNDI/"
+             id="anc-outcome-carta"
+             name="anc_outcome_carta"
+             namespace="https://poste.it/anc/dmn/outcome-carta">
+
+  <decision id="decision_carta_outcome" name="CartaOutcome">
+    <variable id="var_carta_outcome" name="CartaOutcome" typeRef="Any"/>
+    <informationRequirement id="ir_cp">
+      <requiredInput href="#input_cardPresent"/>
+    </informationRequirement>
+    <informationRequirement id="ir_cc">
+      <requiredInput href="#input_cardConformityOk"/>
+    </informationRequirement>
+    <informationRequirement id="ir_ce">
+      <requiredInput href="#input_cardExpired"/>
+    </informationRequirement>
+    <literalExpression id="le_carta">
+      <text><![CDATA[
+        {
+          koCodes:
+            if not(cardPresent) then ["CARTA_ASSENTE"]
+            else if not(cardConformityOk) then ["CARTA_NON_CONFORME"]
+            else if cardExpired then ["CARTA_SCADUTA"]
+            else [],
+          outcome: if count(
+            if not(cardPresent) then ["CARTA_ASSENTE"]
+            else if not(cardConformityOk) then ["CARTA_NON_CONFORME"]
+            else if cardExpired then ["CARTA_SCADUTA"]
+            else []
+          ) = 0 then "APPROVATA" else "RESPINTA"
+        }
+      ]]></text>
+    </literalExpression>
+  </decision>
+
+  <inputData id="input_cardPresent" name="cardPresent">
+    <variable name="cardPresent" typeRef="boolean"/>
+  </inputData>
+  <inputData id="input_cardConformityOk" name="cardConformityOk">
+    <variable name="cardConformityOk" typeRef="boolean"/>
+  </inputData>
+  <inputData id="input_cardExpired" name="cardExpired">
+    <variable name="cardExpired" typeRef="boolean"/>
+  </inputData>
+
+</definitions>

@@ -64,10 +64,15 @@
             <groupId>org.kie.kogito</groupId>
             <artifactId>kogito-processes-spring-boot-starter</artifactId>
         </dependency>
-        <!-- Kogito process instance persistence su PostgreSQL -->
+        <!-- Kogito process instance persistence JDBC -->
         <dependency>
             <groupId>org.kie.kogito</groupId>
             <artifactId>kogito-addons-springboot-persistence-jdbc</artifactId>
+        </dependency>
+        <!-- Kogito DMN/Decisions runtime (Spring Boot) -->
+        <dependency>
+            <groupId>org.kie.kogito</groupId>
+            <artifactId>kogito-decisions-spring-boot-starter</artifactId>
         </dependency>
 
         <!-- Swagger UI / OpenAPI 3 -->
@@ -89,13 +94,6 @@
         <dependency>
             <groupId>org.mariadb.jdbc</groupId>
             <artifactId>mariadb-java-client</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-
-        <!-- PostgreSQL driver per Kogito persistence -->
-        <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
 

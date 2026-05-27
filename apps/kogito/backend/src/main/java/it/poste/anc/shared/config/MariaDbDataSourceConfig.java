@@ -13,7 +13,7 @@ import javax.sql.DataSource;
  * Configura il DataSource primario (MariaDB) per le entity ANC.
  *
  * <p>Necessario perché {@code kogito-addons-springboot-persistence-jdbc} registra il
- * proprio DataSource PostgreSQL come primario, scavalcando l'auto-configurazione
+ * proprio DataSource Kogito, scavalcando l'auto-configurazione
  * Spring Boot. Questa classe ripristina MariaDB come {@code @Primary} datasource
  * usato da Hibernate JPA e Flyway per le tabelle di dominio ANC.
  */

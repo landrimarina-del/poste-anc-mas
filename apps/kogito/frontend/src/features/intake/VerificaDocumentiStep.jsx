@@ -625,6 +625,40 @@ export function VerificaDocumentiStep({
               </div>
             ) : null}
 
+            {isCardChecklist && !isConformityDisabled ? (
+              <div className="checklist-field-row">
+                <label className="checklist-label">
+                  Carta di identità scaduta?
+                  <span className="label-optional"> (opzionale)</span>
+                </label>
+                <div className="yesno-group">
+                  {[{ value: 'SI', label: 'Sì' }, { value: 'NO', label: 'No' }].map((opt) => (
+                    <label key={opt.value} className="yesno-option">
+                      <input
+                        type="radio"
+                        name="cardExpired"
+                        value={opt.value}
+                        checked={checklistForm.cardExpired === opt.value}
+                        onChange={() => onChecklistChange('cardExpired', opt.value)}
+                        disabled={isBusy || !canSaveChecklist}
+                      />
+                      {opt.label}
+                    </label>
+                  ))}
+                  {checklistForm.cardExpired ? (
+                    <button
+                      type="button"
+                      className="btn-link-reset"
+                      onClick={() => onChecklistChange('cardExpired', '')}
+                      disabled={isBusy || !canSaveChecklist}
+                    >
+                      Annulla
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+
             {isCardChecklist && (checklistForm.formalSuitability === 'NO' || checklistForm.legibility === 'NO') ? (
               <div className="ko-area-expandable">
                 <button

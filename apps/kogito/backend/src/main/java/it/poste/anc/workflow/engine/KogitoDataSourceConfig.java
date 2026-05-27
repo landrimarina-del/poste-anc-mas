@@ -12,17 +12,20 @@ import org.springframework.context.annotation.Primary;
 import javax.sql.DataSource;
 
 /**
- * Configura il DataSource dedicato a Kogito process persistence (PostgreSQL).
+ * Configura il DataSource dedicato a Kogito process persistence (MariaDB, schema "kogito").
  *
- * <p>Il datasource primario (spring.datasource.*) è MariaDB per le tabelle di dominio ANC.
+ * <p>Il datasource primario (spring.datasource.*) punta allo schema "anc" (dati business ANC).
  * Kogito JDBC persistence richiede un secondo DataSource bean denominato {@code kogitoDataSource}
- * che punta al PostgreSQL dedicato.
+ * che punta allo schema "kogito" sulla stessa istanza MariaDB.
+ *
+ * <p>Kogito rileva automaticamente il tipo DB da DatabaseMetaData e usa il dialetto ANSI
+ * (BLOB per payload protobuf, SQL standard).
  *
  * <p>Le property vengono passate tramite variabili d'ambiente:
  * <ul>
- *   <li>{@code KOGITO_DATASOURCE_URL} — default: jdbc:postgresql://localhost:5433/kogito</li>
- *   <li>{@code KOGITO_DATASOURCE_USERNAME} — default: kogito</li>
- *   <li>{@code KOGITO_DATASOURCE_PASSWORD} — default: kogito</li>
+ *   <li>{@code KOGITO_DATASOURCE_URL} — default: jdbc:mariadb://localhost:3307/kogito</li>
+ *   <li>{@code KOGITO_DATASOURCE_USERNAME} — default: anc</li>
+ *   <li>{@code KOGITO_DATASOURCE_PASSWORD} — default: anc</li>
  * </ul>
  */
 @Configuration
@@ -30,15 +33,15 @@ public class KogitoDataSourceConfig {
 
     @Bean(name = "kogitoDataSource")
     public DataSource kogitoDataSource(
-            @Value("${kogito.datasource.jdbc-url:jdbc:postgresql://localhost:5433/kogito}") String url,
-            @Value("${kogito.datasource.username:kogito}") String username,
-            @Value("${kogito.datasource.password:kogito}") String password
+            @Value("${kogito.datasource.jdbc-url:jdbc:mariadb://localhost:3307/kogito}") String url,
+            @Value("${kogito.datasource.username:anc}") String username,
+            @Value("${kogito.datasource.password:anc}") String password
     ) {
         HikariConfig config = new HikariConfig();
         config.setJdbcUrl(url);
         config.setUsername(username);
         config.setPassword(password);
-        config.setDriverClassName("org.postgresql.Driver");
+        config.setDriverClassName("org.mariadb.jdbc.Driver");
         config.setPoolName("kogito-pool");
         config.setMaximumPoolSize(5);
         config.setMinimumIdle(1);
@@ -47,8 +50,8 @@ public class KogitoDataSourceConfig {
     }
 
     /**
-     * Override di JDBCProcessInstancesFactory per usare il datasource Kogito (PostgreSQL)
-     * invece del datasource primario (MariaDB).
+     * Override di JDBCProcessInstancesFactory per usare il datasource Kogito (schema kogito su MariaDB)
+     * invece del datasource primario (schema anc).
      */
     @Bean
     @Primary
