@@ -220,13 +220,12 @@ public class IntakeChecklistService {
 
     private java.util.Optional<ChecklistCartaRow> loadCartaChecklistRow(Long practiceId) {
         List<ChecklistCartaRow> rows = jdbcTemplate.query(
-                "SELECT practice_id, card_present, card_conformity_ok, card_expired, internal_notes, status, created_at, codice_causale_id "
+                "SELECT practice_id, card_present, card_conformity_ok, internal_notes, status, created_at, codice_causale_id "
                         + "FROM checklist_carta WHERE practice_id = ?",
                 (rs, rowNum) -> new ChecklistCartaRow(
                         rs.getLong("practice_id"),
                         rs.getBoolean("card_present"),
                         readNullableBoolean(rs, "card_conformity_ok"),
-                        readNullableBoolean(rs, "card_expired"),
                         rs.getString("internal_notes"),
                         rs.getString("status"),
                         rs.getTimestamp("created_at"),
@@ -361,10 +360,8 @@ public class IntakeChecklistService {
 
         boolean cardPresent = request.cardPresent();
         Boolean cardConformityOk = request.cardConformityOk();
-        Boolean cardExpired = request.cardExpired();
         if (!cardPresent) {
             cardConformityOk = null;
-            cardExpired = null;
         } else {
             requireNotNull(cardConformityOk, "cardConformityOk");
         }
@@ -373,7 +370,6 @@ public class IntakeChecklistService {
                 practiceId,
                 cardPresent,
                 cardConformityOk,
-                cardExpired,
                 request.internalNotes(),
                 nextStatus,
                 createdAt != null ? createdAt : Timestamp.from(Instant.now()),
@@ -435,11 +431,10 @@ public class IntakeChecklistService {
 
                 private void upsertCartaChecklist(ChecklistCartaRow row) {
                 int updated = jdbcTemplate.update(
-                    "UPDATE checklist_carta SET card_present = ?, card_conformity_ok = ?, card_expired = ?, codice_causale_id = ?, internal_notes = ?, "
+                    "UPDATE checklist_carta SET card_present = ?, card_conformity_ok = ?, codice_causale_id = ?, internal_notes = ?, "
                         + "status = ?, updated_at = CURRENT_TIMESTAMP(3) WHERE practice_id = ?",
                     row.cardPresent(),
                     row.cardConformityOk(),
-                    row.cardExpired(),
                     row.codiceCausaleId(),
                     row.internalNotes(),
                     row.status(),
@@ -448,12 +443,11 @@ public class IntakeChecklistService {
 
                 if (updated == 0) {
                     jdbcTemplate.update(
-                        "INSERT INTO checklist_carta (practice_id, card_present, card_conformity_ok, card_expired, codice_causale_id, internal_notes, status, created_at, updated_at) "
-                            + "VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3))",
+                        "INSERT INTO checklist_carta (practice_id, card_present, card_conformity_ok, codice_causale_id, internal_notes, status, created_at, updated_at) "
+                            + "VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3))",
                         row.practiceId(),
                         row.cardPresent(),
                         row.cardConformityOk(),
-                        row.cardExpired(),
                         row.codiceCausaleId(),
                         row.internalNotes(),
                         row.status()
@@ -476,8 +470,7 @@ public class IntakeChecklistService {
     private OutcomeComputed computeCartaOutcome(ChecklistCartaRow row) {
         return outcomeDmnService.computeCartaOutcome(
                 row.cardPresent(),
-                row.cardConformityOk(),
-                row.cardExpired()
+                row.cardConformityOk()
         );
     }
 
@@ -546,7 +539,6 @@ public class IntakeChecklistService {
             finalNotePractice,
                 null,
                 null,
-                null,
                 checklist.koReasons(),
                 checklist.internalNotes(),
                 outcome != null ? outcome.outcome() : null,
@@ -575,7 +567,6 @@ public class IntakeChecklistService {
             null,
                 checklist.cardPresent(),
                 checklist.cardConformityOk(),
-                checklist.cardExpired(),
                 List.of(),
                 checklist.internalNotes(),
                 outcome != null ? outcome.outcome() : null,
@@ -677,7 +668,6 @@ public class IntakeChecklistService {
     private record ChecklistCartaRow(Long practiceId,
                                      boolean cardPresent,
                                      Boolean cardConformityOk,
-                                     Boolean cardExpired,
                                      String internalNotes,
                                      String status,
                                      Timestamp createdAt,
@@ -686,7 +676,6 @@ public class IntakeChecklistService {
             return new ChecklistCartaRow(
                     practiceId,
                     true,
-                    null,
                     null,
                     null,
                     STATUS_NON_INIZIATA,

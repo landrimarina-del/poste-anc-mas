@@ -37,7 +37,6 @@ const checklistEmptyForm = {
   cardNumberMatch: '',
   formalKoReasons: [],
   internalNotes: '',
-  cardExpired: ''
 };
 
 function normalizeDocumentType(value) {
@@ -151,8 +150,7 @@ function mapChecklistToForm(detail) {
     cardNumberCheckEnabled: Boolean(payload.cardNumberCheckEnabled ?? payload.cardNumberMatchRequired),
     cardNumberMatch: normalizeYesNo(payload.cardNumberMatch ?? payload.cardNumberMatchOk),
     formalKoReasons: normalizeKoReasonList(payload.formalKoReasons ?? payload.koReasons),
-    internalNotes: typeof payload.internalNotes === 'string' ? payload.internalNotes : '',
-    cardExpired: normalizeYesNo(payload.cardExpired)
+    internalNotes: typeof payload.internalNotes === 'string' ? payload.internalNotes : ''
   };
 
   if (form.documentPresent === 'NO') {
@@ -185,7 +183,6 @@ function buildChecklistSavePayload(form, documentType) {
       cardNumberMatchRequired: false,
       cardNumberMatchOk: null,
       koReasons: [],
-      cardExpired: hasAutoKo ? null : toBooleanOrNull(form.cardExpired),
       internalNotes: typeof form.internalNotes === 'string' ? form.internalNotes.trim() : ''
     };
   }
@@ -753,23 +750,6 @@ export function TypingPage() {
                         id="formalSuitability"
                         value={checklistForm.formalSuitability}
                         onChange={(event) => onChecklistFieldChange('formalSuitability', event.target.value)}
-                        disabled={isConformityDisabled || checklistLoading || checklistSaving || checklistEditing || practiceClosing || !canSaveChecklist}
-                      >
-                        <option value="">Seleziona...</option>
-                        {yesNoOptions.map((item) => (
-                          <option key={item.value} value={item.value}>
-                            {item.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-
-                    <label htmlFor="cardExpired">
-                      Carta di identità scaduta?
-                      <select
-                        id="cardExpired"
-                        value={checklistForm.cardExpired}
-                        onChange={(event) => onChecklistFieldChange('cardExpired', event.target.value)}
                         disabled={isConformityDisabled || checklistLoading || checklistSaving || checklistEditing || practiceClosing || !canSaveChecklist}
                       >
                         <option value="">Seleziona...</option>

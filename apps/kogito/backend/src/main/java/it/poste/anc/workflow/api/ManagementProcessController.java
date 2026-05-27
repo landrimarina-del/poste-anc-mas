@@ -22,7 +22,7 @@ import java.util.Map;
  * Endpoint richiesti dalla Kogito Management Console per il drill-down
  * del dettaglio di un'istanza di processo.
  *
- * <p>La Management Console (1.44.x) chiama:
+ * <p>La Management Console (10.2) chiama:
  * <ul>
  *   <li>GET /management/processes/{processId}/source  → sorgente BPMN (XML)</li>
  *   <li>GET /management/processes/{processId}/nodes   → elenco nodi del processo</li>
@@ -111,6 +111,28 @@ public class ManagementProcessController {
         }
         // Per altri processi futuri: restituire lista vuota (console non mostra diagram)
         return ResponseEntity.ok(List.of());
+    }
+
+    // ------------------------------------------------------------------
+    // GET /management/processes/{processId}/nodes/{nodeId}
+    // ------------------------------------------------------------------
+
+    /**
+     * Dettaglio nodo singolo — richiesto da Management Console 10.2.
+     */
+    @GetMapping(value = "/{processId}/nodes/{nodeId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Object>> getNode(
+            @PathVariable String processId,
+            @PathVariable String nodeId) {
+        ResponseEntity<List<Map<String, Object>>> nodesResponse = getProcessNodes(processId);
+        if (!nodesResponse.getStatusCode().is2xxSuccessful() || nodesResponse.getBody() == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return nodesResponse.getBody().stream()
+                .filter(n -> nodeId.equals(n.get("nodeDefinitionId")) || nodeId.equals(n.get("uniqueId")))
+                .findFirst()
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     // ------------------------------------------------------------------

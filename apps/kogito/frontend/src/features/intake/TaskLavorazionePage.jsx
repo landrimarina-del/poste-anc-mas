@@ -43,9 +43,7 @@ const checklistEmptyForm = {
   },
   // Sprint 13: campi KO opzionali
   codiceCausaleIdCarta: null,
-  codiceCausaleIdVerbale: null,
-  // Sprint 16: carta scaduta
-  cardExpired: ''
+  codiceCausaleIdVerbale: null
 };
 
 const verbaleNoteKeys = ['legibility', 'formalSuitability', 'clientDataConsistency', 'cardNumberMatch'];
@@ -270,8 +268,7 @@ function mapChecklistToForm(detail) {
       )
     }),
     codiceCausaleIdCarta: causaleCarta !== null && causaleCarta !== undefined ? String(causaleCarta) : null,
-    codiceCausaleIdVerbale: causaleVerbale !== null && causaleVerbale !== undefined ? String(causaleVerbale) : null,
-    cardExpired: normalizeYesNo(payload.cardExpired)
+    codiceCausaleIdVerbale: causaleVerbale !== null && causaleVerbale !== undefined ? String(causaleVerbale) : null
   };
   return {
     form,
@@ -315,8 +312,6 @@ function buildChecklistSavePayload(form, documentType) {
       // Bug2 fix: backend si aspetta cardPresent (non documentPresent) per CARTA
       cardPresent:           hasAutoKo ? false : true,
       cardConformityOk,
-      // Sprint 16: carta scaduta
-      cardExpired:           hasAutoKo ? null : toBooleanOrNull(form.cardExpired),
       koReasons:             [],
       internalNotes:         buildCardInternalNotesPayload(form),
       // Sprint 13: causale KO opzionale CARTA
@@ -679,6 +674,7 @@ export function TaskLavorazionePage() {
         buildChecklistSavePayload(checklistForm, confirmedType)
       );
       const latestOutcome = await loadChecklist();
+      setChecklistEditable(false); // blocca il form dopo il salvataggio; MODIFICA lo sblocca
       setChecklistInfo('Checklist salvata.');
       if (latestOutcome) {
         setActiveSection(3);
@@ -714,6 +710,7 @@ export function TaskLavorazionePage() {
     try {
       await intakeApi.editChecklist(practiceId);
       await loadChecklist();
+      setChecklistEditable(true); // sblocca il form per la modifica
       setChecklistInfo('Checklist riaperta in modifica.');
       setActiveSection(2);
     } catch (err) {
@@ -1056,13 +1053,13 @@ export function TaskLavorazionePage() {
       <div className="workflow-footer">
         {footerError ? <span className="form-error">{footerError}</span> : null}
 
-        {/* N-05/AC-S6-05: "SALVA E PROSEGUI" — visible section=2, disabled se esitoSD valorizzato */}
+        {/* N-05/AC-S6-05: "SALVA E PROSEGUI" — visible section=2, disabled se checklist non editabile */}
         {activeSection === 2 && confirmedType ? (
           <button
             type="button"
             className="btn btn-primary btn-squared"
             onClick={onSalvaEProsegui}
-            disabled={Boolean(esitoSD) || isBusy}
+            disabled={!canSaveChecklist || isBusy}
           >
             {checklistSaving ? 'SALVATAGGIO...' : 'SALVA E PROSEGUI'}
           </button>

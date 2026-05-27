@@ -29,7 +29,13 @@ bpm:
   retry-interval-ms: ${BPM_RETRY_INTERVAL_MS:2000}
 
 kogito:
-  data-index-url: ${KOGITO_DATAINDEX_HTTP_URL:http://kogito-data-index:8080}
+  service:
+    url: ${KOGITO_SERVICE_URL:http://kogito-backend:8080}
+  dataindex:
+    http:
+      url: ${KOGITO_DATAINDEX_HTTP_URL:http://kogito-data-index:8080}
+  jobs-service:
+    url: ${KOGITO_JOBS_SERVICE_URL:http://kogito-data-index:8080}
 
 ticketing:
   base-url: ${TICKETING_BASE_URL:http://bpm-outbound-stub:8090}

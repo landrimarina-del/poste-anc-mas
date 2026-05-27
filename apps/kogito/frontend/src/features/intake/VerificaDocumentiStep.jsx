@@ -229,16 +229,18 @@ export function VerificaDocumentiStep({
 
   const isBusy = checklistLoading || checklistSaving;
 
+  // Almeno un item della checklist è NO → mostra la unica dropdown causale
+  const hasAnyNo = !isConformityDisabled && (isCardChecklist
+    ? (checklistForm?.formalSuitability === 'NO' || checklistForm?.legibility === 'NO')
+    : (checklistForm?.legibility === 'NO'
+      || checklistForm?.formalSuitability === 'NO'
+      || checklistForm?.clientDataConsistency === 'NO'
+      || (checklistForm?.cardNumberCheckEnabled && checklistForm?.cardNumberMatch === 'NO')));
+
   // Sprint 13: stato causali e toggle aree KO
   const [causaliCarta,   setCausaliCarta]   = useState([]);
   const [causaliVerbale, setCausaliVerbale] = useState([]);
   const [koCartaOpen,    setKoCartaOpen]    = useState(true);
-  const [koVerbaleOpen,  setKoVerbaleOpen]  = useState({
-    legibility: true,
-    formalSuitability: true,
-    clientDataConsistency: true,
-    cardNumberMatch: true
-  });
 
   // Sprint 13: carica causali CARTA quando conformità diventa NO o esiste causale già selezionata
   useEffect(() => {
@@ -274,40 +276,6 @@ export function VerificaDocumentiStep({
     practiceId
   ]);
 
-  // Sprint 13: helper area KO VERBALE per-item
-  function renderVerbaleKoArea(fieldKey, label) {
-    if (checklistForm[fieldKey] !== 'NO' || isConformityDisabled) return null;
-    const isOpen = koVerbaleOpen[fieldKey];
-    return (
-      <div className="ko-area-expandable">
-        <button
-          type="button"
-          className="ko-area-toggle"
-          onClick={() => setKoVerbaleOpen((v) => ({ ...v, [fieldKey]: !v[fieldKey] }))}
-        >
-          {isOpen ? '\u25b2' : '\u25bc'} {label}
-        </button>
-        {isOpen ? (
-          <div className="ko-area-body">
-            <label htmlFor={`vd-causale-ko-${fieldKey}`}>
-              Causale KO (opzionale)
-              <select
-                id={`vd-causale-ko-${fieldKey}`}
-                value={checklistForm.codiceCausaleIdVerbale ?? ''}
-                onChange={(e) => onChecklistChange('codiceCausaleIdVerbale', e.target.value || null)}
-                disabled={isBusy || !canSaveChecklist}
-              >
-                <option value="">-- Seleziona causale --</option>
-                {causaliVerbale.map((c) => (
-                  <option key={c.id} value={c.id}>{c.descrizione}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-        ) : null}
-      </div>
-    );
-  }
 
   const esitoControllo = checklistOutcome
     ? (checklistOutcome === 'APPROVATA' ? 'OK' : 'KO')
@@ -625,40 +593,6 @@ export function VerificaDocumentiStep({
               </div>
             ) : null}
 
-            {isCardChecklist && !isConformityDisabled ? (
-              <div className="checklist-field-row">
-                <label className="checklist-label">
-                  Carta di identità scaduta?
-                  <span className="label-optional"> (opzionale)</span>
-                </label>
-                <div className="yesno-group">
-                  {[{ value: 'SI', label: 'Sì' }, { value: 'NO', label: 'No' }].map((opt) => (
-                    <label key={opt.value} className="yesno-option">
-                      <input
-                        type="radio"
-                        name="cardExpired"
-                        value={opt.value}
-                        checked={checklistForm.cardExpired === opt.value}
-                        onChange={() => onChecklistChange('cardExpired', opt.value)}
-                        disabled={isBusy || !canSaveChecklist}
-                      />
-                      {opt.label}
-                    </label>
-                  ))}
-                  {checklistForm.cardExpired ? (
-                    <button
-                      type="button"
-                      className="btn-link-reset"
-                      onClick={() => onChecklistChange('cardExpired', '')}
-                      disabled={isBusy || !canSaveChecklist}
-                    >
-                      Annulla
-                    </button>
-                  ) : null}
-                </div>
-              </div>
-            ) : null}
-
             {isCardChecklist && (checklistForm.formalSuitability === 'NO' || checklistForm.legibility === 'NO') ? (
               <div className="ko-area-expandable">
                 <button
@@ -682,34 +616,38 @@ export function VerificaDocumentiStep({
                         disabled={isBusy || !canSaveChecklist}
                       />
                     </label>
-                    <label htmlFor="vd-causale-ko-carta">
-                      Causale KO (opzionale)
-                      <select
-                        id="vd-causale-ko-carta"
-                        value={checklistForm.codiceCausaleIdCarta ?? ''}
-                        onChange={(e) => onChecklistChange('codiceCausaleIdCarta', e.target.value || null)}
-                        disabled={isBusy || !canSaveChecklist}
-                      >
-                        <option value="">-- Seleziona causale --</option>
-                        {causaliCarta.map((c) => (
-                          <option key={c.id} value={c.id}>{c.descrizione}</option>
-                        ))}
-                      </select>
-                    </label>
+
                   </div>
                 ) : null}
               </div>
             ) : null}
 
-            {!isCardChecklist && !isConformityDisabled ? (
-              <>
-                {renderVerbaleKoArea('legibility', 'Leggibilità KO')}
-                {renderVerbaleKoArea('formalSuitability', 'Idoneità Formale KO')}
-                {renderVerbaleKoArea('clientDataConsistency', 'Coerenza Dati Cliente KO')}
-                {checklistForm.cardNumberCheckEnabled
-                  ? renderVerbaleKoArea('cardNumberMatch', 'Corrispondenza Numero Carta KO')
-                  : null}
-              </>
+            {/* Unica dropdown causale — visibile quando almeno un campo è NO */}
+            {hasAnyNo ? (
+              <div className="ko-causale-single">
+                <label htmlFor="vd-causale-ko">
+                  Causale KO
+                  <select
+                    id="vd-causale-ko"
+                    value={(isCardChecklist
+                      ? checklistForm.codiceCausaleIdCarta
+                      : checklistForm.codiceCausaleIdVerbale) ?? ''}
+                    onChange={(e) => {
+                      const val = e.target.value || null;
+                      onChecklistChange(
+                        isCardChecklist ? 'codiceCausaleIdCarta' : 'codiceCausaleIdVerbale',
+                        val
+                      );
+                    }}
+                    disabled={isBusy || !canSaveChecklist}
+                  >
+                    <option value="">-- Seleziona causale --</option>
+                    {(isCardChecklist ? causaliCarta : causaliVerbale).map((c) => (
+                      <option key={c.id} value={c.id}>{c.descrizione}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
             ) : null}
 
             {!isCardChecklist && checklistForm.formalSuitability === 'NO' ? (
@@ -744,7 +682,6 @@ export function VerificaDocumentiStep({
             ) : null}
 
             <div className="summary-card verbale-esito-causale-card">
-              <h5>Esito Controllo</h5>
               <dl>
                 <div>
                   <dt>Esito Controllo</dt>
@@ -752,7 +689,7 @@ export function VerificaDocumentiStep({
                 </div>
                 <div>
                   <dt>Causale</dt>
-                  <dd>{causaleDescription}</dd>
+                  <dd>{causaleDescription || 'Non selezionata'}</dd>
                 </div>
               </dl>
               {esitoControllo === 'KO' ? (

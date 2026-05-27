@@ -32,7 +32,7 @@ class TaskControllerTest {
     @Test
     @WithMockUser(username = "operatore.anc")
     void listTasksReturnsQueueForCurrentOperator() throws Exception {
-        when(taskManagementService.listTasksForCurrentOperator("operatore.anc", null, null, false)).thenReturn(List.of(
+        when(taskManagementService.listTasksForCurrentOperator("operatore.anc", null, null, false, null, null, null)).thenReturn(List.of(
                 new TaskListItem(
                         10L,
                         100L,
@@ -41,6 +41,8 @@ class TaskControllerTest {
                         "WI-001",
                         "IN_CODA",
                         "APERTA",
+                        null,
+                        null,
                         null,
                         null,
                         null,

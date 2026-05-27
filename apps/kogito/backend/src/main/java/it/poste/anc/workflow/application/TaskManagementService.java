@@ -39,7 +39,7 @@ public class TaskManagementService {
     }
 
     @Transactional
-        public List<TaskListItem> listTasksForCurrentOperator(String username, String practiceNumber, String taskState, boolean assignedToMe) {
+        public List<TaskListItem> listTasksForCurrentOperator(String username, String practiceNumber, String taskState, boolean assignedToMe, String activityLabel, String ownerUsername, String candidateGroup) {
         Long userId = findUserId(username);
                 ensureUserIsOperator(userId);
         Long groupId = findOperatorGroupId();
@@ -48,13 +48,23 @@ public class TaskManagementService {
                 String normalizedPracticeNumber = normalizeFilter(practiceNumber);
                 String normalizedTaskState = normalizeFilter(taskState);
                 validateTaskStateFilter(normalizedTaskState);
+                String normalizedActivityLabel = normalizeFilter(activityLabel);
+                String normalizedOwnerUsername = normalizeFilter(ownerUsername);
+                String normalizedCandidateGroup = normalizeFilter(candidateGroup);
 
                 StringBuilder sql = new StringBuilder(
                                 "SELECT t.id, t.practice_id, p.num_pratica, p.request_id, p.id_work_item, "
                                                 + "t.stato AS task_state, p.stato AS practice_state, owner.username AS owner_username, "
-                                                + "t.created_at, t.accepted_at, t.sla_due_date "
+                                                + "t.created_at, t.accepted_at, t.sla_due_date, "
+                                                + "ug.name AS candidate_group, "
+                                                + "CASE WHEN p.document_type IS NULL "
+                                                + "  THEN CONCAT('Attivazione Nuova Carta - ', COALESCE(cd.nome,''), ' ', COALESCE(cd.cognome,'')) "
+                                                + "  ELSE CONCAT('Attivazione Nuova Carta - ', p.document_type, ' - ', COALESCE(cd.nome,''), ' ', COALESCE(cd.cognome,'')) "
+                                                + "END AS activity_label "
                                                 + "FROM task t "
                                                 + "JOIN practice p ON p.id = t.practice_id "
+                                                + "LEFT JOIN client_data cd ON cd.practice_id = p.id "
+                                                + "JOIN user_group ug ON ug.id = t.candidate_group_id "
                                                 + "LEFT JOIN app_user owner ON owner.id = t.owner_user_id "
                                                 + "WHERE t.stato IN ('IN_CODA', 'IN_CARICO') "
                                                 + "AND ("
@@ -83,6 +93,21 @@ public class TaskManagementService {
                         sql.append("AND t.owner_user_id = ? ");
                         params.add(userId);
                 }
+                if (normalizedActivityLabel != null) {
+                    sql.append("AND (CASE WHEN p.document_type IS NULL "
+                             + "THEN CONCAT('Attivazione Nuova Carta - ', COALESCE(cd.nome,''), ' ', COALESCE(cd.cognome,'')) "
+                             + "ELSE CONCAT('Attivazione Nuova Carta - ', p.document_type, ' - ', COALESCE(cd.nome,''), ' ', COALESCE(cd.cognome,'')) "
+                             + "END) LIKE ? ");
+                    params.add("%" + normalizedActivityLabel + "%");
+                }
+                if (normalizedOwnerUsername != null) {
+                    sql.append("AND owner.username LIKE ? ");
+                    params.add("%" + normalizedOwnerUsername + "%");
+                }
+                if (normalizedCandidateGroup != null) {
+                    sql.append("AND ug.name LIKE ? ");
+                    params.add("%" + normalizedCandidateGroup + "%");
+                }
                 sql.append("ORDER BY t.created_at DESC, t.id DESC");
 
         return jdbcTemplate.query(
@@ -101,7 +126,9 @@ public class TaskManagementService {
                                 toInstant(rs.getTimestamp("created_at")),
                                 toInstant(rs.getTimestamp("accepted_at")),
                                 sla,
-                                computeSlaStatus(sla)
+                                computeSlaStatus(sla),
+                                rs.getString("activity_label"),
+                                rs.getString("candidate_group")
                         );
                 },
                 params.toArray()

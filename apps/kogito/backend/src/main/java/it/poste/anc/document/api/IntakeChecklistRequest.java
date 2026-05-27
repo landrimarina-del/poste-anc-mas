@@ -16,7 +16,6 @@ public record IntakeChecklistRequest(
         String finalNotePractice,
         Boolean cardPresent,
         Boolean cardConformityOk,
-        Boolean cardExpired,
         List<String> koReasons,
         String internalNotes,
         Long codiceCausaleId

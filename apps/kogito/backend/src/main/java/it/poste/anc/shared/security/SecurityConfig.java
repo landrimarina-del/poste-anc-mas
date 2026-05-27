@@ -1,5 +1,6 @@
 package it.poste.anc.shared.security;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
@@ -14,6 +15,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Configurazione di sicurezza Sprint 0.
@@ -28,6 +35,9 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
  */
 @Configuration
 public class SecurityConfig {
+
+    @Value("${anc.security.cors.allowed-origins:http://localhost:81,http://localhost:3000}")
+    private String allowedOriginsRaw;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -48,14 +58,34 @@ public class SecurityConfig {
     }
 
     @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        List<String> origins = Arrays.stream(allowedOriginsRaw.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .toList();
+
+        CorsConfiguration cfg = new CorsConfiguration();
+        cfg.setAllowedOrigins(origins);
+        cfg.setAllowedMethods(List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
+        cfg.setAllowedHeaders(List.of("*"));
+        cfg.setAllowCredentials(true);
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", cfg);
+        return source;
+    }
+
+    @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, BpmInboundApiKeyFilter bpmInboundApiKeyFilter) throws Exception {
         http
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
             .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(new AntPathRequestMatcher("/actuator/health/**"),
                                  new AntPathRequestMatcher("/actuator/info")).permitAll()
+                .requestMatchers(new AntPathRequestMatcher("/management/**")).permitAll()
+                .requestMatchers(new AntPathRequestMatcher("/anc_pratica/**")).permitAll()
                 .requestMatchers(new AntPathRequestMatcher("/api/v1/auth/login")).permitAll()
                 .requestMatchers(new AntPathRequestMatcher("/api/v1/technical/workflow/readiness")).permitAll()
                 .requestMatchers(new AntPathRequestMatcher("/api/v1/bpm/practices")).permitAll()
@@ -63,10 +93,9 @@ public class SecurityConfig {
                 .requestMatchers(new AntPathRequestMatcher("/api/v1/**")).authenticated()
                 .anyRequest().permitAll())
             .addFilterBefore(bpmInboundApiKeyFilter, BasicAuthenticationFilter.class)
-            .httpBasic(basic -> {})
+            .httpBasic(basic -> basic.disable())
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint((req, res, e) -> {
-                    res.setHeader("WWW-Authenticate", "Basic realm=\"ANC\"");
                     res.setStatus(HttpStatus.UNAUTHORIZED.value());
                     res.setContentType(MediaType.APPLICATION_JSON_VALUE);
                     res.getWriter().write("{\"resultCode\":1002,\"resultMessage\":\"Autenticazione richiesta\"}");

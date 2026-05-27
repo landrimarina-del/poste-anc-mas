@@ -13,21 +13,16 @@
     <informationRequirement id="ir_cc">
       <requiredInput href="#input_cardConformityOk"/>
     </informationRequirement>
-    <informationRequirement id="ir_ce">
-      <requiredInput href="#input_cardExpired"/>
-    </informationRequirement>
     <literalExpression id="le_carta">
       <text><![CDATA[
         {
           koCodes:
             if not(cardPresent) then ["CARTA_ASSENTE"]
             else if not(cardConformityOk) then ["CARTA_NON_CONFORME"]
-            else if cardExpired then ["CARTA_SCADUTA"]
             else [],
           outcome: if count(
             if not(cardPresent) then ["CARTA_ASSENTE"]
             else if not(cardConformityOk) then ["CARTA_NON_CONFORME"]
-            else if cardExpired then ["CARTA_SCADUTA"]
             else []
           ) = 0 then "APPROVATA" else "RESPINTA"
         }
@@ -40,9 +35,6 @@
   </inputData>
   <inputData id="input_cardConformityOk" name="cardConformityOk">
     <variable name="cardConformityOk" typeRef="boolean"/>
-  </inputData>
-  <inputData id="input_cardExpired" name="cardExpired">
-    <variable name="cardExpired" typeRef="boolean"/>
   </inputData>
 
 </definitions>

@@ -30,13 +30,19 @@ public class TaskController {
             @RequestParam(name = "practiceNumber", required = false) String practiceNumber,
             @RequestParam(name = "taskState", required = false) String taskState,
             @RequestParam(name = "assignedToMe", required = false, defaultValue = "false") boolean assignedToMe,
+            @RequestParam(name = "activityLabel", required = false) String activityLabel,
+            @RequestParam(name = "ownerUsername", required = false) String ownerUsername,
+            @RequestParam(name = "candidateGroup", required = false) String candidateGroup,
             Authentication authentication) {
         try {
             List<TaskListItem> tasks = taskManagementService.listTasksForCurrentOperator(
                     authentication.getName(),
                     practiceNumber,
                     taskState,
-                    assignedToMe
+                    assignedToMe,
+                    activityLabel,
+                    ownerUsername,
+                    candidateGroup
             );
             return ResponseEntity.ok(ApiResponse.ok(tasks));
         } catch (TaskOperationException ex) {

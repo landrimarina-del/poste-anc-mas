@@ -14,6 +14,8 @@ public record TaskListItem(
         Instant createdAt,
         Instant acceptedAt,
         Instant slaDueDate,
-        String slaStatus
+        String slaStatus,
+        String activityLabel,
+        String candidateGroup
 ) {
 }

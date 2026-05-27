@@ -1,21 +1,13 @@
 # =====================================================================
 # Backend Scrivania Digitale ANC - Sprint 0 Foundation
-# Build multi-stage: stage 1 compila con Maven, stage 2 runtime JRE 21.
+# Build single-stage: copia il JAR pre-buildato localmente con Maven.
+# Il build locale garantisce che kogito-maven-plugin generi ConfigBean
+# a partire dai file BPMN/DMN presenti nel progetto.
+#
+# PRE-REQUISITO: eseguire prima:
+#   cd apps/kogito/backend && mvn -DskipTests package
 # =====================================================================
 
-# ---------- Stage 1: build ----------
-FROM maven:3.9-eclipse-temurin-21 AS build
-WORKDIR /workspace
-
-# Cache dipendenze
-COPY apps/kogito/backend/pom.xml ./pom.xml
-RUN mvn -B dependency:go-offline
-
-# Sorgenti applicativi
-COPY apps/kogito/backend/src ./src
-RUN mvn -B -DskipTests package -e
-
-# ---------- Stage 2: runtime ----------
 FROM eclipse-temurin:21-jre-jammy AS runtime
 WORKDIR /app
 
@@ -24,8 +16,8 @@ RUN apt-get update \
 	&& apt-get install -y --no-install-recommends wget \
 	&& rm -rf /var/lib/apt/lists/*
 
-# JAR fat
-COPY --from=build /workspace/target/anc-backend-*.jar /app/app.jar
+# JAR fat pre-buildato localmente (include ConfigBean generato da kogito-maven-plugin)
+COPY apps/kogito/backend/target/anc-backend-*.jar /app/app.jar
 
 # Migration SQL versionate (source-of-truth in /infra/db/migrations).
 COPY infra/db/migrations /app/infra/db/migrations

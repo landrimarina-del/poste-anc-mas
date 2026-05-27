@@ -87,14 +87,12 @@ public class OutcomeDmnService {
      * Calcola esito checklist CARTA tramite DMN.
      */
     @SuppressWarnings("unchecked")
-    public OutcomeComputed computeCartaOutcome(boolean cardPresent, Boolean cardConformityOk, Boolean cardExpired) {
+    public OutcomeComputed computeCartaOutcome(boolean cardPresent, Boolean cardConformityOk) {
 
         boolean safeCardConformityOk = Boolean.TRUE.equals(cardConformityOk);
-        boolean safeCardExpired = Boolean.TRUE.equals(cardExpired);
         Map<String, Object> input = Map.of(
                 "cardPresent", cardPresent,
-                "cardConformityOk", safeCardConformityOk,
-                "cardExpired", safeCardExpired
+                "cardConformityOk", safeCardConformityOk
         );
 
         OutcomeComputed dmnResult = evaluateOutcomeDecision(NS_CARTA, MODEL_CARTA, DECISION_CARTA, input);
@@ -102,7 +100,7 @@ public class OutcomeDmnService {
             return dmnResult;
         }
 
-        return computeCartaFallback(cardPresent, safeCardConformityOk, safeCardExpired);
+        return computeCartaFallback(cardPresent, safeCardConformityOk);
     }
 
     @SuppressWarnings("unchecked")
@@ -186,15 +184,12 @@ public class OutcomeDmnService {
         return new OutcomeComputed(outcome, List.copyOf(koCodes));
     }
 
-    private OutcomeComputed computeCartaFallback(boolean cardPresent, boolean cardConformityOk, boolean cardExpired) {
+    private OutcomeComputed computeCartaFallback(boolean cardPresent, boolean cardConformityOk) {
         if (!cardPresent) {
             return new OutcomeComputed("RESPINTA", List.of("CARTA_ASSENTE"));
         }
         if (!cardConformityOk) {
             return new OutcomeComputed("RESPINTA", List.of("CARTA_NON_CONFORME"));
-        }
-        if (cardExpired) {
-            return new OutcomeComputed("RESPINTA", List.of("CARTA_SCADUTA"));
         }
         return new OutcomeComputed("APPROVATA", List.of());
     }

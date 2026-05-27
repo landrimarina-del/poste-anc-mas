@@ -5,7 +5,10 @@ import { tasksApi } from '../../core/api/tasksApi';
 const initialFilters = {
   practiceNumber: '',
   taskState: '',
-  assignedToMe: false
+  assignedToMe: false,
+  activityLabel: '',
+  ownerUsername: '',
+  candidateGroup: ''
 };
 
 const MAX_SAVED_FILTERS = 5;
@@ -52,6 +55,7 @@ export function ActivitiesPage() {
   const [activities, setActivities] = useState([]);
   const [filtersDraft, setFiltersDraft] = useState(initialFilters);
   const [filtersApplied, setFiltersApplied] = useState(initialFilters);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
   const [acceptingTaskId, setAcceptingTaskId] = useState(null);
@@ -73,7 +77,7 @@ export function ActivitiesPage() {
     }
   }, []);
 
-  const loadActivities = useCallback(async (filters = filtersApplied) => {
+  const loadActivities = useCallback(async (filters) => {
     setLoading(true);
     setErrorMessage('');
 
@@ -91,11 +95,11 @@ export function ActivitiesPage() {
     } finally {
       setLoading(false);
     }
-  }, [filtersApplied]);
+  }, []);
 
   useEffect(() => {
     loadActivities(filtersApplied);
-  }, [filtersApplied, loadActivities]);
+  }, [filtersApplied, loadActivities, refreshKey]);
 
   useEffect(() => {
     void loadSavedFilters();
@@ -158,10 +162,11 @@ export function ActivitiesPage() {
     setFiltersDraft(initialFilters);
     setFiltersApplied(initialFilters);
     setSelectedFilterId(null);
+    setRefreshKey((prev) => prev + 1);
   };
 
   const onRefresh = () => {
-    loadActivities(filtersApplied);
+    setRefreshKey((prev) => prev + 1);
   };
 
   const onAcceptTask = async (task) => {
@@ -236,6 +241,17 @@ export function ActivitiesPage() {
       <div className="filters-box" aria-label="Filtri lista attivita">
         <div className="filters-grid">
           <label>
+            Stato
+            <select name="taskState" value={filtersDraft.taskState} onChange={onChangeFilter}>
+              {taskStateOptions.map((option) => (
+                <option key={option.value || 'ALL'} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
             Pratica N°
             <input
               type="text"
@@ -247,14 +263,36 @@ export function ActivitiesPage() {
           </label>
 
           <label>
-            Stato task
-            <select name="taskState" value={filtersDraft.taskState} onChange={onChangeFilter}>
-              {taskStateOptions.map((option) => (
-                <option key={option.value || 'ALL'} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+            Nome Attività
+            <input
+              type="text"
+              name="activityLabel"
+              value={filtersDraft.activityLabel}
+              onChange={onChangeFilter}
+              placeholder="Es. Attivazione Nuova Carta"
+            />
+          </label>
+
+          <label>
+            Assegnatari
+            <input
+              type="text"
+              name="candidateGroup"
+              value={filtersDraft.candidateGroup}
+              onChange={onChangeFilter}
+              placeholder="Es. Operatori ANC"
+            />
+          </label>
+
+          <label>
+            Utente in carico
+            <input
+              type="text"
+              name="ownerUsername"
+              value={filtersDraft.ownerUsername}
+              onChange={onChangeFilter}
+              placeholder="Es. op.rossi"
+            />
           </label>
         </div>
 
@@ -296,9 +334,11 @@ export function ActivitiesPage() {
             <table className="practices-table saved-filters-table">
               <thead>
                 <tr>
-                  <th>Nome Filtro</th>
-                  <th>Pratica N.</th>
                   <th>Stato</th>
+                  <th>Pratica N.</th>
+                  <th>Nome Attività</th>
+                  <th>Assegnatari</th>
+                  <th>Utente in carico</th>
                   <th>Attività a me</th>
                   <th>Data</th>
                   <th>Azioni</th>
@@ -315,9 +355,11 @@ export function ActivitiesPage() {
                       key={sfId ?? sf.filterName}
                       className={`saved-filter-row${isSelected ? ' selected' : ''}`}
                     >
-                      <td>{sf.filterName ?? 'Filtro senza nome'}</td>
-                      <td>{parsed.practiceNumber || '-'}</td>
                       <td>{parsed.taskState || '-'}</td>
+                      <td>{parsed.practiceNumber || '-'}</td>
+                      <td>{parsed.activityLabel || '-'}</td>
+                      <td>{parsed.candidateGroup || '-'}</td>
+                      <td>{parsed.ownerUsername || '-'}</td>
                       <td>{parsed.assignedToMe ? 'Sì' : 'No'}</td>
                       <td>{formatDate(sf.createdAt)}</td>
                       <td>
@@ -358,14 +400,14 @@ export function ActivitiesPage() {
         <table className="practices-table">
           <thead>
             <tr>
-              <th>Attivita</th>
               <th>Pratica N.</th>
-              <th>Stato task</th>
-              <th>Stato pratica</th>
-              <th>Assegnatario</th>
+              <th>Attività</th>
+              <th>Assegnatari</th>
+              <th>Utente in carico</th>
               <th>Data creazione</th>
-              <th>SLA</th>
-              <th>Azione</th>
+              <th>Data presa in carico</th>
+              <th>Stato</th>
+              <th>Azioni</th>
             </tr>
           </thead>
           <tbody>
@@ -385,26 +427,22 @@ export function ActivitiesPage() {
                 const isAccepting = acceptingTaskId === task.taskId;
                 return (
                   <tr key={task.taskId ?? `${task.practiceId}-${task.createdAt}`}>
-                    <td>{task.activityLabel ?? task.taskName ?? 'Task ANC'}</td>
                     <td>
-                      {task.practiceId ? (
-                        <Link className="table-link" to={`/pratiche/${task.practiceId}`}>
-                          {task.practiceNumber ?? '-'}
-                        </Link>
-                      ) : (
-                        task.practiceNumber ?? '-'
-                      )}
+                      <Link className="table-link" to={`/pratiche/${task.practiceId}`}>
+                        {task.practiceNumber ?? '-'}
+                      </Link>
                     </td>
-                    <td>{task.taskState ?? '-'}</td>
-                    <td>{task.practiceState ?? '-'}</td>
+                    <td>{task.activityLabel ?? task.taskName ?? 'Task ANC'}</td>
+                    <td>{task.candidateGroup ?? '-'}</td>
                     <td>{task.ownerUser ?? task.ownerUsername ?? '-'}</td>
                     <td>{formatDateTime(task.createdAt)}</td>
+                    <td>{formatDateTime(task.acceptedAt)}</td>
                     <td>
-                      {task.slaStatus === 'SCADUTO'
-                        ? <span className="badge-sla badge-sla-scaduto" title={task.slaDueDate ? `Scaduto il ${formatDateTime(task.slaDueDate)}` : 'SLA scaduto'}>SCADUTO</span>
-                        : task.slaStatus === 'IN_TEMPO'
-                          ? <span className="badge-sla badge-sla-in-tempo" title={task.slaDueDate ? `Scadenza ${formatDateTime(task.slaDueDate)}` : 'In tempo'}>IN TEMPO</span>
-                          : <span className="badge-sla badge-sla-nd">—</span>
+                      {task.taskState === 'IN_CARICO'
+                        ? <span className="badge-stato badge-stato-in-carico" title="In lavorazione">✓</span>
+                        : task.taskState === 'IN_CODA'
+                          ? <span className="badge-stato badge-stato-in-coda" title="In coda">✓</span>
+                          : <span className="badge-stato" title={task.taskState ?? '-'}>—</span>
                       }
                     </td>
                     <td>
@@ -420,10 +458,10 @@ export function ActivitiesPage() {
                         <button
                           type="button"
                           className="btn btn-outline btn-small"
-                          disabled={!canOpenTyping || Boolean(acceptingTaskId)}
+                          disabled={canAccept || Boolean(acceptingTaskId)}
                           onClick={() => navigate(`/attivita/${task.taskId}/tipizzazione?practiceId=${encodeURIComponent(task.practiceId)}`)}
                         >
-                          APRI
+                          MODIFICA
                         </button>
                       </div>
                     </td>

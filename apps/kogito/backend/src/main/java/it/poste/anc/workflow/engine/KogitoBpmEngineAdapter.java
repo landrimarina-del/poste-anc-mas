@@ -1,6 +1,5 @@
 package it.poste.anc.workflow.engine;
 
-import org.kie.kogito.Application;
 import org.kie.kogito.Model;
 import org.kie.kogito.process.Process;
 import org.kie.kogito.process.ProcessInstance;
@@ -42,15 +41,18 @@ public class KogitoBpmEngineAdapter implements BpmEngineAdapter {
     private final ApplicationContext applicationContext;
     private final UnitOfWorkManager unitOfWorkManager;
     private final RestTemplate restTemplate;
-    private final String dataIndexUrl;
+    private final String serviceUrl;
+
+    @Value("${kogito.dataindex.http.url:http://kogito-data-index:8080}")
+    private String dataIndexUrl;
 
     public KogitoBpmEngineAdapter(ApplicationContext applicationContext,
-                                   Application kogitoApplication,
-                                   @Value("${kogito.data-index-url:http://kogito-data-index:8080}") String dataIndexUrl) {
+                                   UnitOfWorkManager unitOfWorkManager,
+                                   @Value("${kogito.service.url:http://localhost:8080}") String serviceUrl) {
         this.applicationContext = applicationContext;
-        this.unitOfWorkManager = kogitoApplication.unitOfWorkManager();
+        this.unitOfWorkManager = unitOfWorkManager;
         this.restTemplate = new RestTemplate();
-        this.dataIndexUrl = dataIndexUrl;
+        this.serviceUrl = serviceUrl;
     }
 
     /**

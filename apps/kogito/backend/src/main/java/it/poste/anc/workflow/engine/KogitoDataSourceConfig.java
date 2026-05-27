@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 
 import javax.sql.DataSource;
+import java.util.List;
 
 /**
  * Configura il DataSource dedicato a Kogito process persistence (MariaDB, schema "kogito").
@@ -57,8 +58,9 @@ public class KogitoDataSourceConfig {
     @Primary
     public JDBCProcessInstancesFactory processInstancesFactory(
             @Qualifier("kogitoDataSource") DataSource kogitoDataSource,
-            @Value("${kogito.persistence.optimistic.lock:false}") Boolean lock
+            @Value("${kogito.persistence.optimistic.lock:false}") Boolean lock,
+            @Value("${kogito.persistence.auto-ddl:true}") Boolean autoDdl
     ) {
-        return new JDBCProcessInstancesFactory(kogitoDataSource, lock);
+        return new JDBCProcessInstancesFactory(kogitoDataSource, lock, autoDdl, List.of());
     }
 }
