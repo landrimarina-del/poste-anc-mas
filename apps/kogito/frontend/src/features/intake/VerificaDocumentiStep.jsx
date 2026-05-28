@@ -408,7 +408,7 @@ export function VerificaDocumentiStep({
 
           <div className="summary-card verifica-data-card verifica-area-bottom-right">
             <h4>{isCardChecklist ? 'Contenuti Carta' : 'Contenuti Verbale di denuncia'}</h4>
-            {!isCardChecklist && downloadUrl ? (
+            {downloadUrl ? (
               <a
                 className="btn btn-outline btn-small"
                 href={downloadUrl}
@@ -688,18 +688,6 @@ export function VerificaDocumentiStep({
                 {isCardChecklist
                   ? 'Carta assente: esito KO automatico applicato.'
                   : 'Documento assente: KO automatico applicato e controlli conformità disabilitati.'}
-              </div>
-            ) : null}
-
-            {checklistOutcome ? (
-              <div
-                className={`outcome-card ${
-                  checklistOutcome === 'APPROVATA' ? 'outcome-card-ok' : 'outcome-card-ko'
-                }`}
-                aria-live="polite"
-              >
-                <h5>Riepilogo esito</h5>
-                <p>{checklistOutcome}</p>
               </div>
             ) : null}
 

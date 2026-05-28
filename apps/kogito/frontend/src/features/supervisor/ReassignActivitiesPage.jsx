@@ -10,14 +10,13 @@ const initialFilters = {
 };
 
 function formatDateTime(value) {
-  if (!value) {
-    return '-';
-  }
+  if (!value) return '-';
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  return date.toLocaleString('it-IT');
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('it-IT', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  }).format(date);
 }
 
 export function ReassignActivitiesPage() {
@@ -298,18 +297,19 @@ export function ReassignActivitiesPage() {
                   disabled={tasks.length === 0 || reassigning}
                 />
               </th>
-              <th>Attività</th>
               <th>Pratica N.</th>
-              <th>Data Assegnazione</th>
-              <th>Owner</th>
+              <th>Attività</th>
               <th>Assegnatario</th>
-              <th>Stato task</th>
+              <th>Owner</th>
+              <th>Data Assegnazione</th>
+              <th>Data Presa in carico</th>
+              <th>Stato Pratica</th>
             </tr>
           </thead>
           <tbody>
             {tasks.length === 0 ? (
               <tr>
-                <td className="empty-row" colSpan={7}>
+                <td className="empty-row" colSpan={8}>
                   {loading ? 'Caricamento task supervisione in corso...' : 'Nessun task disponibile con i filtri impostati.'}
                 </td>
               </tr>
@@ -332,7 +332,6 @@ export function ReassignActivitiesPage() {
                         disabled={!taskId || reassigning}
                       />
                     </td>
-                    <td>{task.activityLabel ?? 'Task ANC'}</td>
                     <td>
                       {task.practiceId ? (
                         <Link className="table-link" to={`/pratiche/${task.practiceId}`}>
@@ -342,10 +341,19 @@ export function ReassignActivitiesPage() {
                         task.practiceNumber ?? '-'
                       )}
                     </td>
-                    <td>{formatDateTime(task.assignmentDate)}</td>
-                    <td>{task.owner ?? '-'}</td>
+                    <td>{task.activityLabel ?? task.activitylabel ?? 'Task ANC'}</td>
                     <td>{task.assignee ?? '-'}</td>
-                    <td>{task.taskState ?? '-'}</td>
+                    <td>{task.ownerUsername ?? task.owner ?? '-'}</td>
+                    <td>{formatDateTime(task.assignmentDate)}</td>
+                    <td>{formatDateTime(task.acceptedAt ?? task.accepted_at)}</td>
+                    <td>
+                      {task.taskState === 'IN_CARICO'
+                        ? <span className="badge-stato badge-stato-in-carico" title="In lavorazione">✓</span>
+                        : task.taskState === 'IN_CODA'
+                          ? <span className="badge-stato badge-stato-in-coda" title="In coda">✓</span>
+                          : <span className="badge-stato" title={task.taskState ?? '-'}>—</span>
+                      }
+                    </td>
                   </tr>
                 );
               })

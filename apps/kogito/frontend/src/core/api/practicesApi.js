@@ -46,5 +46,9 @@ export const practicesApi = {
   relatedActions: (practiceId) =>
     httpClient.request(`/api/v1/practices/${practiceId}/related-actions`, {
       method: 'GET'
+    }),
+  attachments: (practiceId) =>
+    httpClient.request(`/api/v1/practices/${practiceId}/attachments`, {
+      method: 'GET'
     })
 };

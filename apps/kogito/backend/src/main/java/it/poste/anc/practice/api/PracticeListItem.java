@@ -11,6 +11,11 @@ public record PracticeListItem(
         String sdOutcome,
         Instant openedAt,
         Instant closedAt,
-        Instant lastModifiedAt
+        Instant lastModifiedAt,
+        String codiceFiscale,
+        String codiceCliente,
+        Instant dataInserimentoRichiesta,
+        String operatore,
+        Integer segnalazioniCount
 ) {
 }

@@ -51,7 +51,7 @@ public class PracticeQueryService {
                 outcomeColumn, params);
 
         Long totalCount = jdbcTemplate.queryForObject(
-                "SELECT COUNT(1) FROM practice p" + whereClause,
+                "SELECT COUNT(1) FROM practice p LEFT JOIN practice_outcome po ON po.practice_id = p.id" + whereClause,
                 Long.class,
                 params.toArray()
         );
@@ -70,8 +70,14 @@ public class PracticeQueryService {
                 + "" + resolveSelectTimestamp(openedAtColumn) + " AS opened_at, "
                 + "" + resolveSelectTimestamp(closedAtColumn) + " AS closed_at, "
                 + "" + resolveSelectTimestamp(lastModifiedAtColumn, openedAtColumn) + " AS last_modified_at, "
-                + resolveSelectString(outcomeColumn) + " AS sd_outcome "
-                + "FROM practice p"
+                + "po.outcome AS sd_outcome, "
+                + "p.cf_cliente AS codice_fiscale, "
+                + "p.codice_cliente, "
+                + "p.data_inserimento_richiesta, "
+                + "(SELECT u.username FROM task t JOIN app_user u ON u.id = t.owner_user_id "
+                + " WHERE t.practice_id = p.id ORDER BY t.created_at DESC LIMIT 1) AS operatore, "
+                + "(SELECT COUNT(1) FROM signal_case sc WHERE sc.practice_id = p.id) AS segnalazioni_count "
+                + "FROM practice p LEFT JOIN practice_outcome po ON po.practice_id = p.id"
                 + whereClause
                 + " ORDER BY " + orderBy
                 + " LIMIT ? OFFSET ?";
@@ -85,7 +91,12 @@ public class PracticeQueryService {
                 rs.getString("sd_outcome"),
                 toInstant(rs.getTimestamp("opened_at")),
                 toInstant(rs.getTimestamp("closed_at")),
-                toInstant(rs.getTimestamp("last_modified_at"))
+                toInstant(rs.getTimestamp("last_modified_at")),
+                rs.getString("codice_fiscale"),
+                rs.getString("codice_cliente"),
+                toInstant(rs.getTimestamp("data_inserimento_richiesta")),
+                rs.getString("operatore"),
+                rs.getInt("segnalazioni_count")
         ), listParams.toArray());
 
         return new PracticeListPage(items, total, safePage, safeSize);
@@ -99,18 +110,19 @@ public class PracticeQueryService {
         String lastModifiedAtColumn = pickOptionalColumn(selectColumns, "ultima_modifica", "updated_at", "last_modified_at");
         String outcomeColumn = pickOptionalColumn(selectColumns, "esito_sd", "outcome_sd", "esito");
 
-        String sql = "SELECT p.id, p.request_id, p.id_work_item, p.stato, p.codice_cliente, "
+        String sql = "SELECT p.id, p.request_id, p.id_work_item, p.stato, p.codice_cliente, p.document_type, "
                 + "p." + practiceNumberColumn + " AS practice_number, "
                 + "" + resolveSelectTimestamp(openedAtColumn) + " AS opened_at, "
                 + "" + resolveSelectTimestamp(closedAtColumn) + " AS closed_at, "
                 + "" + resolveSelectTimestamp(lastModifiedAtColumn, openedAtColumn) + " AS last_modified_at, "
-                + resolveSelectString(outcomeColumn) + " AS sd_outcome, "
+                + "po.outcome AS sd_outcome, po.ko_codes_json, "
             + "c.nome, c.cognome, c.codice_fiscale, c.sesso, c.data_nascita, c.comune_nascita, "
             + "c.provincia_nascita, c.nazione_nascita, c.telefono, c.cellulare, "
             + "c.residenza_luogo, c.residenza_comune, c.residenza_provincia, c.residenza_nazione, "
             + "c.residenza_cap, c.residenza_civico, "
                 + "cd.pan_masked, cd.card_type, cd.intestatario_carta "
                 + "FROM practice p "
+                + "LEFT JOIN practice_outcome po ON po.practice_id = p.id "
                 + "LEFT JOIN client_data c ON c.practice_id = p.id "
                 + "LEFT JOIN card_data cd ON cd.practice_id = p.id "
                 + "WHERE p.id = ?";
@@ -125,7 +137,9 @@ public class PracticeQueryService {
                     rs.getString("sd_outcome"),
                     toInstant(rs.getTimestamp("opened_at")),
                     toInstant(rs.getTimestamp("closed_at")),
-                    toInstant(rs.getTimestamp("last_modified_at"))
+                    toInstant(rs.getTimestamp("last_modified_at")),
+                    rs.getString("document_type"),
+                    rs.getString("ko_codes_json")
             );
 
             PracticeDetailResponse.Client client = new PracticeDetailResponse.Client(
@@ -165,10 +179,15 @@ public class PracticeQueryService {
     public List<PracticeHistoryItem> getPracticeHistory(Long practiceId) {
         List<PracticeHistoryItem> historyItems = new ArrayList<>();
 
+        boolean stateHistoryExists = tableExists("practice_state_history");
+        String auditSql = "SELECT MIN(id) AS id, event_type, actor_username, "
+                + "MIN(correlation_id) AS correlation_id, occurred_at, "
+                + "MIN(JSON_UNQUOTE(JSON_EXTRACT(payload_json, '$.note'))) AS note "
+                + "FROM audit_event WHERE practice_id = ?"
+                + (stateHistoryExists ? " AND event_type <> 'STATE_CHANGED'" : "")
+                + " GROUP BY event_type, actor_username, occurred_at";
         historyItems.addAll(jdbcTemplate.query(
-            "SELECT id, event_type, actor_username, correlation_id, occurred_at, "
-                + "JSON_UNQUOTE(JSON_EXTRACT(payload_json, '$.note')) AS note "
-                + "FROM audit_event WHERE practice_id = ?",
+            auditSql,
             (rs, rowNum) -> new PracticeHistoryItem(
                 rs.getLong("id"),
                 rs.getString("event_type"),
@@ -180,10 +199,13 @@ public class PracticeQueryService {
             practiceId
         ));
 
-        if (tableExists("practice_state_history")) {
+        if (stateHistoryExists) {
             historyItems.addAll(jdbcTemplate.query(
-                "SELECT id, from_state, to_state, actor_username, correlation_id, note, occurred_at "
-                    + "FROM practice_state_history WHERE practice_id = ?",
+                "SELECT MIN(id) AS id, actor_username, MIN(correlation_id) AS correlation_id, "
+                    + "MIN(note) AS note, occurred_at, "
+                    + "MIN(from_state) AS from_state, MIN(to_state) AS to_state "
+                    + "FROM practice_state_history WHERE practice_id = ? "
+                    + "GROUP BY actor_username, occurred_at",
                 (rs, rowNum) -> new PracticeHistoryItem(
                     -rs.getLong("id"),
                     "STATE_CHANGED",
@@ -338,9 +360,16 @@ public class PracticeQueryService {
             conditions.add("UPPER(p.stato) = ?");
             params.add(query.state().trim().toUpperCase(Locale.ROOT));
         }
-        if (notBlank(query.sdOutcome()) && outcomeColumn != null) {
-            conditions.add("UPPER(p." + outcomeColumn + ") = ?");
-            params.add(query.sdOutcome().trim().toUpperCase(Locale.ROOT));
+        if (notBlank(query.sdOutcome())) {
+            String normalizedOutcome = query.sdOutcome().trim().toUpperCase(Locale.ROOT);
+            if ("OK".equals(normalizedOutcome) || "APPROVATA".equals(normalizedOutcome)) {
+                conditions.add("UPPER(po.outcome) IN ('OK', 'APPROVATA')");
+            } else if ("KO".equals(normalizedOutcome) || "RESPINTA".equals(normalizedOutcome) || "NOK".equals(normalizedOutcome)) {
+                conditions.add("UPPER(po.outcome) IN ('KO', 'RESPINTA')");
+            } else {
+                conditions.add("UPPER(po.outcome) = ?");
+                params.add(normalizedOutcome);
+            }
         }
 
         appendDateRange(conditions, params, "p." + openedAtColumn, query.openedFrom(), query.openedTo());
@@ -422,8 +451,7 @@ public class PracticeQueryService {
             case "closedat", "closed_at", "datachiusura", "data_chiusura" -> closedAtColumn == null ? "p." + openedAtColumn : "p." + closedAtColumn;
             case "lastmodifiedat", "last_modified_at", "ultimamodifica", "ultima_modifica" ->
                     lastModifiedAtColumn == null ? "p." + openedAtColumn : "p." + lastModifiedAtColumn;
-            case "sdoutcome", "sd_outcome", "esitosd", "esito_sd" ->
-                    outcomeColumn == null ? "p." + openedAtColumn : "p." + outcomeColumn;
+            case "sdoutcome", "sd_outcome", "esitosd", "esito_sd" -> "po.outcome";
             default -> "p." + openedAtColumn;
         };
 

@@ -47,9 +47,15 @@ public class SupervisionTaskService {
                 "SELECT t.id AS task_id, t.practice_id, p.num_pratica, t.stato AS task_state, p.stato AS practice_state, "
                         + "owner.username AS owner_username, "
                         + "COALESCE(last_tah.assigned_at, t.accepted_at, t.created_at) AS assignment_date, "
-                        + "COALESCE(last_user.username, owner.username, last_group.code, candidate_group.code) AS assignee "
+                        + "COALESCE(last_user.username, owner.username, last_group.code, candidate_group.code) AS assignee, "
+                        + "t.accepted_at, "
+                        + "CASE WHEN p.document_type IS NULL "
+                        + "  THEN CONCAT('Attivazione Nuova Carta - ', COALESCE(cd.nome,''), ' ', COALESCE(cd.cognome,'')) "
+                        + "  ELSE CONCAT('Attivazione Nuova Carta - ', p.document_type, ' - ', COALESCE(cd.nome,''), ' ', COALESCE(cd.cognome,'')) "
+                        + "END AS activity_label "
                         + "FROM task t "
                         + "JOIN practice p ON p.id = t.practice_id "
+                        + "LEFT JOIN client_data cd ON cd.practice_id = p.id "
                         + "LEFT JOIN app_user owner ON owner.id = t.owner_user_id "
                         + "LEFT JOIN user_group candidate_group ON candidate_group.id = t.candidate_group_id "
                         + "LEFT JOIN task_assignment_history last_tah ON last_tah.id = ("
@@ -92,7 +98,9 @@ public class SupervisionTaskService {
                         rs.getString("practice_state"),
                         rs.getString("owner_username"),
                         rs.getString("assignee"),
-                        toInstant(rs.getTimestamp("assignment_date"))
+                        toInstant(rs.getTimestamp("assignment_date")),
+                        rs.getString("activity_label"),
+                        toInstant(rs.getTimestamp("accepted_at"))
                 ),
                 params.toArray()
         );

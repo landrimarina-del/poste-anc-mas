@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { tasksApi } from '../../core/api/tasksApi';
 
 const initialFilters = {
@@ -427,11 +427,7 @@ export function ActivitiesPage() {
                 const isAccepting = acceptingTaskId === task.taskId;
                 return (
                   <tr key={task.taskId ?? `${task.practiceId}-${task.createdAt}`}>
-                    <td>
-                      <Link className="table-link" to={`/pratiche/${task.practiceId}`}>
-                        {task.practiceNumber ?? '-'}
-                      </Link>
-                    </td>
+                    <td>{task.practiceNumber ?? '-'}</td>
                     <td>{task.activityLabel ?? task.taskName ?? 'Task ANC'}</td>
                     <td>{task.candidateGroup ?? '-'}</td>
                     <td>{task.ownerUser ?? task.ownerUsername ?? '-'}</td>

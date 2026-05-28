@@ -10,6 +10,8 @@ public record SupervisionTaskListItem(
         String practiceState,
         String ownerUsername,
         String assignee,
-        Instant assignmentDate
+        Instant assignmentDate,
+        String activityLabel,
+        Instant acceptedAt
 ) {
 }

@@ -32,7 +32,7 @@ class PracticeControllerRegressionTest {
         Instant openedAt = Instant.parse("2026-05-13T10:15:30Z");
         when(practiceQueryService.getPracticeList(any()))
             .thenReturn(new PracticeListPage(
-                List.of(new PracticeListItem(11L, "PR-11", "REQ-11", "WI-11", "APERTA", "OK", openedAt, null, openedAt)),
+                List.of(new PracticeListItem(11L, "PR-11", "REQ-11", "WI-11", "APERTA", "OK", openedAt, null, openedAt, null, null, null, null, 0)),
                 1L,
                 0,
                 20

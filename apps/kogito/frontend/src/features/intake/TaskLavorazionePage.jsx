@@ -95,6 +95,14 @@ function normalizeOutcome(value) {
   return '';
 }
 
+function formatEsitoSD(value) {
+  if (!value) return '';
+  const v = value.toUpperCase();
+  if (v === 'APPROVATA' || v === 'OK') return 'OK';
+  if (v === 'RESPINTA' || v === 'KO') return 'NOK';
+  return value;
+}
+
 function normalizeKoReasonList(value) {
   if (!Array.isArray(value)) return [];
   const allowed = new Set(['INTESTAZIONE', 'FIRME', 'TIMBRO', 'DICHIARAZIONE', 'CARTA_PI']);
@@ -232,8 +240,7 @@ function computeKoCodesFromForm(form, documentType) {
     if (form.documentPresent === 'NO') return ['DOCUMENTO_ASSENTE'];
     const codes = [];
     if (form.legibility === 'NO') codes.push('PPEZ034');
-    // cardConformityOk = false se legibility o formalSuitability è NO
-    if (form.legibility === 'NO' || form.formalSuitability === 'NO') codes.push('PPEZ035');
+    if (form.formalSuitability === 'NO') codes.push('PPEZ035');
     return codes;
   }
   // VERBALE
@@ -938,11 +945,10 @@ export function TaskLavorazionePage() {
 
     return (
       <div>
-        <h3>Dati Pratica</h3>
         <div className="summary-grid">
           <article className="summary-card">
             <h4>Dati Pratica</h4>
-            <dl>
+            <dl style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px 24px' }}>
               <div><dt>Data Apertura</dt><dd>{formatDateTime(dataAperturaRaw)}</dd></div>
               <div><dt>Data Ultima Modifica</dt><dd>{formatDateTime(dataUltimaModificaRaw)}</dd></div>
               <div><dt>Stato</dt><dd>{stato}</dd></div>
@@ -980,7 +986,7 @@ export function TaskLavorazionePage() {
               </div>
               <div>
                 <dt>Esito SD</dt>
-                <dd>{esitoSD || 'Non ancora disponibile'}</dd>
+                <dd>{formatEsitoSD(esitoSD) || 'Non ancora disponibile'}</dd>
               </div>
               <div>
                 <dt>Stato checklist</dt>
@@ -1060,6 +1066,13 @@ export function TaskLavorazionePage() {
             )}
           </div>
           <div className="detail-header-actions">
+            <button
+              type="button"
+              className="btn btn-outline btn-small"
+              onClick={() => navigate('/attivita')}
+            >
+              Lista Attività
+            </button>
           </div>
         </div>
         {pageError ? <div className="api-error-box" style={{ margin: '8px 0' }}>{pageError}</div> : null}

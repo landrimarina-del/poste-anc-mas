@@ -41,7 +41,8 @@ class PracticeControllerSprint2WebMvcTest {
                 "OK",
                 Instant.parse("2026-05-10T10:15:30Z"),
                 null,
-                Instant.parse("2026-05-12T12:00:00Z")
+                Instant.parse("2026-05-12T12:00:00Z"),
+                null, null, null, null, 0
         );
         when(practiceQueryService.getPracticeList(any()))
                 .thenReturn(new PracticeListPage(List.of(item), 1L, 0, 20));

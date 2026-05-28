@@ -18,11 +18,11 @@ const initialFilters = {
 
 const sortableColumns = {
   practiceNumber: 'Pratica N.',
-  state: 'Stato',
   openedAt: 'Data Apertura',
-  lastModifiedAt: 'Ultima Modifica',
+  lastModifiedAt: 'Data Ultima Modifica',
   closedAt: 'Data Chiusura',
-  sdOutcome: 'Esito SD'
+  sdOutcome: 'Esito SD',
+  state: 'Stato'
 };
 
 function formatDateTime(value) {
@@ -33,7 +33,18 @@ function formatDateTime(value) {
   if (Number.isNaN(date.getTime())) {
     return value;
   }
-  return date.toLocaleString('it-IT');
+  return new Intl.DateTimeFormat('it-IT', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  }).format(date);
+}
+
+function formatSdOutcome(value) {
+  if (!value) return '-';
+  const v = value.toUpperCase();
+  if (v === 'APPROVATA' || v === 'OK') return 'OK';
+  if (v === 'RESPINTA' || v === 'KO') return 'NOK';
+  return value;
 }
 
 export function PracticesPage() {
@@ -183,108 +194,93 @@ export function PracticesPage() {
 
   return (
     <section className="panel">
-      <h2>Pratiche</h2>
-
+      <div className="practices-toolbar">
+        <h2 style={{ margin: 0 }}>Pratiche</h2>
+      </div>
 
       <div className="filters-box" aria-label="Filtri pratiche">
         <div className="filters-grid">
+          {/* Riga 1 col 1: Cerca */}
           <label>
-            Pratica N°
-            <input
-              type="text"
-              name="practiceNumber"
-              value={filtersDraft.practiceNumber}
-              onChange={onChangeFilter}
-              placeholder="Es. ANC-2026-0001"
-            />
+            Cerca Pratiche
+            <div className="filter-search-row">
+              <input
+                type="text"
+                name="practiceNumber"
+                value={filtersDraft.practiceNumber}
+                onChange={onChangeFilter}
+                placeholder="Es. ANC-2026-0001"
+                onKeyDown={(e) => e.key === 'Enter' && onApplyFilters()}
+              />
+            </div>
           </label>
 
+          {/* Riga 1 col 2: Stato */}
           <label>
             Stato
             <select name="state" value={filtersDraft.state} onChange={onChangeFilter}>
               {statusOptions.map((value) => (
-                <option key={value || 'ALL'} value={value}>
-                  {value || 'Tutti'}
-                </option>
+                <option key={value || 'ALL'} value={value}>{value || 'Qualsiasi'}</option>
               ))}
             </select>
           </label>
 
+          {/* Riga 1 col 3: Data Chiusura range */}
+          <label>
+            Data Chiusura
+            <div className="filter-date-range">
+              <input type="date" name="closedFrom" value={filtersDraft.closedFrom} onChange={onChangeFilter} />
+              <span className="filter-date-sep">-</span>
+              <input type="date" name="closedTo" value={filtersDraft.closedTo} onChange={onChangeFilter} />
+            </div>
+          </label>
+
+          {/* Riga 2 col 1: Data Apertura range */}
+          <label>
+            Data Apertura
+            <div className="filter-date-range">
+              <input type="date" name="openedFrom" value={filtersDraft.openedFrom} onChange={onChangeFilter} />
+              <span className="filter-date-sep">-</span>
+              <input type="date" name="openedTo" value={filtersDraft.openedTo} onChange={onChangeFilter} />
+            </div>
+          </label>
+
+          {/* Riga 2 col 2: Data Ultima Modifica range */}
+          <label>
+            Data Ultima Modifica
+            <div className="filter-date-range">
+              <input type="date" name="lastModifiedFrom" value={filtersDraft.lastModifiedFrom} onChange={onChangeFilter} />
+              <span className="filter-date-sep">-</span>
+              <input type="date" name="lastModifiedTo" value={filtersDraft.lastModifiedTo} onChange={onChangeFilter} />
+            </div>
+          </label>
+
+          {/* Riga 2 col 3: Esito SD */}
           <label>
             Esito SD
             <select name="sdOutcome" value={filtersDraft.sdOutcome} onChange={onChangeFilter}>
               {outcomeOptions.map((value) => (
-                <option key={value || 'ALL'} value={value}>
-                  {value || 'Tutti'}
-                </option>
+                <option key={value || 'ALL'} value={value}>{value || 'Qualsiasi'}</option>
               ))}
             </select>
-          </label>
-
-          <label>
-            Data Apertura Da
-            <input type="date" name="openedFrom" value={filtersDraft.openedFrom} onChange={onChangeFilter} />
-          </label>
-
-          <label>
-            Data Apertura A
-            <input type="date" name="openedTo" value={filtersDraft.openedTo} onChange={onChangeFilter} />
-          </label>
-
-          <label>
-            Data Chiusura Da
-            <input type="date" name="closedFrom" value={filtersDraft.closedFrom} onChange={onChangeFilter} />
-          </label>
-
-          <label>
-            Data Chiusura A
-            <input type="date" name="closedTo" value={filtersDraft.closedTo} onChange={onChangeFilter} />
-          </label>
-
-          <label>
-            Ultima Modifica Da
-            <input
-              type="date"
-              name="lastModifiedFrom"
-              value={filtersDraft.lastModifiedFrom}
-              onChange={onChangeFilter}
-            />
-          </label>
-
-          <label>
-            Ultima Modifica A
-            <input
-              type="date"
-              name="lastModifiedTo"
-              value={filtersDraft.lastModifiedTo}
-              onChange={onChangeFilter}
-            />
           </label>
         </div>
 
         <div className="filters-actions">
+          <span className="panel-note" style={{ marginRight: 'auto', alignSelf: 'center' }}>Totale: {pagination.total}</span>
           <button type="button" className="btn btn-primary btn-small" onClick={onApplyFilters} disabled={loading}>
-            Applica filtri
+            Applica Filtri
           </button>
           <button type="button" className="btn btn-outline btn-small" onClick={onResetFilters} disabled={loading}>
-            Cancella filtri
+            Azzera Filtri
           </button>
           <button type="button" className="btn btn-outline btn-small" onClick={onRefresh} disabled={loading}>
-            {loading ? 'Caricamento...' : 'Aggiorna'}
+            {loading ? 'Aggiorna...' : 'Aggiorna'}
+          </button>
+          <button type="button" className="btn btn-outline btn-small" onClick={onExportExcel} disabled={loading || exporting}>
+            {exporting ? 'Export...' : 'Esporta Excel'}
           </button>
         </div>
-      </div>
-
-      <div className="practices-toolbar">
-        <div className="panel-note">Totale pratiche: {pagination.total}</div>
-        <button
-          type="button"
-          className="btn btn-outline btn-small"
-          onClick={onExportExcel}
-          disabled={loading || exporting}
-        >
-          {exporting ? 'EXPORT IN CORSO...' : 'EXPORT EXCEL'}
-        </button>
       </div>
 
       {infoMessage ? <div className="info-box">{infoMessage}</div> : null}
@@ -295,15 +291,15 @@ export function PracticesPage() {
           <thead>
             <tr>
               <th>{renderHeaderButton('practiceNumber')}</th>
-              <th>{renderHeaderButton('state')}</th>
-              <th>Tipo Pratica</th>
               <th>Codice Fiscale</th>
-              <th>Assegnatario</th>
-              <th>Utente in Carico</th>
+              <th>Codice Cliente</th>
               <th>{renderHeaderButton('openedAt')}</th>
-              <th>Data Presa in Carico</th>
+              <th>{renderHeaderButton('lastModifiedAt')}</th>
+              <th>{renderHeaderButton('closedAt')}</th>
+              <th>Data Inserimento Richiesta</th>
               <th>{renderHeaderButton('sdOutcome')}</th>
-              <th>Data Esito SD</th>
+              <th>Operatore</th>
+              <th>{renderHeaderButton('state')}</th>
               <th>Segnalazioni</th>
             </tr>
           </thead>
@@ -322,19 +318,19 @@ export function PracticesPage() {
                       {practice.practiceNumber ?? '-'}
                     </Link>
                   </td>
-                  <td>{practice.state ?? '-'}</td>
-                  <td>{practice.practiceType ?? practice.tipoPratica ?? '-'}</td>
-                  <td>{practice.fiscalCode ?? practice.codiceFiscale ?? '-'}</td>
-                  <td>{practice.assignee ?? practice.assegnatario ?? '-'}</td>
-                  <td>{practice.ownerUser ?? practice.utenteInCarico ?? '-'}</td>
+                  <td>{practice.codiceFiscale ?? practice.fiscalCode ?? '-'}</td>
+                  <td>{practice.codiceCliente ?? '-'}</td>
                   <td>{formatDateTime(practice.openedAt)}</td>
-                  <td>{formatDateTime(practice.takenInChargeAt ?? practice.dataPresa ?? practice.takenAt)}</td>
-                  <td>{practice.sdOutcome ?? '-'}</td>
-                  <td>{formatDateTime(practice.sdOutcomeDate ?? practice.dataEsitoSD ?? practice.sdOutcomeAt)}</td>
+                  <td>{formatDateTime(practice.lastModifiedAt ?? practice.updatedAt)}</td>
+                  <td>{formatDateTime(practice.closedAt)}</td>
+                  <td>{formatDateTime(practice.dataInserimentoRichiesta ?? practice.requestInsertedAt)}</td>
+                  <td>{formatSdOutcome(practice.sdOutcome)}</td>
+                  <td>{practice.operatore ?? practice.ownerUser ?? '-'}</td>
+                  <td>{practice.state ?? '-'}</td>
                   <td>
-                    {practice.segnalazioniAperte
-                      ? <span className="badge-warning" title="Segnalazioni aperte">⚠</span>
-                      : null}
+                    {practice.segnalazioniCount > 0
+                      ? <span className="badge-warning" title={`${practice.segnalazioniCount} segnalazione/i aperte`}>🔔 {practice.segnalazioniCount}</span>
+                      : <span style={{ color: 'var(--gray-400)' }}>—</span>}
                   </td>
                 </tr>
               ))

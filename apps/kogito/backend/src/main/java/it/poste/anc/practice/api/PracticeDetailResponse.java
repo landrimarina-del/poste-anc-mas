@@ -18,7 +18,9 @@ public record PracticeDetailResponse(
             String sdOutcome,
             Instant openedAt,
             Instant closedAt,
-            Instant lastModifiedAt
+            Instant lastModifiedAt,
+            String documentType,
+            String koCodesJson
     ) {
     }
 

@@ -358,6 +358,36 @@ select {
   margin-top: 12px;
 }
 
+.filter-search-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.filter-search-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.filter-date-range {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.filter-date-range input[type="date"] {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.8rem;
+  padding: 4px 6px;
+}
+
+.filter-date-sep {
+  color: var(--gray-500);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
 .filter-checkbox-label {
   display: flex;
   align-items: center;
