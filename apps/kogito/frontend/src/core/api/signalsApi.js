@@ -20,12 +20,15 @@ function normalizeSignal(item) {
     practiceId: item?.practiceId ?? item?.practice?.id ?? '',
     practiceNumber: item?.practiceNumber ?? item?.practice?.practiceNumber ?? '-',
     state: item?.state ?? item?.status ?? 'IN_CODA',
-    operator: item?.operator ?? item?.owner ?? item?.assignee ?? '-',
+    operator: item?.operator ?? item?.ownerUsername ?? item?.owner ?? item?.assignee ?? '',
+    groupName: item?.groupName ?? '',
     createdAt: item?.createdAt ?? item?.createdDate ?? item?.insertedAt ?? '',
     updatedAt: item?.updatedAt ?? item?.lastUpdatedAt ?? item?.modifiedAt ?? '',
     title: item?.title ?? item?.subject ?? '-',
     description: item?.description ?? item?.note ?? '',
-    sinergiaTicketId: item?.sinergiaTicketId ?? item?.externalTicketId ?? ''
+    sinergiaTicketId: item?.sinergiaTicketId ?? item?.externalTicketId ?? '',
+    activityLabel: item?.activityLabel ?? '',
+    acceptedAt: item?.acceptedAt ?? ''
   };
 }
 
@@ -66,6 +69,15 @@ function buildReassignRequest(payload = {}) {
 }
 
 export const signalsApi = {
+  operators: async () => {
+    const response = await httpClient.request('/api/v1/signals/operators', {
+      method: 'GET'
+    });
+    if (Array.isArray(response)) return response;
+    if (Array.isArray(response?.items)) return response.items;
+    return [];
+  },
+
   create: async (payload) => {
     const requestPayload = buildCreateRequest(payload);
     const response = await httpClient.request('/api/v1/signals', {

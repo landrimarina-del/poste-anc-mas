@@ -50,7 +50,7 @@ class SignalServiceTest {
         when(jdbcTemplate.queryForObject(anyString(), eq(Long.class), eq("op.rossi"))).thenReturn(5L);
 
         SignalOperationException ex = assertThrows(SignalOperationException.class,
-                () -> signalService.listMySignals("op.rossi", "APERTO", null, null));
+                () -> signalService.listMySignals("op.rossi", null, null, null, null, "APERTO", null, null, null));
 
         assertEquals(HttpStatus.BAD_REQUEST, ex.getHttpStatus());
         assertEquals(7018, ex.getResultCode());

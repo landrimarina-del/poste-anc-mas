@@ -1,5 +1,6 @@
 package it.poste.anc.signals.application;
 
+import it.poste.anc.signals.api.OperatorOption;
 import it.poste.anc.signals.api.SignalCreateRequest;
 import it.poste.anc.signals.api.SignalCreateResponse;
 import it.poste.anc.signals.api.SignalForwardResponse;
@@ -31,6 +32,7 @@ public class SignalService {
     private static final String ROLE_OPERATORE = "OPERATORE_ANC";
     private static final String ROLE_SUPERVISORE = "SUPERVISORE_ANC";
     private static final String GROUP_OPERATORE = "GRUPPO_OPERATORE_ANC";
+    private static final String GROUP_SUPERVISORE = "GRUPPO_SUPERVISORE_ANC";
     private static final String STATE_IN_CODA = "IN_CODA";
     private static final String STATE_IN_LAVORAZIONE = "IN_LAVORAZIONE";
     private static final String STATE_CHIUSO = "CHIUSO";
@@ -91,30 +93,67 @@ public class SignalService {
 
     @Transactional(readOnly = true)
     public List<SignalListItem> listMySignals(String username,
+                                              Long signalId,
+                                              String practiceNumber,
+                                              String activityLabel,
+                                              String operator,
                                               String state,
                                               LocalDate fromDate,
-                                              LocalDate toDate) {
+                                              LocalDate toDate,
+                                              String assigneeGroup) {
         Long userId = findActiveUserId(username);
 
         String normalizedState = normalizeFilter(state);
         validateStateFilter(normalizedState);
+        String normalizedPracticeNumber = normalizeFilter(practiceNumber);
+        String normalizedActivityLabel = normalizeFilter(activityLabel);
+        String normalizedOperator = normalizeFilter(operator);
+        String normalizedAssigneeGroup = normalizeFilter(assigneeGroup);
 
         StringBuilder sql = new StringBuilder(
                 "SELECT s.id AS signal_id, s.practice_id, p.num_pratica, s.stato, "
                         + "owner.username AS owner_username, creator.username AS created_by_username, "
-                        + "s.subject, s.sinergia_ticket_id, s.created_at, s.updated_at "
+                        + "s.subject, s.sinergia_ticket_id, s.created_at, s.updated_at, "
+                        + "CASE WHEN p.document_type IS NULL "
+                        + "  THEN CONCAT('Attivazione Nuova Carta - ', COALESCE(cd.nome,''), ' ', COALESCE(cd.cognome,'')) "
+                        + "  ELSE CONCAT('Attivazione Nuova Carta - ', p.document_type, ' - ', COALESCE(cd.nome,''), ' ', COALESCE(cd.cognome,'')) "
+                        + "END AS activity_label, "
+                        + "t.accepted_at, "
+                        + "COALESCE(owner_ug.name, cand_ug.name) AS group_name "
                         + "FROM signal_case s "
                         + "JOIN practice p ON p.id = s.practice_id "
                         + "JOIN app_user creator ON creator.id = s.created_by_user_id "
                         + "LEFT JOIN app_user owner ON owner.id = s.owner_user_id "
-                        + "WHERE (s.owner_user_id = ? OR s.created_by_user_id = ?) "
+                        + "LEFT JOIN user_group_member owner_ugm ON owner_ugm.user_id = s.owner_user_id "
+                        + "LEFT JOIN user_group owner_ug ON owner_ug.id = owner_ugm.group_id "
+                        + "LEFT JOIN user_group cand_ug ON cand_ug.id = s.candidate_group_id "
+                        + "LEFT JOIN client_data cd ON cd.practice_id = p.id "
+                        + "LEFT JOIN task t ON t.id = ("
+                        + "  SELECT t2.id FROM task t2 WHERE t2.practice_id = p.id AND t2.accepted_at IS NOT NULL "
+                        + "  ORDER BY t2.accepted_at DESC, t2.id DESC LIMIT 1"
+                        + ") "
+                        + "WHERE (s.owner_user_id = ? OR (s.created_by_user_id = ? AND (s.owner_user_id IS NULL OR s.owner_user_id = ?))) "
         );
 
         List<Object> params = new ArrayList<>();
         params.add(userId);
         params.add(userId);
+        params.add(userId);
 
-        appendCommonFilters(sql, params, normalizedState, null, fromDate, toDate);
+        appendCommonFilters(sql, params, normalizedState, signalId, normalizedPracticeNumber, fromDate, toDate);
+
+        if (normalizedOperator != null) {
+            sql.append("AND owner.username = ? ");
+            params.add(normalizedOperator);
+        }
+        if (normalizedAssigneeGroup != null) {
+            sql.append("AND COALESCE(owner_ug.code, cand_ug.code) = ? ");
+            params.add(normalizedAssigneeGroup);
+        }
+        if (normalizedActivityLabel != null) {
+            sql.append("HAVING activity_label LIKE ? ");
+            params.add("%" + normalizedActivityLabel + "%");
+        }
 
         sql.append("ORDER BY s.updated_at DESC, s.id DESC");
         return jdbcTemplate.query(sql.toString(), signalListItemRowMapper(), params.toArray());
@@ -123,39 +162,86 @@ public class SignalService {
     @Transactional(readOnly = true)
     public List<SignalListItem> listSignalsForSupervisor(String username,
                                                          Long signalId,
+                                                         String practiceNumber,
+                                                         String activityLabel,
                                                          String state,
                                                          String operator,
                                                          LocalDate fromDate,
-                                                         LocalDate toDate) {
+                                                         LocalDate toDate,
+                                                         String assigneeGroup) {
         Long userId = findActiveUserId(username);
         ensureUserIsSupervisor(userId);
 
         String normalizedState = normalizeFilter(state);
         String normalizedOperator = normalizeFilter(operator);
+        String normalizedPracticeNumber = normalizeFilter(practiceNumber);
+        String normalizedActivityLabel = normalizeFilter(activityLabel);
+        String normalizedAssigneeGroup = normalizeFilter(assigneeGroup);
 
         validateStateFilter(normalizedState);
 
         StringBuilder sql = new StringBuilder(
                 "SELECT s.id AS signal_id, s.practice_id, p.num_pratica, s.stato, "
                         + "owner.username AS owner_username, creator.username AS created_by_username, "
-                        + "s.subject, s.sinergia_ticket_id, s.created_at, s.updated_at "
+                        + "s.subject, s.sinergia_ticket_id, s.created_at, s.updated_at, "
+                        + "CASE WHEN p.document_type IS NULL "
+                        + "  THEN CONCAT('Attivazione Nuova Carta - ', COALESCE(cd.nome,''), ' ', COALESCE(cd.cognome,'')) "
+                        + "  ELSE CONCAT('Attivazione Nuova Carta - ', p.document_type, ' - ', COALESCE(cd.nome,''), ' ', COALESCE(cd.cognome,'')) "
+                        + "END AS activity_label, "
+                        + "t.accepted_at, "
+                        + "COALESCE(owner_ug.name, cand_ug.name) AS group_name "
                         + "FROM signal_case s "
                         + "JOIN practice p ON p.id = s.practice_id "
                         + "JOIN app_user creator ON creator.id = s.created_by_user_id "
                         + "LEFT JOIN app_user owner ON owner.id = s.owner_user_id "
+                        + "LEFT JOIN user_group_member owner_ugm ON owner_ugm.user_id = s.owner_user_id "
+                        + "LEFT JOIN user_group owner_ug ON owner_ug.id = owner_ugm.group_id "
+                        + "LEFT JOIN user_group cand_ug ON cand_ug.id = s.candidate_group_id "
+                        + "LEFT JOIN client_data cd ON cd.practice_id = p.id "
+                        + "LEFT JOIN task t ON t.id = ("
+                        + "  SELECT t2.id FROM task t2 WHERE t2.practice_id = p.id AND t2.accepted_at IS NOT NULL "
+                        + "  ORDER BY t2.accepted_at DESC, t2.id DESC LIMIT 1"
+                        + ") "
                         + "WHERE 1 = 1 "
         );
 
         List<Object> params = new ArrayList<>();
-        appendCommonFilters(sql, params, normalizedState, signalId, fromDate, toDate);
+        appendCommonFilters(sql, params, normalizedState, signalId, normalizedPracticeNumber, fromDate, toDate);
 
         if (normalizedOperator != null) {
             sql.append("AND owner.username = ? ");
             params.add(normalizedOperator);
         }
+        if (normalizedAssigneeGroup != null) {
+            sql.append("AND COALESCE(owner_ug.code, cand_ug.code) = ? ");
+            params.add(normalizedAssigneeGroup);
+        }
+        if (normalizedActivityLabel != null) {
+            sql.append("HAVING activity_label LIKE ? ");
+            params.add("%" + normalizedActivityLabel + "%");
+        }
 
         sql.append("ORDER BY s.updated_at DESC, s.id DESC");
         return jdbcTemplate.query(sql.toString(), signalListItemRowMapper(), params.toArray());
+    }
+
+    @Transactional(readOnly = true)
+    public List<OperatorOption> listOperators(String supervisorUsername) {
+        Long userId = findActiveUserId(supervisorUsername);
+        ensureUserIsSupervisor(userId);
+        return jdbcTemplate.query(
+                "SELECT DISTINCT u.username, u.full_name FROM app_user u "
+                        + "JOIN user_group_member ugm ON ugm.user_id = u.id "
+                        + "JOIN user_group ug ON ug.id = ugm.group_id "
+                        + "WHERE u.active = 1 AND ug.code IN (?, ?) "
+                        + "ORDER BY u.full_name",
+                (rs, rowNum) -> new OperatorOption(
+                        rs.getString("username"),
+                        rs.getString("full_name")
+                ),
+                GROUP_OPERATORE,
+                GROUP_SUPERVISORE
+        );
     }
 
     @Transactional
@@ -303,11 +389,16 @@ public class SignalService {
                                      List<Object> params,
                                      String state,
                                      Long signalId,
+                                     String practiceNumber,
                                      LocalDate fromDate,
                                      LocalDate toDate) {
         if (signalId != null) {
             sql.append("AND s.id = ? ");
             params.add(signalId);
+        }
+        if (practiceNumber != null) {
+            sql.append("AND p.num_pratica = ? ");
+            params.add(practiceNumber);
         }
         if (state != null) {
             sql.append("AND s.stato = ? ");
@@ -334,7 +425,10 @@ public class SignalService {
                 rs.getString("subject"),
                 rs.getString("sinergia_ticket_id"),
                 toInstant(rs.getTimestamp("created_at")),
-                toInstant(rs.getTimestamp("updated_at"))
+                toInstant(rs.getTimestamp("updated_at")),
+                rs.getString("activity_label"),
+                toInstant(rs.getTimestamp("accepted_at")),
+                rs.getString("group_name")
         );
     }
 
@@ -354,9 +448,9 @@ public class SignalService {
         if ("USER".equals(targetType)) {
             String normalizedUsername = normalizeMandatory(username,
                     "username destinatario obbligatorio per targetType=USER", 7009);
-            UserSnapshot target = findActiveOperatorUser(normalizedUsername);
-            return new ReassignTarget(target.userId(), operatorGroupId, STATE_IN_LAVORAZIONE,
-                    target.username(), target.username());
+            UserSnapshot target = findActiveUserInAncGroups(normalizedUsername);
+            return new ReassignTarget(target.userId(), target.groupId(), STATE_IN_LAVORAZIONE,
+                    target.username(), target.groupCode());
         }
 
         throw new SignalOperationException(HttpStatus.BAD_REQUEST, 7010,
@@ -421,20 +515,26 @@ public class SignalService {
         return membership != null && membership > 0;
     }
 
-    private UserSnapshot findActiveOperatorUser(String username) {
+    private UserSnapshot findActiveUserInAncGroups(String username) {
         List<UserSnapshot> users = jdbcTemplate.query(
-                "SELECT u.id, u.username FROM app_user u "
+                "SELECT u.id, u.username, ug.id AS group_id, ug.code AS group_code FROM app_user u "
                         + "JOIN user_group_member ugm ON ugm.user_id = u.id "
                         + "JOIN user_group ug ON ug.id = ugm.group_id "
-                        + "WHERE u.username = ? AND u.active = 1 AND ug.code = ?",
-                (rs, rowNum) -> new UserSnapshot(rs.getLong("id"), rs.getString("username")),
+                        + "WHERE u.username = ? AND u.active = 1 AND ug.code IN (?, ?) "
+                        + "ORDER BY ug.code LIMIT 1",
+                (rs, rowNum) -> new UserSnapshot(
+                        rs.getLong("id"),
+                        rs.getString("username"),
+                        rs.getLong("group_id"),
+                        rs.getString("group_code")),
                 username,
-                GROUP_OPERATORE
+                GROUP_OPERATORE,
+                GROUP_SUPERVISORE
         );
 
         if (users.isEmpty()) {
             throw new SignalOperationException(HttpStatus.BAD_REQUEST, 7014,
-                    "Utente destinatario non valido o non appartenente al gruppo operatore ANC");
+                    "Utente destinatario non valido o non appartenente a un gruppo ANC");
         }
 
         return users.get(0);
@@ -550,6 +650,6 @@ public class SignalService {
                                   String description) {
     }
 
-    private record UserSnapshot(Long userId, String username) {
+    private record UserSnapshot(Long userId, String username, Long groupId, String groupCode) {
     }
 }

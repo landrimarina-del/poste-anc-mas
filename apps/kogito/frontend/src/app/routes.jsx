@@ -11,6 +11,7 @@ import { TaskLavorazionePage } from '../features/intake/TaskLavorazionePage';
 import { PracticesPage } from '../features/practices/PracticesPage';
 import { PracticeDetailPage } from '../features/practices/PracticeDetailPage';
 import { ReassignActivitiesPage } from '../features/supervisor/ReassignActivitiesPage';
+import { SupervisionSignalsPage } from '../features/supervisor/SupervisionSignalsPage';
 import { ForbiddenPage } from '../features/shared/ForbiddenPage';
 import { SignalsDashboardPage } from '../features/signals/SignalsDashboardPage';
 
@@ -68,6 +69,14 @@ export const router = createBrowserRouter([
         element: (
           <RoleRoute allowedRoles={['SUPERVISORE', 'SUPERVISORE_ANC']}>
             <ReassignActivitiesPage />
+          </RoleRoute>
+        )
+      },
+      {
+        path: 'segnalazioni-supervisore',
+        element: (
+          <RoleRoute allowedRoles={['SUPERVISORE', 'SUPERVISORE_ANC']}>
+            <SupervisionSignalsPage />
           </RoleRoute>
         )
       },

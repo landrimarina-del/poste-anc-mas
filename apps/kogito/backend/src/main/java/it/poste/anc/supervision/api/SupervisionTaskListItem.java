@@ -9,7 +9,7 @@ public record SupervisionTaskListItem(
         String taskState,
         String practiceState,
         String ownerUsername,
-        String assignee,
+        String groupName,
         Instant assignmentDate,
         String activityLabel,
         Instant acceptedAt

@@ -35,7 +35,7 @@ public class SupervisionTaskController {
             @RequestParam(name = "assignmentDate", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate assignmentDate,
             @RequestParam(name = "owner", required = false) String owner,
-            @RequestParam(name = "assignee", required = false) String assignee,
+            @RequestParam(name = "assigneeGroup", required = false) String assigneeGroup,
             Authentication authentication
     ) {
         try {
@@ -44,7 +44,7 @@ public class SupervisionTaskController {
                     practiceNumber,
                     assignmentDate,
                     owner,
-                    assignee
+                    assigneeGroup
             );
             return ResponseEntity.ok(ApiResponse.ok(details));
         } catch (TaskOperationException ex) {

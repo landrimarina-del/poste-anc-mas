@@ -35,19 +35,19 @@ public class SupervisionTaskService {
                                                                String practiceNumber,
                                                                LocalDate assignmentDate,
                                                                String owner,
-                                                               String assignee) {
+                                                               String assigneeGroup) {
         Long supervisorId = findActiveUserId(username);
         ensureUserIsSupervisor(supervisorId);
 
         String normalizedPracticeNumber = normalizeFilter(practiceNumber);
         String normalizedOwner = normalizeFilter(owner);
-        String normalizedAssignee = normalizeFilter(assignee);
+        String normalizedAssigneeGroup = normalizeFilter(assigneeGroup);
 
         StringBuilder sql = new StringBuilder(
                 "SELECT t.id AS task_id, t.practice_id, p.num_pratica, t.stato AS task_state, p.stato AS practice_state, "
                         + "owner.username AS owner_username, "
                         + "COALESCE(last_tah.assigned_at, t.accepted_at, t.created_at) AS assignment_date, "
-                        + "COALESCE(last_user.username, owner.username, last_group.code, candidate_group.code) AS assignee, "
+                        + "COALESCE(last_group.name, candidate_group.name) AS group_name, "
                         + "t.accepted_at, "
                         + "CASE WHEN p.document_type IS NULL "
                         + "  THEN CONCAT('Attivazione Nuova Carta - ', COALESCE(cd.nome,''), ' ', COALESCE(cd.cognome,'')) "
@@ -81,9 +81,9 @@ public class SupervisionTaskService {
             sql.append("AND owner.username = ? ");
             params.add(normalizedOwner);
         }
-        if (normalizedAssignee != null) {
-            sql.append("AND COALESCE(last_user.username, owner.username, last_group.code, candidate_group.code) = ? ");
-            params.add(normalizedAssignee);
+        if (normalizedAssigneeGroup != null) {
+            sql.append("AND COALESCE(last_group.code, candidate_group.code) = ? ");
+            params.add(normalizedAssigneeGroup);
         }
 
         sql.append("ORDER BY COALESCE(last_tah.assigned_at, t.accepted_at, t.created_at) DESC, t.id DESC");
@@ -97,7 +97,7 @@ public class SupervisionTaskService {
                         rs.getString("task_state"),
                         rs.getString("practice_state"),
                         rs.getString("owner_username"),
-                        rs.getString("assignee"),
+                        rs.getString("group_name"),
                         toInstant(rs.getTimestamp("assignment_date")),
                         rs.getString("activity_label"),
                         toInstant(rs.getTimestamp("accepted_at"))

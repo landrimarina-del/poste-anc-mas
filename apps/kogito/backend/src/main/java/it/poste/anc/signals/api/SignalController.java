@@ -46,16 +46,21 @@ public class SignalController {
 
     @GetMapping(path = "/me")
     public ResponseEntity<ApiResponse<List<SignalListItem>>> listMySignals(
+            @RequestParam(name = "id", required = false) Long signalId,
+            @RequestParam(name = "practiceNumber", required = false) String practiceNumber,
+            @RequestParam(name = "activityLabel", required = false) String activityLabel,
+            @RequestParam(name = "operator", required = false) String operator,
             @RequestParam(name = "state", required = false) String state,
             @RequestParam(name = "fromDate", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
             @RequestParam(name = "toDate", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
+            @RequestParam(name = "assigneeGroup", required = false) String assigneeGroup,
             Authentication authentication
     ) {
         try {
             return ResponseEntity.ok(ApiResponse.ok(
-                    signalService.listMySignals(authentication.getName(), state, fromDate, toDate)
+                    signalService.listMySignals(authentication.getName(), signalId, practiceNumber, activityLabel, operator, state, fromDate, toDate, assigneeGroup)
             ));
         } catch (SignalOperationException ex) {
             return ResponseEntity.status(ex.getHttpStatus().value())
@@ -66,12 +71,15 @@ public class SignalController {
     @GetMapping
     public ResponseEntity<ApiResponse<List<SignalListItem>>> listSignals(
             @RequestParam(name = "id", required = false) Long signalId,
+            @RequestParam(name = "practiceNumber", required = false) String practiceNumber,
+            @RequestParam(name = "activityLabel", required = false) String activityLabel,
             @RequestParam(name = "state", required = false) String state,
             @RequestParam(name = "operator", required = false) String operator,
             @RequestParam(name = "fromDate", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
             @RequestParam(name = "toDate", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
+            @RequestParam(name = "assigneeGroup", required = false) String assigneeGroup,
             Authentication authentication
     ) {
         try {
@@ -79,10 +87,13 @@ public class SignalController {
                     signalService.listSignalsForSupervisor(
                             authentication.getName(),
                             signalId,
+                            practiceNumber,
+                            activityLabel,
                             state,
                             operator,
                             fromDate,
-                            toDate
+                            toDate,
+                            assigneeGroup
                     )
             ));
         } catch (SignalOperationException ex) {
@@ -130,6 +141,20 @@ public class SignalController {
         try {
             return ResponseEntity.ok(ApiResponse.ok(
                     signalService.forwardToSinergia(signalId, authentication.getName())
+            ));
+        } catch (SignalOperationException ex) {
+            return ResponseEntity.status(ex.getHttpStatus().value())
+                    .body(ApiResponse.error(ex.getResultCode(), ex.getMessage()));
+        }
+    }
+
+    @GetMapping(path = "/operators")
+    public ResponseEntity<ApiResponse<List<OperatorOption>>> listOperators(
+            Authentication authentication
+    ) {
+        try {
+            return ResponseEntity.ok(ApiResponse.ok(
+                    signalService.listOperators(authentication.getName())
             ));
         } catch (SignalOperationException ex) {
             return ResponseEntity.status(ex.getHttpStatus().value())

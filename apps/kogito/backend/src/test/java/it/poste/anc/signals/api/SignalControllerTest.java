@@ -55,8 +55,8 @@ class SignalControllerTest {
     @Test
     @WithMockUser(username = "sup.verdi")
     void listSignalsReturnsForbiddenWhenNotAuthorized() throws Exception {
-        when(signalService.listSignalsForSupervisor("sup.verdi", null, "IN_CODA", null,
-                LocalDate.parse("2026-05-01"), LocalDate.parse("2026-05-31")))
+        when(signalService.listSignalsForSupervisor("sup.verdi", null, null, null, "IN_CODA", null,
+                LocalDate.parse("2026-05-01"), LocalDate.parse("2026-05-31"), null))
                 .thenThrow(new SignalOperationException(HttpStatus.FORBIDDEN, 7013,
                         "Utente non autorizzato: ruolo SUPERVISORE_ANC richiesto"));
 
@@ -71,7 +71,7 @@ class SignalControllerTest {
     @Test
     @WithMockUser(username = "sup.verdi")
     void listMySignalsReturnsData() throws Exception {
-        when(signalService.listMySignals("sup.verdi", null, null, null)).thenReturn(List.of(
+        when(signalService.listMySignals("sup.verdi", null, null, null, null, null, null, null, null)).thenReturn(List.of(
                 new SignalListItem(
                         10L,
                         100L,
@@ -82,7 +82,10 @@ class SignalControllerTest {
                         "Anomalia workflow",
                         null,
                         Instant.parse("2026-05-15T09:00:00Z"),
-                        Instant.parse("2026-05-15T09:05:00Z")
+                        Instant.parse("2026-05-15T09:05:00Z"),
+                        null,
+                        null,
+                        null
                 )
         ));
 

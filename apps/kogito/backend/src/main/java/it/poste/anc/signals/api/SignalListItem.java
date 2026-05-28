@@ -12,6 +12,9 @@ public record SignalListItem(
         String subject,
         String sinergiaTicketId,
         Instant createdAt,
-        Instant updatedAt
+        Instant updatedAt,
+        String activityLabel,
+        Instant acceptedAt,
+        String groupName
 ) {
 }

@@ -42,8 +42,9 @@ function normalizeTask(task) {
     practiceId: task?.practiceId ?? task?.practice?.id ?? '',
     practiceNumber: task?.practiceNumber ?? task?.practice?.practiceNumber ?? '-',
     assignmentDate: task?.assignmentDate ?? task?.assignedAt ?? task?.createdAt ?? '',
-    owner: task?.owner ?? task?.ownerUser ?? task?.ownerUsername ?? '-',
-    assignee: task?.assignee ?? task?.assigneeUser ?? task?.assigneeUsername ?? '-',
+    owner: task?.ownerUsername ?? task?.owner ?? task?.ownerUser ?? '-',
+    groupName: task?.groupName ?? task?.assignee ?? '-',
+    acceptedAt: task?.acceptedAt ?? task?.accepted_at ?? '',
     taskState: task?.taskState ?? task?.state ?? '',
     activityLabel: task?.activityLabel ?? task?.taskName ?? 'Task ANC'
   };
@@ -63,7 +64,7 @@ function filterFallbackItems(items, filters) {
   return items.filter((task) => {
     const practiceNumber = String(task.practiceNumber ?? '').toLowerCase();
     const owner = String(task.owner ?? '').toLowerCase();
-    const assignee = String(task.assignee ?? '').toLowerCase();
+    const groupName = String(task.groupName ?? '').toLowerCase();
     const assignmentDate = normalizeDateAsDay(task.assignmentDate);
 
     if (filters.practiceNumber && !practiceNumber.includes(String(filters.practiceNumber).toLowerCase())) {
@@ -74,7 +75,7 @@ function filterFallbackItems(items, filters) {
       return false;
     }
 
-    if (filters.assignee && !assignee.includes(String(filters.assignee).toLowerCase())) {
+    if (filters.assigneeGroup && !groupName.includes(String(filters.assigneeGroup).toLowerCase())) {
       return false;
     }
 

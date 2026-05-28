@@ -2,11 +2,17 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supervisionTasksApi } from '../../core/api/supervisionTasksApi';
 
+const GROUP_OPTIONS = [
+  { value: '', label: 'Tutti' },
+  { value: 'GRUPPO_OPERATORE_ANC', label: 'Gruppo Operatori ANC' },
+  { value: 'GRUPPO_SUPERVISORE_ANC', label: 'Gruppo Supervisori ANC' },
+];
+
 const initialFilters = {
   practiceNumber: '',
   assignmentDate: '',
   owner: '',
-  assignee: ''
+  assigneeGroup: ''
 };
 
 function formatDateTime(value) {
@@ -218,7 +224,7 @@ export function ReassignActivitiesPage() {
           </label>
 
           <label>
-            Owner
+            Utente in carico
             <input
               type="text"
               name="owner"
@@ -230,13 +236,15 @@ export function ReassignActivitiesPage() {
 
           <label>
             Assegnatario
-            <input
-              type="text"
-              name="assignee"
-              value={filtersDraft.assignee}
+            <select
+              name="assigneeGroup"
+              value={filtersDraft.assigneeGroup}
               onChange={onChangeFilter}
-              placeholder="Es. operatore.destinatario"
-            />
+            >
+              {GROUP_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
           </label>
         </div>
 
@@ -300,7 +308,7 @@ export function ReassignActivitiesPage() {
               <th>Pratica N.</th>
               <th>Attività</th>
               <th>Assegnatario</th>
-              <th>Owner</th>
+              <th>Utente in carico</th>
               <th>Data Assegnazione</th>
               <th>Data Presa in carico</th>
               <th>Stato Pratica</th>
@@ -342,8 +350,8 @@ export function ReassignActivitiesPage() {
                       )}
                     </td>
                     <td>{task.activityLabel ?? task.activitylabel ?? 'Task ANC'}</td>
-                    <td>{task.assignee ?? '-'}</td>
-                    <td>{task.ownerUsername ?? task.owner ?? '-'}</td>
+                    <td>{task.groupName ?? '-'}</td>
+                    <td>{task.owner ?? task.ownerUsername ?? '-'}</td>
                     <td>{formatDateTime(task.assignmentDate)}</td>
                     <td>{formatDateTime(task.acceptedAt ?? task.accepted_at)}</td>
                     <td>

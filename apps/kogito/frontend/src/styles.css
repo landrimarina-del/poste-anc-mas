@@ -227,6 +227,39 @@ select {
   border-bottom-color: var(--poste-blue);
 }
 
+/* Tab interni alle pagine */
+.page-tab-bar {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--gray-200);
+  margin-bottom: 16px;
+}
+
+.page-tab-btn {
+  padding: 10px 20px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--gray-500);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.page-tab-btn:hover {
+  color: var(--poste-blue);
+}
+
+.page-tab-btn.active {
+  color: var(--poste-blue);
+  border-bottom-color: var(--poste-blue);
+  background: #eef4ff;
+  border-radius: 4px 4px 0 0;
+}
+
 .header-right {
   display: flex;
   justify-content: flex-end;

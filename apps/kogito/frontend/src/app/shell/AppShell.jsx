@@ -15,6 +15,7 @@ const operatoreTabs = [
 const supervisoreTabs = [
   { to: '/home', label: 'Home' },
   { to: '/riassegna-attivita', label: 'Riassegna Attivita' },
+  { to: '/segnalazioni-supervisore', label: 'Segnalazioni' },
   { to: '/pratiche', label: 'Pratiche' }
 ];
 

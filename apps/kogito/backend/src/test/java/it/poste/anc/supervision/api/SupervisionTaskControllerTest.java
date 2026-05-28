@@ -40,7 +40,7 @@ class SupervisionTaskControllerTest {
                         "IN_CODA",
                         "IN_LAVORAZIONE",
                         null,
-                        "GRUPPO_OPERATORE_ANC",
+                        "Gruppo Operatori ANC",
                         null,
                         "Attivazione Nuova Carta",
                         null
