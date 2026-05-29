@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <title>GraphiQL — Kogito Data Index</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { height: 100vh; margin: 0; overflow: hidden; font-family: sans-serif; }
+    #header { background: #1a1a2e; color: #e0e0e0; padding: 8px 16px; display: flex; align-items: center; gap: 12px; font-size: 13px; }
+    #header strong { color: #4fc3f7; }
+    #endpoint-input { flex: 1; padding: 4px 8px; border-radius: 4px; border: 1px solid #555; background: #2a2a3e; color: #fff; font-size: 13px; }
+    #graphiql { height: calc(100vh - 40px); }
+  </style>
+  <link rel="stylesheet" href="https://unpkg.com/graphiql@3/graphiql.min.css" />
+</head>
+<body>
+  <div id="header">
+    <strong>Kogito Data Index — GraphiQL</strong>
+    <span>Endpoint:</span>
+    <input id="endpoint-input" type="text" value="http://localhost:8082/graphql" />
+    <button onclick="reloadGraphiQL()" style="padding:4px 10px;cursor:pointer;border-radius:4px;border:none;background:#4fc3f7;color:#000;font-weight:bold;">Connetti</button>
+  </div>
+  <div id="graphiql"></div>
+
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/graphiql@3/graphiql.min.js"></script>
+
+  <script>
+    const DEFAULT_QUERY = `# Kogito Data Index — Query di esempio
+# Sostituisci o modifica la query qui sotto
+
+{ 
+  ProcessInstances {
+    id
+    processId
+    processName
+    state
+    start
+    end
+    variables
+    nodes {
+      name
+      type
+      enter
+      exit
+    }
+  }
+}`;
+
+    function getEndpoint() {
+      return document.getElementById('endpoint-input').value.trim() || 'http://localhost:8082/graphql';
+    }
+
+    function fetcher(graphQLParams) {
+      return fetch(getEndpoint(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(graphQLParams),
+      }).then(r => r.json());
+    }
+
+    let root = null;
+
+    function reloadGraphiQL() {
+      const container = document.getElementById('graphiql');
+      if (root) { root.unmount(); }
+      root = ReactDOM.createRoot(container);
+      root.render(
+        React.createElement(GraphiQL, {
+          fetcher: fetcher,
+          defaultQuery: DEFAULT_QUERY,
+          defaultEditorToolsVisibility: true,
+        })
+      );
+    }
+
+    reloadGraphiQL();
+  </script>
+</body>
+</html>

@@ -164,6 +164,8 @@ services:
       POSTGRES_DB: kogito
       POSTGRES_USER: kogito
       POSTGRES_PASSWORD: kogito
+    ports:
+      - "5433:5432"
     volumes:
       - anc-kogito-dataindex-db-data:/var/lib/postgresql/data
     healthcheck:
@@ -189,6 +191,10 @@ services:
       QUARKUS_DATASOURCE_USERNAME: kogito
       QUARKUS_DATASOURCE_PASSWORD: kogito
       QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION: update
+      QUARKUS_HTTP_CORS: "true"
+      QUARKUS_HTTP_CORS_ORIGINS: "*"
+      QUARKUS_HTTP_CORS_METHODS: "GET,POST,PUT,DELETE,OPTIONS"
+      QUARKUS_HTTP_CORS_HEADERS: "accept,authorization,content-type,x-requested-with"
     # L'immagine hardcoda -Dquarkus.profile=kafka-events-support nell'entrypoint.
     # Sovrascriviamo il command per usare il profilo http-events-support (POST /processes, POST /tasks).
     command: >
@@ -198,6 +204,8 @@ services:
       -Djava.library.path=/home/kogito/lib
       -Dquarkus.http.host=0.0.0.0
       -Dquarkus.http.port=8080
+      -Dquarkus.smallrye-graphql.ui.always-include=true
+      -Dquarkus.smallrye-graphql.ui.root-path=/graphql-ui
       -jar /home/kogito/bin/quarkus-app/quarkus-run.jar
     ports:
       - "8082:8080"
@@ -216,7 +224,7 @@ services:
       kogito-data-index:
         condition: service_healthy
     environment:
-      RUNTIME_TOOLS_MANAGEMENT_CONSOLE_KOGITO_ENV_MODE: "DEV"
+      RUNTIME_TOOLS_MANAGEMENT_CONSOLE_KOGITO_ENV_MODE: "PROD"
       RUNTIME_TOOLS_MANAGEMENT_CONSOLE_DATA_INDEX_ENDPOINT: http://localhost:8082/graphql
       RUNTIME_TOOLS_MANAGEMENT_CONSOLE_KOGITO_SERVICE_URL: http://localhost:8081
     ports:

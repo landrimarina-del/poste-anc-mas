@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import it.poste.anc.bpmgw.outbound.BpmOutboundService;
 import it.poste.anc.document.api.IntakeCloseResponse;
 import it.poste.anc.workflow.engine.BpmEngineAdapter;
+import it.poste.anc.workflow.engine.DataIndexResyncService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -35,15 +36,18 @@ public class IntakePracticeCloseService {
     private final ObjectMapper objectMapper;
     private final BpmEngineAdapter bpmEngineAdapter;
     private final BpmOutboundService bpmOutboundService;
+    private final DataIndexResyncService dataIndexResyncService;
 
     public IntakePracticeCloseService(JdbcTemplate jdbcTemplate,
                                       ObjectMapper objectMapper,
                                       BpmEngineAdapter bpmEngineAdapter,
-                                      BpmOutboundService bpmOutboundService) {
+                                      BpmOutboundService bpmOutboundService,
+                                      DataIndexResyncService dataIndexResyncService) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
         this.bpmEngineAdapter = bpmEngineAdapter;
         this.bpmOutboundService = bpmOutboundService;
+        this.dataIndexResyncService = dataIndexResyncService;
     }
 
     @Transactional
@@ -88,6 +92,10 @@ public class IntakePracticeCloseService {
 
         String statoFinale = sendOutboundSafely(payloadJson, actorUsername, practiceId, correlationId,
                 normalizeOutcomeForBpm(outcome));
+
+        if ("CHIUSA_OK".equals(statoFinale) || "CHIUSA_KO".equals(statoFinale)) {
+            dataIndexResyncService.publishProcessCompleted("anc_pratica", practice.requestId());
+        }
 
         return new IntakeCloseResponse(practiceId, statoFinale, correlationId);
     }
@@ -230,6 +238,7 @@ public class IntakePracticeCloseService {
     }
 
     private void deleteTask(Long taskId) {
+        jdbcTemplate.update("DELETE FROM task_assignment_history WHERE task_id = ?", taskId);
         jdbcTemplate.update("DELETE FROM task WHERE id = ?", taskId);
     }
 
