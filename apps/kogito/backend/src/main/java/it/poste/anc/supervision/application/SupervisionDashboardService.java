@@ -38,9 +38,9 @@ public class SupervisionDashboardService {
 
         long activities = queryCount("SELECT COUNT(1) FROM task WHERE stato IN ('IN_CODA', 'IN_CARICO')");
         long activePractices = queryCount(
-                "SELECT COUNT(1) FROM practice WHERE stato IN ('APERTA', 'IN_LAVORAZIONE', 'IN_ATTESA_CONFERMA_BPM')"
+                "SELECT COUNT(1) FROM practice WHERE stato IN ('APERTA', 'IN_LAVORAZIONE', 'CHIUSA_SD_OK', 'CHIUSA_SD_KO')"
         );
-        long closedPractices = queryCount("SELECT COUNT(1) FROM practice WHERE stato IN ('CHIUSA_OK', 'CHIUSA_KO')");
+        long closedPractices = queryCount("SELECT COUNT(1) FROM practice WHERE stato IN ('CHIUSA_EXT_OK', 'CHIUSA_EXT_KO')");
 
         return new SupervisionDashboardCountersResponse(activities, activePractices, closedPractices);
     }
@@ -89,10 +89,10 @@ public class SupervisionDashboardService {
         Map<Integer, DailyWorkedAccumulator> countsByDay = new HashMap<>();
         jdbcTemplate.query(
                 "SELECT DATE(psh.occurred_at) AS day_ref, "
-                        + "SUM(CASE WHEN psh.to_state = 'CHIUSA_OK' THEN 1 ELSE 0 END) AS ok_count, "
-                        + "SUM(CASE WHEN psh.to_state = 'CHIUSA_KO' THEN 1 ELSE 0 END) AS ko_count "
+                        + "SUM(CASE WHEN psh.to_state = 'CHIUSA_EXT_OK' THEN 1 ELSE 0 END) AS ok_count, "
+                        + "SUM(CASE WHEN psh.to_state = 'CHIUSA_EXT_KO' THEN 1 ELSE 0 END) AS ko_count "
                         + "FROM practice_state_history psh "
-                        + "WHERE psh.to_state IN ('CHIUSA_OK', 'CHIUSA_KO') "
+                        + "WHERE psh.to_state IN ('CHIUSA_EXT_OK', 'CHIUSA_EXT_KO') "
                         + "AND psh.occurred_at >= ? "
                         + "AND psh.occurred_at < ? "
                         + "GROUP BY DATE(psh.occurred_at)",

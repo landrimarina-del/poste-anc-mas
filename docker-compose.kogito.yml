@@ -65,7 +65,7 @@ services:
       ANC_BPM_OUTBOUND_URL: http://kogito-bpm-outbound-stub:8090/receive-outcome
       # CORS: origini consentite per il frontend React.
       # Al cliente: sovrascrivere con l'URL reale, es: http://scrivania.cliente.it
-      ANC_CORS_ALLOWED_ORIGINS: ${ANC_CORS_ALLOWED_ORIGINS:-http://localhost:81,http://localhost:3000}
+      ANC_CORS_ALLOWED_ORIGINS: ${ANC_CORS_ALLOWED_ORIGINS:-http://localhost:81,http://localhost:3000,http://localhost:8083,http://localhost:8084}
       BPM_STUB_BASE_URL: http://kogito-bpm-outbound-stub:8090
       TICKETING_BASE_URL: http://kogito-bpm-outbound-stub:8090
       ANC_ATTACHMENT_ALLOWLIST_HOSTS: kogito-bpm-stub
@@ -195,6 +195,7 @@ services:
       QUARKUS_HTTP_CORS_ORIGINS: "*"
       QUARKUS_HTTP_CORS_METHODS: "GET,POST,PUT,DELETE,OPTIONS"
       QUARKUS_HTTP_CORS_HEADERS: "accept,authorization,content-type,x-requested-with"
+      QUARKUS_KAFKA_HEALTH_ENABLE: "false"
     # L'immagine hardcoda -Dquarkus.profile=kafka-events-support nell'entrypoint.
     # Sovrascriviamo il command per usare il profilo http-events-support (POST /processes, POST /tasks).
     command: >
@@ -206,6 +207,7 @@ services:
       -Dquarkus.http.port=8080
       -Dquarkus.smallrye-graphql.ui.always-include=true
       -Dquarkus.smallrye-graphql.ui.root-path=/graphql-ui
+      -Dquarkus.kafka.health.enabled=false
       -jar /home/kogito/bin/quarkus-app/quarkus-run.jar
     ports:
       - "8082:8080"
@@ -224,7 +226,7 @@ services:
       kogito-data-index:
         condition: service_healthy
     environment:
-      RUNTIME_TOOLS_MANAGEMENT_CONSOLE_KOGITO_ENV_MODE: "PROD"
+      RUNTIME_TOOLS_MANAGEMENT_CONSOLE_KOGITO_ENV_MODE: "DEV"
       RUNTIME_TOOLS_MANAGEMENT_CONSOLE_DATA_INDEX_ENDPOINT: http://localhost:8082/graphql
       RUNTIME_TOOLS_MANAGEMENT_CONSOLE_KOGITO_SERVICE_URL: http://localhost:8081
     ports:
@@ -242,6 +244,7 @@ services:
       RUNTIME_TOOLS_TASK_CONSOLE_KOGITO_ENV_MODE: "DEV"
       RUNTIME_TOOLS_TASK_CONSOLE_DATA_INDEX_ENDPOINT: http://localhost:8082/graphql
       RUNTIME_TOOLS_TASK_CONSOLE_KOGITO_SERVICE_URL: http://localhost:8081
+      KOGITO_CONSOLES_KEYCLOAK_DISABLE_HEALTH_CHECK: "true"
     ports:
       - "8084:8080"
 

@@ -321,11 +321,12 @@ public class DataIndexResyncService {
     }
 
     private void publishUserTaskInstance(Map<String, Object> row) throws Exception {
-        String kogitoTaskId = row.get("kogito_task_id") != null
-                ? row.get("kogito_task_id").toString().replaceFirst("^manual-", "")
-                : UUID.randomUUID().toString();
         String stato = row.get("stato").toString();
-        String taskState = "IN_CARICO".equals(stato) ? "InProgress" : "Ready";
+        String taskState = switch (stato) {
+            case "IN_CARICO" -> "InProgress";
+            case "CHIUSA_SD_OK", "CHIUSA_SD_KO", "CHIUSA_EXT_OK", "CHIUSA_EXT_KO" -> "Completed";
+            default -> "Ready";
+        };
         // Recupera il process_instance_id dal mapping Kogito tramite business_key
         String numPratica = row.get("num_pratica") != null ? row.get("num_pratica").toString() : null;
         String processInstanceId = null;
@@ -339,6 +340,22 @@ public class DataIndexResyncService {
             }
         }
         if (processInstanceId == null) processInstanceId = numPratica;
+
+        String rawTaskId = row.get("kogito_task_id") != null ? row.get("kogito_task_id").toString() : null;
+        String kogitoTaskId;
+        if (rawTaskId == null) {
+            kogitoTaskId = UUID.randomUUID().toString();
+        } else if (rawTaskId.contains("::")) {
+            // Formato nativo Kogito: processInstanceId::workItemId
+            String[] parts = rawTaskId.split("::", 2);
+            if (processInstanceId == null) {
+                processInstanceId = parts[0];
+            }
+            kogitoTaskId = parts[1];
+        } else {
+            // Formato legacy manual- o UUID diretto
+            kogitoTaskId = rawTaskId.replaceFirst("^manual-", "");
+        }
         String ownerUsername = row.get("owner_username") != null ? row.get("owner_username").toString() : null;
         String candidateGroup = row.get("candidate_group") != null ? row.get("candidate_group").toString() : null;
         String createdAt = row.get("created_at") != null ? row.get("created_at").toString() : null;

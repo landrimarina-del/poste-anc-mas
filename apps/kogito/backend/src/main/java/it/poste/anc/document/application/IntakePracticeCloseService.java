@@ -27,7 +27,10 @@ public class IntakePracticeCloseService {
 
     private static final String GROUP_CODE = "GRUPPO_OPERATORE_ANC";
     private static final String STATE_IN_LAVORAZIONE = "IN_LAVORAZIONE";
-    private static final String STATE_IN_ATTESA_ACK = "IN_ATTESA_CONFERMA_BPM";
+    private static final String STATE_CHIUSA_SD_OK = "CHIUSA_SD_OK";
+    private static final String STATE_CHIUSA_SD_KO = "CHIUSA_SD_KO";
+    private static final String STATE_CHIUSA_EXT_OK = "CHIUSA_EXT_OK";
+    private static final String STATE_CHIUSA_EXT_KO = "CHIUSA_EXT_KO";
     private static final String STATUS_BOZZA = "BOZZA";
     private static final String STATUS_RIAPERTA = "RIAPERTA";
     private static final String STATUS_CONSOLIDATA = "CONSOLIDATA";
@@ -66,13 +69,15 @@ public class IntakePracticeCloseService {
         validateChecklistForClose(practiceId, practice.documentType());
         OutcomeSnapshot outcome = readOutcome(practiceId);
 
+        String sdState = sdStateFromOutcome(outcome);
+
         consolidateChecklist(practiceId, practice.documentType());
-        deleteTask(task.taskId());
+        updateTaskState(task.taskId(), sdState);
         completeKogitoTask(task.kogitoTaskId(), actorUsername);
 
         int updatedPractice = jdbcTemplate.update(
             "UPDATE practice SET stato = ? WHERE id = ? AND stato = ?",
-                STATE_IN_ATTESA_ACK,
+                sdState,
                 practiceId,
             STATE_IN_LAVORAZIONE
         );
@@ -82,18 +87,24 @@ public class IntakePracticeCloseService {
         }
 
         String correlationId = "CLOSE_" + practiceId + "_" + System.currentTimeMillis();
-        insertStateHistory(practiceId, actorUsername, correlationId, STATE_IN_LAVORAZIONE, STATE_IN_ATTESA_ACK,
-                "Pratica chiusa lato SD, in attesa ACK BPM");
+        insertStateHistory(practiceId, actorUsername, correlationId, STATE_IN_LAVORAZIONE, sdState,
+                "Pratica chiusa lato SD");
+        jdbcTemplate.update(
+                "INSERT INTO audit_event (occurred_at, actor_username, event_type, practice_id, correlation_id, payload_json) "
+                        + "VALUES (CURRENT_TIMESTAMP(3), ?, 'PRACTICE_CLOSED_SD', ?, ?, ?)",
+                actorUsername, practiceId, correlationId,
+                "{\"stato\":\"" + sdState + "\"}"
+        );
 
         String payloadJson = buildOutboundPayload(practice, outcome, correlationId);
 
         log.info("[BPM-OUTBOUND] practiceId={} correlationId={} payload={}",
                 practiceId, correlationId, payloadJson);
 
-        String statoFinale = sendOutboundSafely(payloadJson, actorUsername, practiceId, correlationId,
-                normalizeOutcomeForBpm(outcome));
+        String statoFinale = sendOutboundSafely(payloadJson, actorUsername, practiceId, task.taskId(), correlationId,
+                normalizeOutcomeForBpm(outcome), sdState);
 
-        if ("CHIUSA_OK".equals(statoFinale) || "CHIUSA_KO".equals(statoFinale)) {
+        if (STATE_CHIUSA_EXT_OK.equals(statoFinale) || STATE_CHIUSA_EXT_KO.equals(statoFinale)) {
             dataIndexResyncService.publishProcessCompleted("anc_pratica", practice.requestId());
         }
 
@@ -102,40 +113,43 @@ public class IntakePracticeCloseService {
 
     /**
      * Invia l'esito a BPM tramite BpmOutboundService e finalizza la pratica in base alla risposta sincrona.
-     * Ritorna lo stato finale della pratica: CHIUSA_OK, CHIUSA_KO oppure IN_ATTESA_CONFERMA_BPM (retry esauriti).
+     * Ritorna CHIUSA_EXT_OK/KO se il BPM risponde in sincrono, altrimenti sdState (attesa ACK asincrono).
      */
     private String sendOutboundSafely(String payloadJson,
                                       String actorUsername,
                                       Long practiceId,
+                                      Long taskId,
                                       String correlationId,
-                                      String outcomeCode) {
+                                      String outcomeCode,
+                                      String sdState) {
         try {
             String responseBody = bpmOutboundService.sendOutcome(practiceId, outcomeCode, correlationId, payloadJson);
 
             boolean esito = parseEsitoFromResponse(responseBody);
-            String finalState = esito ? "CHIUSA_OK" : "CHIUSA_KO";
+            String finalState = esito ? STATE_CHIUSA_EXT_OK : STATE_CHIUSA_EXT_KO;
 
             jdbcTemplate.update(
                     "UPDATE practice SET stato = ?, data_chiusura = CURRENT_TIMESTAMP(3) WHERE id = ?",
                     finalState, practiceId
             );
-            insertStateHistory(practiceId, actorUsername, correlationId, STATE_IN_ATTESA_ACK, finalState,
+            updateTaskState(taskId, finalState);
+            insertStateHistory(practiceId, actorUsername, correlationId, sdState, finalState,
                     "Pratica chiusa per esito sincrono BPM: " + finalState);
             jdbcTemplate.update(
                     "INSERT INTO audit_event (occurred_at, actor_username, event_type, practice_id, correlation_id, payload_json) "
-                            + "VALUES (CURRENT_TIMESTAMP(3), ?, 'PRACTICE_FINALIZED_BPM', ?, ?, ?)",
+                            + "VALUES (CURRENT_TIMESTAMP(3), ?, 'PRACTICE_FINALIZED', ?, ?, ?)",
                     actorUsername, practiceId, correlationId, responseBody
             );
             return finalState;
 
         } catch (RuntimeException ex) {
-            // Retry esauriti: la pratica rimane IN_ATTESA_CONFERMA_BPM per rielaborazione manuale
+            // BPM non disponibile: la pratica resta CHIUSA_SD_OK/KO in attesa di ACK asincrono
             jdbcTemplate.update(
                     "INSERT INTO audit_event (occurred_at, actor_username, event_type, practice_id, correlation_id, payload_json) "
                             + "VALUES (CURRENT_TIMESTAMP(3), ?, 'PRACTICE_CLOSE_REQUESTED', ?, ?, ?)",
                     actorUsername, practiceId, correlationId, payloadJson
             );
-            return STATE_IN_ATTESA_ACK;
+            return sdState;
         }
     }
 
@@ -237,9 +251,12 @@ public class IntakePracticeCloseService {
         return tasks.get(0);
     }
 
-    private void deleteTask(Long taskId) {
-        jdbcTemplate.update("DELETE FROM task_assignment_history WHERE task_id = ?", taskId);
-        jdbcTemplate.update("DELETE FROM task WHERE id = ?", taskId);
+    private void updateTaskState(Long taskId, String newState) {
+        jdbcTemplate.update("UPDATE task SET stato = ? WHERE id = ?", newState, taskId);
+    }
+
+    private String sdStateFromOutcome(OutcomeSnapshot outcome) {
+        return "APPROVATA".equals(outcome.outcome()) ? STATE_CHIUSA_SD_OK : STATE_CHIUSA_SD_KO;
     }
 
     private void completeKogitoTask(String kogitoTaskId, String actorUsername) {
@@ -247,6 +264,7 @@ public class IntakePracticeCloseService {
             return;
         }
         try {
+            // Reserved → complete → Completed nel Data Index
             bpmEngineAdapter.completeTask(kogitoTaskId, Map.of("closedBy", actorUsername));
         } catch (RuntimeException ex) {
             // Task già chiuso/assente non blocca il close DB locale in POC light.

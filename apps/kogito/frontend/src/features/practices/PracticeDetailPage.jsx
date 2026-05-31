@@ -104,8 +104,10 @@ const DETAIL_SIDEBAR_ITEMS = [
 const EVENT_DESCRIPTIONS = {
   PRACTICE_OPENED:            'Aperta in SD',
   STATE_CHANGED:              'Stato cambiato',
-  PRACTICE_CLOSE_REQUESTED:   'Chiusa da operatore',
-  PRACTICE_FINALIZED_BPM:     'Chiusa da sistema esterno',
+  PRACTICE_CLOSED_SD:         'Pratica chiusa SD',
+  PRACTICE_CLOSE_REQUESTED:   'Invio esito a BPM in attesa',
+  PRACTICE_FINALIZED:         'Pratica chiusa',
+  PRACTICE_FINALIZED_BPM:     'Pratica chiusa',
   CHECKLIST_SAVED:            'Pratica modificata',
   CHECKLIST_REOPENED:         'Pratica modificata',
   CHECKLIST_HELP_VIEWED:      'Help checklist visualizzato',

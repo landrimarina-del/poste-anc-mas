@@ -176,16 +176,20 @@ public class PracticeQueryService {
         return details.stream().findFirst();
     }
 
+    private static final String HISTORY_EVENT_TYPES =
+            "'PRACTICE_OPENED','TASK_ACCEPTED','TASK_REASSIGNED','DOCUMENT_TYPED',"
+            + "'CHECKLIST_SAVED','CHECKLIST_REOPENED','PRACTICE_CLOSED_SD',"
+            + "'PRACTICE_FINALIZED','PRACTICE_CLOSE_REQUESTED','BPM_OUTCOME_ACK_RECEIVED'";
+
     public List<PracticeHistoryItem> getPracticeHistory(Long practiceId) {
         List<PracticeHistoryItem> historyItems = new ArrayList<>();
 
-        boolean stateHistoryExists = tableExists("practice_state_history");
         String auditSql = "SELECT MIN(id) AS id, event_type, actor_username, "
                 + "MIN(correlation_id) AS correlation_id, occurred_at, "
                 + "MIN(JSON_UNQUOTE(JSON_EXTRACT(payload_json, '$.note'))) AS note "
-                + "FROM audit_event WHERE practice_id = ?"
-                + (stateHistoryExists ? " AND event_type <> 'STATE_CHANGED'" : "")
-                + " GROUP BY event_type, actor_username, occurred_at";
+                + "FROM audit_event WHERE practice_id = ? "
+                + "AND event_type IN (" + HISTORY_EVENT_TYPES + ") "
+                + "GROUP BY event_type, actor_username, occurred_at";
         historyItems.addAll(jdbcTemplate.query(
             auditSql,
             (rs, rowNum) -> new PracticeHistoryItem(
@@ -198,29 +202,6 @@ public class PracticeQueryService {
             ),
             practiceId
         ));
-
-        if (stateHistoryExists) {
-            historyItems.addAll(jdbcTemplate.query(
-                "SELECT MIN(id) AS id, actor_username, MIN(correlation_id) AS correlation_id, "
-                    + "MIN(note) AS note, occurred_at, "
-                    + "MIN(from_state) AS from_state, MIN(to_state) AS to_state "
-                    + "FROM practice_state_history WHERE practice_id = ? "
-                    + "GROUP BY actor_username, occurred_at",
-                (rs, rowNum) -> new PracticeHistoryItem(
-                    -rs.getLong("id"),
-                    "STATE_CHANGED",
-                    rs.getString("actor_username"),
-                    rs.getString("correlation_id"),
-                    toInstant(rs.getTimestamp("occurred_at")),
-                    composeStateTransitionNote(
-                        rs.getString("from_state"),
-                        rs.getString("to_state"),
-                        rs.getString("note")
-                    )
-                ),
-                practiceId
-            ));
-        }
 
         historyItems.sort(
             Comparator.comparing(PracticeHistoryItem::occurredAt,
@@ -575,7 +556,7 @@ public class PracticeQueryService {
         }
         return switch (stato) {
             case "IN_LAVORAZIONE" -> "LAVORAZIONE";
-            case "IN_ATTESA_CONFERMA_BPM", "CHIUSA_OK", "CHIUSA_KO" -> "CHIUSURA_PRATICA";
+            case "CHIUSA_SD_OK", "CHIUSA_SD_KO", "CHIUSA_EXT_OK", "CHIUSA_EXT_KO" -> "CHIUSURA_PRATICA";
             default -> "RACCOLTA_INPUT";
         };
     }

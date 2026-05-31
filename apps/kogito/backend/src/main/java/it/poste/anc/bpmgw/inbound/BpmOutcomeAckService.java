@@ -2,6 +2,7 @@ package it.poste.anc.bpmgw.inbound;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import it.poste.anc.workflow.engine.BpmEngineAdapter;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -12,20 +13,24 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 @Service
 public class BpmOutcomeAckService {
 
-    private static final String STATE_WAITING_ACK = "IN_ATTESA_CONFERMA_BPM";
-    private static final String STATE_CLOSED_OK = "CHIUSA_OK";
-    private static final String STATE_CLOSED_KO = "CHIUSA_KO";
+    private static final String STATE_CHIUSA_SD_OK = "CHIUSA_SD_OK";
+    private static final String STATE_CHIUSA_SD_KO = "CHIUSA_SD_KO";
+    private static final String STATE_CLOSED_OK = "CHIUSA_EXT_OK";
+    private static final String STATE_CLOSED_KO = "CHIUSA_EXT_KO";
 
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
+    private final BpmEngineAdapter bpmEngineAdapter;
 
-    public BpmOutcomeAckService(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper) {
+    public BpmOutcomeAckService(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper, BpmEngineAdapter bpmEngineAdapter) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
+        this.bpmEngineAdapter = bpmEngineAdapter;
     }
 
     @Transactional
@@ -47,10 +52,9 @@ public class BpmOutcomeAckService {
         String finalState = normalizeOutcome(request.outcome());
 
         int updated = jdbcTemplate.update(
-                "UPDATE practice SET stato = ?, data_chiusura = CURRENT_TIMESTAMP(3) WHERE id = ? AND stato = ?",
+                "UPDATE practice SET stato = ?, data_chiusura = CURRENT_TIMESTAMP(3) WHERE id = ? AND stato IN ('CHIUSA_SD_OK', 'CHIUSA_SD_KO')",
                 finalState,
-                practiceRef.practiceId(),
-                STATE_WAITING_ACK
+                practiceRef.practiceId()
         );
 
         if (updated == 0) {
@@ -69,7 +73,7 @@ public class BpmOutcomeAckService {
                         toInstant(closedAt), true);
             }
             throw new BpmAckOperationException(HttpStatus.CONFLICT, 5104,
-                    "ACK non applicabile: pratica non in stato IN_ATTESA_CONFERMA_BPM");
+                    "ACK non applicabile: pratica non in stato CHIUSA_SD_OK o CHIUSA_SD_KO");
         }
 
         String payloadJson = toJson(request);
@@ -87,7 +91,7 @@ public class BpmOutcomeAckService {
                 "INSERT INTO practice_state_history (practice_id, from_state, to_state, occurred_at, actor_username, correlation_id, note) "
                         + "VALUES (?, ?, ?, CURRENT_TIMESTAMP(3), ?, ?, ?)",
                 practiceRef.practiceId(),
-                STATE_WAITING_ACK,
+                practiceRef.stato(),
                 finalState,
                 "bpm-stub",
                 request.correlationId(),
@@ -108,6 +112,9 @@ public class BpmOutcomeAckService {
                 practiceRef.practiceId()
         );
 
+        // Transizione Kogito: InProgress → Completed (ACK dal sistema esterno)
+        completeKogitoTask(practiceRef.practiceId(), finalState);
+
         return new BpmOutcomeAckResponse(
                 practiceRef.practiceId(),
                 practiceRef.requestId(),
@@ -115,6 +122,25 @@ public class BpmOutcomeAckService {
                 toInstant(closedAt),
                 false
         );
+    }
+
+    private void completeKogitoTask(Long practiceId, String finalState) {
+        try {
+            String kogitoTaskId = jdbcTemplate.queryForObject(
+                    "SELECT kogito_task_id FROM task WHERE practice_id = ? ORDER BY id DESC LIMIT 1",
+                    String.class,
+                    practiceId
+            );
+            if (kogitoTaskId != null && !kogitoTaskId.isBlank()) {
+                bpmEngineAdapter.completeTask(kogitoTaskId, Map.of("closedBy", "bpm-system"));
+            }
+            // Aggiorna lo stato del task nel DB
+            jdbcTemplate.update(
+                    "UPDATE task SET stato = ? WHERE practice_id = ? AND stato IN ('CHIUSA_SD_OK', 'CHIUSA_SD_KO')",
+                    finalState, practiceId);
+        } catch (Exception e) {
+            // Il task potrebbe essere già aggiornato: non blocca l'ACK
+        }
     }
 
     private void validateRequest(BpmOutcomeAckRequest request) {
@@ -159,20 +185,19 @@ public class BpmOutcomeAckService {
     private PracticeRef resolvePractice(BpmOutcomeAckRequest request) {
         if (request.practiceId() != null) {
             try {
-                String requestId = jdbcTemplate.queryForObject(
-                        "SELECT request_id FROM practice WHERE id = ?",
-                        String.class,
+                return jdbcTemplate.queryForObject(
+                        "SELECT id, request_id, stato FROM practice WHERE id = ?",
+                        (rs, rowNum) -> new PracticeRef(rs.getLong("id"), rs.getString("request_id"), rs.getString("stato")),
                         request.practiceId()
                 );
-                return new PracticeRef(request.practiceId(), requestId);
             } catch (EmptyResultDataAccessException ex) {
                 throw new BpmAckOperationException(HttpStatus.NOT_FOUND, 2004, "Pratica non trovata");
             }
         }
 
         List<PracticeRef> rows = jdbcTemplate.query(
-                "SELECT id, request_id FROM practice WHERE request_id = ?",
-                (rs, rowNum) -> new PracticeRef(rs.getLong("id"), rs.getString("request_id")),
+                "SELECT id, request_id, stato FROM practice WHERE request_id = ?",
+                (rs, rowNum) -> new PracticeRef(rs.getLong("id"), rs.getString("request_id"), rs.getString("stato")),
                 request.requestId()
         );
         if (rows.isEmpty()) {
@@ -183,10 +208,10 @@ public class BpmOutcomeAckService {
 
     private String normalizeOutcome(String input) {
         String normalized = input.trim().toUpperCase(Locale.ROOT);
-        if ("OK".equals(normalized) || STATE_CLOSED_OK.equals(normalized)) {
+        if ("OK".equals(normalized) || STATE_CLOSED_OK.equals(normalized) || "CHIUSA_EXT_OK".equals(normalized)) {
             return STATE_CLOSED_OK;
         }
-        if ("KO".equals(normalized) || STATE_CLOSED_KO.equals(normalized)) {
+        if ("KO".equals(normalized) || STATE_CLOSED_KO.equals(normalized) || "CHIUSA_EXT_KO".equals(normalized)) {
             return STATE_CLOSED_KO;
         }
         throw new BpmAckOperationException(HttpStatus.BAD_REQUEST, 5105,
@@ -205,7 +230,7 @@ public class BpmOutcomeAckService {
         return timestamp == null ? null : timestamp.toInstant();
     }
 
-    private record PracticeRef(Long practiceId, String requestId) {
+    private record PracticeRef(Long practiceId, String requestId, String stato) {
     }
 
     private record AckRow(Long practiceId, String requestId, String finalState, Timestamp closedAt) {

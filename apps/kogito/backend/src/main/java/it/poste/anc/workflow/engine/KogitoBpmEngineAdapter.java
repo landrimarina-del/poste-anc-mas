@@ -1,12 +1,17 @@
 package it.poste.anc.workflow.engine;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.kie.kogito.Model;
+import org.kie.kogito.auth.IdentityProviderFactory;
 import org.kie.kogito.process.Process;
 import org.kie.kogito.process.ProcessInstance;
+import org.kie.kogito.process.WorkItem;
 import org.kie.kogito.uow.UnitOfWork;
 import org.kie.kogito.uow.UnitOfWorkManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationContext;
 import org.springframework.http.HttpEntity;
@@ -14,11 +19,12 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
-
 import java.time.Instant;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -45,6 +51,9 @@ public class KogitoBpmEngineAdapter implements BpmEngineAdapter {
 
     @Value("${kogito.dataindex.http.url:http://kogito-data-index:8080}")
     private String dataIndexUrl;
+
+    @Autowired
+    private IdentityProviderFactory identityProviderFactory;
 
     public KogitoBpmEngineAdapter(ApplicationContext applicationContext,
                                    UnitOfWorkManager unitOfWorkManager,
@@ -105,8 +114,9 @@ public class KogitoBpmEngineAdapter implements BpmEngineAdapter {
     }
 
     /**
-     * Claim task: propaga il claim a Kogito via REST API (phase=claim).
-     * Questo aggiorna actualOwner nel Data Index e porta il task da Ready a Reserved.
+     * Claim task: usa l'endpoint UserTasksResource (/usertasks/instance/{id}/transition).
+     * Prima trova lo userTaskInstanceId cercando la task per externalReferenceId (workItemId),
+     * poi esegue la transizione "claim" via UserTask lifecycle (DefaultUserTaskLifeCycle).
      * Per task standalone (prefisso "manual-") è un no-op.
      */
     @Override
@@ -125,21 +135,56 @@ public class KogitoBpmEngineAdapter implements BpmEngineAdapter {
         String workItemId = parts[1];
 
         try {
-            String url = String.format(
-                    "http://localhost:8080/anc_pratica/%s/Lavorazione_Pratica/%s?phase=claim&user=%s",
-                    processInstanceId, workItemId, username);
+            String userTaskInstanceId = findUserTaskInstanceId(workItemId, username);
+            if (userTaskInstanceId == null) {
+                log.warn("claimTask: UserTask non trovata per workItemId '{}' processo '{}'", workItemId, processInstanceId);
+                return;
+            }
 
+            String transitionUrl = serviceUrl + "/usertasks/instance/" + userTaskInstanceId
+                    + "/transition?user=" + username + "&group=GRUPPO_OPERATORE_ANC";
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(Map.of(), headers);
-
-            restTemplate.postForObject(url, request, Map.class);
-            log.info("Task '{}' claimed da '{}' nel processo '{}'", workItemId, username, processInstanceId);
-
+            HttpEntity<String> req = new HttpEntity<>("{\"transitionId\":\"claim\",\"data\":{}}", headers);
+            restTemplate.postForEntity(transitionUrl, req, String.class);
+            log.info("Task '{}' claimed da '{}' (userTaskId='{}') via UserTaskService", workItemId, username, userTaskInstanceId);
         } catch (Exception e) {
-            // Il claim non è bloccante: logga warning ma non fallisce l'operazione applicativa
             log.warn("claimTask: errore propagazione claim a Kogito per task '{}' user '{}': {}",
                     workItemId, username, e.getMessage());
+        }
+    }
+
+    /**
+     * Porta il task in stato InProgress (transizione "start") — chiusura lato SD, in attesa ACK BPM.
+     */
+    @Override
+    public void startTask(String taskId, String username) {
+        if (taskId == null || taskId.startsWith("manual-")) {
+            return;
+        }
+        String[] parts = taskId.split("::", 2);
+        if (parts.length != 2) {
+            log.warn("startTask: formato taskId '{}' non riconosciuto, skip", taskId);
+            return;
+        }
+        String processInstanceId = parts[0];
+        String workItemId = parts[1];
+        try {
+            String actorUser = (username != null) ? username : "system";
+            String userTaskInstanceId = findUserTaskInstanceId(workItemId, actorUser);
+            if (userTaskInstanceId == null) {
+                log.warn("startTask: UserTask non trovata per workItemId '{}' processo '{}'", workItemId, processInstanceId);
+                return;
+            }
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<String> req = new HttpEntity<>("{\"transitionId\":\"start\",\"data\":{}}", headers);
+            String transitionUrl = serviceUrl + "/usertasks/instance/" + userTaskInstanceId
+                    + "/transition?user=" + actorUser + "&group=GRUPPO_OPERATORE_ANC";
+            restTemplate.postForEntity(transitionUrl, req, String.class);
+            log.info("Task '{}' avanzata a InProgress (chiusura SD) da '{}'", workItemId, actorUser);
+        } catch (Exception e) {
+            log.warn("startTask: errore transizione start per task '{}': {}", workItemId, e.getMessage());
         }
     }
 
@@ -147,11 +192,9 @@ public class KogitoBpmEngineAdapter implements BpmEngineAdapter {
      * Completa il WorkItem (UserTask) Kogito identificato da {@code taskId}.
      * Il formato atteso è "processInstanceId::taskId" prodotto da
      * {@link #getKogitoWorkItemId}.
-     * Usa l'API REST locale di Kogito per completare il task, bypassando
-     * i check di SecurityPolicy Java (che variano per versione Kogito).
+     * Usa l'endpoint UserTasksResource con transitionId="complete".
      */
     @Override
-    @SuppressWarnings("unchecked")
     public void completeTask(String taskId, Map<String, Object> variables) {
         if (taskId == null || taskId.startsWith("manual-")) {
             log.debug("completeTask skipped for standalone task '{}'", taskId);
@@ -166,35 +209,46 @@ public class KogitoBpmEngineAdapter implements BpmEngineAdapter {
         String processInstanceId = parts[0];
         String workItemId = parts[1];
 
-        // Chiama l'API REST Kogito locale per completare il task.
-        // Il BPMN usa ActorId="group:GRUPPO_OPERATORE_ANC", quindi il SecurityPolicy
-        // deve usare user="group:GRUPPO_OPERATORE_ANC" per matchare l'ActorId del workItem.
-        // POST /anc_pratica/{processId}/Lavorazione_Pratica/{taskId}?phase=complete&user=group:GRUPPO_OPERATORE_ANC
         try {
-            String url = String.format(
-                    "http://localhost:8080/anc_pratica/%s/Lavorazione_Pratica/%s?phase=complete&user=group:GRUPPO_OPERATORE_ANC",
-                    processInstanceId, workItemId);
+            // Usa l'utente proprietario del task (passato come "closedBy") per la transizione
+            String actorUser = (variables != null && variables.containsKey("closedBy"))
+                    ? String.valueOf(variables.get("closedBy"))
+                    : "system";
 
+            // Cerca il userTaskInstanceId per il workItemId nell'istanza di processo
+            String userTaskInstanceId = findUserTaskInstanceId(workItemId, actorUser);
+            if (userTaskInstanceId == null) {
+                log.warn("completeTask: UserTask non trovata per workItemId '{}' processo '{}'", workItemId, processInstanceId);
+                throw new RuntimeException("UserTask non trovata per workItemId: " + workItemId);
+            }
+
+            ObjectMapper mapper = new ObjectMapper();
+            String dataJson = variables != null && !variables.isEmpty()
+                    ? mapper.writeValueAsString(variables)
+                    : "{}";
+            String body = "{\"transitionId\":\"complete\",\"data\":" + dataJson + "}";
+
+            String transitionUrl = serviceUrl + "/usertasks/instance/" + userTaskInstanceId
+                    + "/transition?user=" + actorUser + "&group=GRUPPO_OPERATORE_ANC";
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(variables, headers);
-
-            restTemplate.postForObject(url, request, Map.class);
-            log.info("WorkItem '{}' completato nell'istanza processo '{}'", workItemId, processInstanceId);
-
+            HttpEntity<String> req = new HttpEntity<>(body, headers);
+            restTemplate.postForEntity(transitionUrl, req, String.class);
+            log.info("Task '{}' completata (userTaskId='{}') nel processo '{}' via UserTaskService", workItemId, userTaskInstanceId, processInstanceId);
         } catch (Exception e) {
-            log.error("Errore completamento WorkItem '{}' in processo '{}': {}",
+            log.error("Errore completamento task '{}' in processo '{}': {}",
                     workItemId, processInstanceId, e.getMessage());
             throw new RuntimeException("Errore completamento task Kogito: " + e.getMessage(), e);
         }
     }
 
     /**
-     * Recupera il primo UserTask attivo per il processo indicato interrogando il
-     * Data Index di Kogito via GraphQL.
-     * Restituisce "processInstanceId::taskId" oppure null se non trovato.
+     * Recupera il primo WorkItem attivo per il processo indicato interrogando
+     * direttamente l'engine Kogito via Java API (non Data Index).
+     * Restituisce "processInstanceId::workItemId" oppure null se non trovato.
      */
     @Override
+    @SuppressWarnings("unchecked")
     public String getKogitoWorkItemId(String processKey, String processInstanceId) {
         if (processInstanceId == null || processInstanceId.isBlank()) {
             log.debug("getKogitoWorkItemId: processInstanceId null, skip");
@@ -202,45 +256,27 @@ public class KogitoBpmEngineAdapter implements BpmEngineAdapter {
         }
 
         try {
-            String graphqlQuery = String.format(
-                    "{\"query\": \"{ UserTaskInstances(where: { processInstanceId: { equal: \\\"%s\\\" } }) { id, state } }\"}",
-                    processInstanceId);
+            Process<? extends Model> process = resolveProcess(processKey);
+            Optional<? extends ProcessInstance<? extends Model>> instanceOpt =
+                    process.instances().findById(processInstanceId);
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            HttpEntity<String> request = new HttpEntity<>(graphqlQuery, headers);
-
-            @SuppressWarnings("unchecked")
-            Map<String, Object> body = restTemplate.postForObject(
-                    dataIndexUrl + "/graphql", request, Map.class);
-
-            if (body == null) {
-                log.warn("getKogitoWorkItemId: risposta null dal Data Index per processo '{}'", processInstanceId);
+            if (instanceOpt.isEmpty()) {
+                log.warn("getKogitoWorkItemId: processo '{}' non trovato nel engine", processInstanceId);
                 return null;
             }
 
-            @SuppressWarnings("unchecked")
-            Map<String, Object> data = (Map<String, Object>) body.get("data");
-            @SuppressWarnings("unchecked")
-            List<Map<String, Object>> tasks = (List<Map<String, Object>>) data.get("UserTaskInstances");
-
-            if (tasks == null || tasks.isEmpty()) {
-                log.warn("getKogitoWorkItemId: nessun UserTask attivo in processo '{}' (Data Index)", processInstanceId);
+            Collection<WorkItem> workItems = instanceOpt.get().workItems();
+            if (workItems == null || workItems.isEmpty()) {
+                log.warn("getKogitoWorkItemId: nessun work item attivo nel processo '{}'", processInstanceId);
                 return null;
             }
 
-            // Prendi il primo task in stato Ready
-            String taskId = tasks.stream()
-                    .filter(t -> "Ready".equals(t.get("state")) || "Reserved".equals(t.get("state")))
-                    .map(t -> (String) t.get("id"))
-                    .findFirst()
-                    .orElse((String) tasks.get(0).get("id"));
-
-            log.debug("getKogitoWorkItemId: processo='{}' taskId='{}'", processInstanceId, taskId);
-            return processInstanceId + "::" + taskId;
+            String workItemId = workItems.iterator().next().getId();
+            log.debug("getKogitoWorkItemId: processo='{}' workItemId='{}'", processInstanceId, workItemId);
+            return processInstanceId + "::" + workItemId;
 
         } catch (Exception e) {
-            log.error("getKogitoWorkItemId: errore interrogazione Data Index per processo '{}': {}",
+            log.error("getKogitoWorkItemId: errore recupero work item per processo '{}': {}",
                     processInstanceId, e.getMessage());
             return null;
         }
@@ -249,6 +285,31 @@ public class KogitoBpmEngineAdapter implements BpmEngineAdapter {
     // -------------------------------------------------------------------------
     // Internal helpers
     // -------------------------------------------------------------------------
+
+    /**
+     * Cerca lo userTaskInstanceId (UUID della UserTask Kogito) corrispondente
+     * al workItemId dato, interrogando l'endpoint /usertasks/instance.
+     * Se {@code username} è null, usa admin come identity per avere piena visibilità.
+     */
+    private String findUserTaskInstanceId(String workItemId, String username) {
+        try {
+            String user = (username != null) ? username : "system";
+            String listUrl = serviceUrl + "/usertasks/instance?user=" + user + "&group=GRUPPO_OPERATORE_ANC";
+            String listJson = restTemplate.getForObject(listUrl, String.class);
+            if (listJson == null) return null;
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode tasks = mapper.readTree(listJson);
+            for (JsonNode task : tasks) {
+                if (workItemId.equals(task.path("externalReferenceId").asText(null))) {
+                    return task.path("id").asText(null);
+                }
+            }
+            return null;
+        } catch (Exception e) {
+            log.warn("findUserTaskInstanceId: errore ricerca task per workItemId '{}': {}", workItemId, e.getMessage());
+            return null;
+        }
+    }
 
     @SuppressWarnings("rawtypes")
     private Process resolveProcess(String processKey) {

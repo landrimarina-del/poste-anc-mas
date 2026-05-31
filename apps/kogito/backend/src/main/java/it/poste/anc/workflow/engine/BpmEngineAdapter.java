@@ -40,6 +40,14 @@ public interface BpmEngineAdapter {
     void claimTask(String taskId, String username);
 
     /**
+     * Porta il task in stato InProgress (chiusura lato SD, in attesa ACK BPM).
+     *
+     * @param taskId ID del task nel formato "processInstanceId::workItemId"
+     * @param username utente che ha chiuso la pratica
+     */
+    void startTask(String taskId, String username);
+
+    /**
      * Completa un task, passando eventuali variabili di output.
      *
      * @param taskId ID del task nel formato "processInstanceId::workItemId"

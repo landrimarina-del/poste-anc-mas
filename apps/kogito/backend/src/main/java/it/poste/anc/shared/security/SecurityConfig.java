@@ -89,6 +89,7 @@ public class SecurityConfig {
                 .requestMatchers(new AntPathRequestMatcher("/api/v1/auth/login")).permitAll()
                 .requestMatchers(new AntPathRequestMatcher("/api/v1/technical/workflow/readiness")).permitAll()
                 .requestMatchers(new AntPathRequestMatcher("/api/v1/bpm/practices")).permitAll()
+                .requestMatchers(new AntPathRequestMatcher("/api/v1/bpm/intake")).permitAll()
                 .requestMatchers(new AntPathRequestMatcher("/api/v1/auth/**")).authenticated()
                 .requestMatchers(new AntPathRequestMatcher("/api/v1/**")).authenticated()
                 .anyRequest().permitAll())

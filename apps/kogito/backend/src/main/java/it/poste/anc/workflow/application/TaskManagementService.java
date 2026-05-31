@@ -428,9 +428,11 @@ public class TaskManagementService {
                 if (taskState == null) {
                         return;
                 }
-                if (!TASK_STATE_IN_CODA.equals(taskState) && !TASK_STATE_IN_CARICO.equals(taskState)) {
+                if (!TASK_STATE_IN_CODA.equals(taskState) && !TASK_STATE_IN_CARICO.equals(taskState)
+                        && !"CHIUSA_SD_OK".equals(taskState) && !"CHIUSA_SD_KO".equals(taskState)
+                        && !"CHIUSA_EXT_OK".equals(taskState) && !"CHIUSA_EXT_KO".equals(taskState)) {
                         throw new TaskOperationException(HttpStatus.BAD_REQUEST, 3007,
-                                        "Filtro taskState non valido: valori ammessi IN_CODA, IN_CARICO");
+                                        "Filtro taskState non valido: valori ammessi IN_CODA, IN_CARICO, CHIUSA_SD_OK, CHIUSA_SD_KO, CHIUSA_EXT_OK, CHIUSA_EXT_KO");
                 }
         }
 
@@ -469,11 +471,11 @@ public class TaskManagementService {
                 Long.class, userId, groupId, userId
         );
         long activePractices = jdbcTemplate.queryForObject(
-                "SELECT COUNT(1) FROM practice WHERE stato IN ('APERTA','IN_LAVORAZIONE','IN_ATTESA_CONFERMA_BPM')",
+                "SELECT COUNT(1) FROM practice WHERE stato IN ('APERTA','IN_LAVORAZIONE','CHIUSA_SD_OK','CHIUSA_SD_KO')",
                 Long.class
         );
         long closedPractices = jdbcTemplate.queryForObject(
-                "SELECT COUNT(1) FROM practice WHERE stato IN ('CHIUSA_OK','CHIUSA_KO')",
+                "SELECT COUNT(1) FROM practice WHERE stato IN ('CHIUSA_EXT_OK','CHIUSA_EXT_KO')",
                 Long.class
         );
         return new long[]{activities, activePractices, closedPractices};

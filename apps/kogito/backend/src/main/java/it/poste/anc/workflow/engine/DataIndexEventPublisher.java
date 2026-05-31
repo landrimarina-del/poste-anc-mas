@@ -126,7 +126,16 @@ public class DataIndexEventPublisher implements EventPublisher {
 
     @Override
     public void publish(Collection<DataEvent<?>> events) {
-        events.forEach(this::publish);
+        // Pubblica in sequenza su un singolo thread asincrono per preservare l'ordine degli eventi
+        // (evita race condition Ready→Reserved sul Data Index)
+        CompletableFuture.runAsync(() ->
+            events.forEach(event -> {
+                String endpoint = resolveEndpoint(event);
+                if (endpoint != null) {
+                    doPublish(event, endpoint);
+                }
+            })
+        );
     }
 
     private String resolveEndpoint(DataEvent<?> event) {

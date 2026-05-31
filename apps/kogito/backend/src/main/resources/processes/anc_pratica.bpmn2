@@ -20,6 +20,7 @@
   <itemDefinition id="_cfCliente_type"   structureRef="String"/>
   <itemDefinition id="_idWorkItem_type"  structureRef="String"/>
   <itemDefinition id="_esito_type"       structureRef="String"/>
+  <itemDefinition id="_groupId_type"     structureRef="String"/>
 
   <process id="anc_pratica" name="ANC - Gestione Pratica" isExecutable="true"
            drools:packageName="it.poste.anc.bpm">
@@ -43,11 +44,19 @@
         L'operatore ANC verifica la documentazione, compila la checklist
         e invia la pratica alla conferma supervisore.
       </documentation>
-      <potentialOwner>
-        <resourceAssignmentExpression>
-          <formalExpression>group:GRUPPO_OPERATORE_ANC</formalExpression>
-        </resourceAssignmentExpression>
-      </potentialOwner>
+      <ioSpecification>
+        <dataInput id="_task_lavorazione_GroupId" name="GroupId" itemSubjectRef="_groupId_type"/>
+        <inputSet>
+          <dataInputRefs>_task_lavorazione_GroupId</dataInputRefs>
+        </inputSet>
+      </ioSpecification>
+      <dataInputAssociation>
+        <targetRef>_task_lavorazione_GroupId</targetRef>
+        <assignment>
+          <from xsi:type="tFormalExpression">GRUPPO_OPERATORE_ANC</from>
+          <to xsi:type="tFormalExpression">_task_lavorazione_GroupId</to>
+        </assignment>
+      </dataInputAssociation>
     </userTask>
 
     <sequenceFlow id="flow_lavorazione_to_end" sourceRef="task_lavorazione" targetRef="end_pratica"/>
