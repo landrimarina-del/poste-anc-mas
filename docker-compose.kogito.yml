@@ -76,8 +76,13 @@ services:
       ANC_ATTACHMENT_STORAGE_BUCKET: anc-attachments
       ANC_ATTACHMENT_STORAGE_ACCESS_KEY: anc
       ANC_ATTACHMENT_STORAGE_SECRET_KEY: anc-poc-minio-secret
-      # Kogito: URL esposto del servizio (usato da Management Console)
+      # Kogito: URL interno del servizio (usato dal backend per chiamare /usertasks/instance — rete Docker)
       KOGITO_SERVICE_URL: http://kogito-backend:8080
+      # Kogito: URL del diagramma SVG accessibile dal BROWSER.
+      # Il campo 'source' nei CloudEvent inviati al Data Index usa questo URL.
+      # Il browser lo usa per fetchare /svg/processes/{id}/instances/{instanceId}.
+      # Deve essere la porta HOST esposta dal compose, non il DNS Docker interno.
+      KOGITO_DIAGRAM_BASE_URL: http://localhost:8081
       # Kogito: Data Index URL per pubblicazione CloudEvents di processo
       KOGITO_DATAINDEX_HTTP_URL: http://kogito-data-index:8080
     ports:

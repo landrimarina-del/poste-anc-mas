@@ -56,9 +56,17 @@ kogito:
     driver-class-name: org.mariadb.jdbc.Driver
   persistence:
     type: jdbc
-  # URL esposto da questo servizio (usato da Management Console per operazioni dirette)
+  # URL interno del servizio (usato dal backend per chiamare /usertasks/instance — rete Docker interna)
   service:
-    url: ${KOGITO_SERVICE_URL:http://localhost:8081}
+    url: ${KOGITO_SERVICE_URL:http://localhost:8080}
+  # URL del diagramma SVG accessibile dal BROWSER (non dalla rete Docker interna).
+  # Usato nel campo 'source' dei CloudEvent inviati al Data Index: il browser
+  # usa questo URL per fetchare /svg/processes/{id}/instances/{instanceId}.
+  # In locale: http://localhost:8081 (porta host esposta dal compose).
+  # In produzione: URL pubblico del backend.
+  diagram:
+    base:
+      url: ${KOGITO_DIAGRAM_BASE_URL:http://localhost:8081}
   # Data Index: container esterno separato (non embedded in Spring Boot 10.2)
   dataindex:
     http:

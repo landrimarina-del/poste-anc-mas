@@ -40,20 +40,31 @@ public class DataIndexEventPublisher implements EventPublisher {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
     private final String dataIndexUrl;
+    /**
+     * URL Docker interno — usato nel campo 'source' dei ProcessInstanceDataEvent.
+     * Il Data Index usa questo come endpoint per fetchare server-side il sorgente BPMN:
+     * GET {serviceUrl}/management/processes/{processId}/source
+     */
     private final String serviceUrl;
+    /**
+     * URL accessibile dal BROWSER — usato nel campo 'source' dei UserTaskInstanceDataEvent.
+     */
+    private final String diagramBaseUrl;
 
     public DataIndexEventPublisher(
             ObjectMapper objectMapper,
             @Value("${kogito.dataindex.http.url:}") String dataIndexUrl,
-            @Value("${kogito.service.url:http://localhost:8081}") String serviceUrl) {
+            @Value("${kogito.service.url:http://localhost:8080}") String serviceUrl,
+            @Value("${kogito.diagram.base.url:http://localhost:8081}") String diagramBaseUrl) {
         this.objectMapper = objectMapper;
         this.dataIndexUrl = dataIndexUrl;
         this.serviceUrl = serviceUrl;
+        this.diagramBaseUrl = diagramBaseUrl;
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(5000);
         factory.setReadTimeout(10000);
         this.restTemplate = new RestTemplate(factory);
-        log.info("DataIndexEventPublisher created, Data Index URL: {}, Service URL: {}", dataIndexUrl, serviceUrl);
+        log.info("DataIndexEventPublisher created, Data Index URL: {}, Diagram Base URL: {}", dataIndexUrl, diagramBaseUrl);
     }
 
     @Override
@@ -76,6 +87,29 @@ public class DataIndexEventPublisher implements EventPublisher {
     private void doPublish(DataEvent<?> event, String endpoint) {
         try {
             String payload = objectMapper.writeValueAsString(event);
+
+            // Patch source per ProcessInstanceDataEvent: usa serviceUrl + processId come path.
+            // Il Data Index usa CommonUtils.getServiceUrl(endpoint, processId) che estrae:
+            // serviceUrl = endpoint.substring(0, endpoint.lastIndexOf("/" + processId))
+            // → serve che source = http://kogito-backend:8080/{processId} per estrarre correttamente http://kogito-backend:8080.
+            // Il runtime Kogito imposta source = kogito.service.url + "/" + processId automaticamente;
+            // correggiamo solo se il source punta a un URL non raggiungibile da Docker.
+            if (event instanceof ProcessInstanceDataEvent) {
+                JsonNode node = objectMapper.readTree(payload);
+                String src = node.has("source") ? node.get("source").asText(null) : null;
+                // Correzione solo se l'URL non è raggiungibile da Docker (localhost o null)
+                if (src == null || src.isBlank() || "null".equals(src) || src.contains("localhost")) {
+                    // Estrai il processId dall'evento per costruire source corretto
+                    String procId = node.path("kogitoprocid").asText(null);
+                    if (procId == null || procId.isBlank()) {
+                        procId = node.path("data").path("processId").asText(null);
+                    }
+                    String newSource = serviceUrl + (procId != null ? "/" + procId : "");
+                    ((ObjectNode) node).put("source", newSource);
+                    payload = objectMapper.writeValueAsString(node);
+                    log.debug("Patched ProcessInstance source → {}", newSource);
+                }
+            }
 
             // Data Index 1.44.1 chiama event.getSource() (URI) per costruire l'endpoint REST.
             // Nel vecchio Kogito 2.44.0.Alpha il campo 'source' può risultare null se
@@ -100,12 +134,14 @@ public class DataIndexEventPublisher implements EventPublisher {
                     }
                 }
 
-                // Patch source se per qualsiasi motivo fosse null/blank
+                // Patch source: deve essere l'URL accessibile dal BROWSER (diagramBaseUrl),
+                // NON il DNS Docker interno. Il Data Index usa questo campo per costruire
+                // il campo 'diagram' nel GraphQL che il browser fetcha come SVG.
                 String src = node.has("source") ? node.get("source").asText(null) : null;
-                if (src == null || src.isBlank() || "null".equals(src)) {
-                    obj.put("source", serviceUrl);
+                if (src == null || src.isBlank() || "null".equals(src) || src.contains("kogito-backend")) {
+                    obj.put("source", diagramBaseUrl);
                     modified = true;
-                    log.info("Patched null source → {}", serviceUrl);
+                    log.info("Patched source → {} (browser-accessible URL)", diagramBaseUrl);
                 }
 
                 if (modified) {

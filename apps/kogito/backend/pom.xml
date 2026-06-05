@@ -69,6 +69,12 @@
             <groupId>org.kie</groupId>
             <artifactId>kie-addons-springboot-persistence-jdbc</artifactId>
         </dependency>
+
+        <!-- Kogito SVG dinamico — genera diagrammi colorati per Management Console -->
+        <dependency>
+            <groupId>org.kie</groupId>
+            <artifactId>kie-addons-springboot-process-svg</artifactId>
+        </dependency>
         <!-- Kogito DMN/Decisions runtime (Spring Boot) — drools in 10.2 -->
         <dependency>
             <groupId>org.drools</groupId>

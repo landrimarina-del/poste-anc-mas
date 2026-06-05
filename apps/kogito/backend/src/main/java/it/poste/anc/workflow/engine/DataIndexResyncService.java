@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.kie.kogito.Model;
 import org.kie.kogito.process.Process;
 import org.kie.kogito.process.ProcessInstance;
+import org.kie.kogito.process.WorkItem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,9 +24,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -50,6 +53,15 @@ public class DataIndexResyncService {
     private final ApplicationContext applicationContext;
     private final ObjectMapper objectMapper;
     private final String dataIndexUrl;
+    /**
+     * URL accessibile dal BROWSER — usato nel campo 'source' dei CloudEvent inviati al Data Index.
+     * Deve essere la porta HOST esposta dal compose (es. http://localhost:8081), NON il DNS Docker interno.
+     */
+    private final String diagramBaseUrl;
+    /**
+     * URL interno Docker — usato nel campo 'endpoint' del ProcessDefinitionEvent.
+     * Il Data Index lo usa server-side per fetchare GET {serviceUrl}/management/processes/{id}/source.
+     */
     private final String serviceUrl;
     private final RestTemplate restTemplate;
     private final JdbcTemplate jdbcTemplate;
@@ -59,11 +71,13 @@ public class DataIndexResyncService {
             ObjectMapper objectMapper,
             @Qualifier("dataSource") DataSource ancDataSource,
             @Value("${kogito.dataindex.http.url:}") String dataIndexUrl,
-            @Value("${kogito.service.url:http://localhost:8081}") String serviceUrl) {
+            @Value("${kogito.diagram.base.url:http://localhost:8081}") String diagramBaseUrl,
+            @Value("${kogito.service.url:http://localhost:8080}") String serviceUrl) {
         this.applicationContext = applicationContext;
         this.objectMapper = objectMapper;
         this.jdbcTemplate = new JdbcTemplate(ancDataSource);
         this.dataIndexUrl = dataIndexUrl;
+        this.diagramBaseUrl = diagramBaseUrl;
         this.serviceUrl = serviceUrl;
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(5000);
@@ -123,7 +137,7 @@ public class DataIndexResyncService {
         Map<String, Object> cloudEvent = new HashMap<>();
         cloudEvent.put("specversion", "1.0");
         cloudEvent.put("type", "ProcessDefinitionEvent");
-        cloudEvent.put("source", serviceUrl + "/" + processKey);
+        cloudEvent.put("source", diagramBaseUrl + "/" + processKey);
         cloudEvent.put("id", UUID.randomUUID().toString());
         cloudEvent.put("time", Instant.now().toString());
         cloudEvent.put("datacontenttype", "application/json");
@@ -178,6 +192,21 @@ public class DataIndexResyncService {
         String instanceId = instance.id();
         int state = instance.status(); // 1=ACTIVE, 2=COMPLETED, 3=ABORTED
 
+        // Determina i nodi attivi dal work items correnti
+        Set<String> activeNodeIds;
+        try {
+            activeNodeIds = instance.workItems().stream()
+                    .map(WorkItem::getName)
+                    .collect(java.util.stream.Collectors.toSet());
+        } catch (Exception e) {
+            activeNodeIds = Set.of();
+        }
+
+        // Costruisce la lista node instances per il Data Index.
+        // Per il processo anc_pratica (lineare), lo start è sempre completato se il processo è attivo.
+        // I nodi attivi vengono da workItems(); il nodo end è completato solo se il processo è terminato.
+        List<Map<String, Object>> nodes = buildNodeInstances(processKey, state, activeNodeIds);
+
         // Costruisce il data payload del CloudEvent ProcessInstanceState
         Map<String, Object> data = new HashMap<>();
         data.put("id", instanceId);
@@ -188,7 +217,7 @@ public class DataIndexResyncService {
         data.put("businessKey", instance.businessKey());
         data.put("start", Instant.now().toString());
         data.put("end", null);
-        data.put("nodes", List.of());
+        data.put("nodes", nodes);
         data.put("variables", Map.of());
         data.put("milestones", List.of());
         data.put("roles", List.of());
@@ -200,6 +229,10 @@ public class DataIndexResyncService {
         Map<String, Object> cloudEvent = new HashMap<>();
         cloudEvent.put("specversion", "1.0");
         cloudEvent.put("type", "ProcessInstanceStateDataEvent");
+        // source = serviceUrl + "/" + processKey:
+        // Il Data Index usa CommonUtils.getServiceUrl(endpoint, processId) che estrae il base URL
+        // tramite endpoint.substring(0, endpoint.lastIndexOf("/" + processId)).
+        // Se source non contiene il processId come path, lastIndexOf restituisce -1 e serviceUrl=null.
         cloudEvent.put("source", serviceUrl + "/" + processKey);
         cloudEvent.put("id", UUID.randomUUID().toString());
         cloudEvent.put("time", Instant.now().toString());
@@ -223,6 +256,56 @@ public class DataIndexResyncService {
 
         restTemplate.postForEntity(url, entity, Void.class);
         log.debug("DataIndexResyncService: pubblicata istanza '{}' (state={}) → {}", instanceId, state, url);
+    }
+
+    /**
+     * Costruisce la lista di node instances da pubblicare al Data Index.
+     *
+     * <p>Il Data Index usa il campo {@code nodes[].definitionId} per corrispondere alle
+     * shape SVG nel diagramma (kie-addons-process-svg). Se {@code exit} è null il nodo è
+     * considerato attivo (bordo arancione), altrimenti è completato (riempimento verde).
+     *
+     * <p>Logica per processo lineare anc_pratica:
+     * <ul>
+     *   <li>start → sempre completato se il processo è attivo o terminato</li>
+     *   <li>task_lavorazione → attivo se è nel workItems correnti, completato se processo terminato</li>
+     *   <li>end_pratica → completato solo se il processo è terminato (state=2)</li>
+     * </ul>
+     */
+    private List<Map<String, Object>> buildNodeInstances(String processKey, int state, Set<String> activeWorkItemNames) {
+        List<Map<String, Object>> nodes = new ArrayList<>();
+
+        if ("anc_pratica".equals(processKey)) {
+            String now = Instant.now().toString();
+            boolean isCompleted = state == 2;
+
+            // start — sempre completato
+            nodes.add(nodeInstance("start", "Pratica Aperta", "StartNode", now, now));
+
+            // task_lavorazione — attivo se in workItems, completato se processo terminato
+            boolean taskActive = activeWorkItemNames.contains("Lavorazione Pratica") || activeWorkItemNames.contains("task_lavorazione");
+            String taskExit = (isCompleted || !taskActive) ? now : null;
+            nodes.add(nodeInstance("task_lavorazione", "Lavorazione Pratica", "HumanTaskNode", now, taskExit));
+
+            // end_pratica — completato solo se il processo è terminato
+            if (isCompleted) {
+                nodes.add(nodeInstance("end_pratica", "Pratica Chiusa", "EndNode", now, now));
+            }
+        }
+
+        return nodes;
+    }
+
+    private Map<String, Object> nodeInstance(String definitionId, String name, String type, String enter, String exit) {
+        Map<String, Object> node = new HashMap<>();
+        node.put("id", UUID.randomUUID().toString());
+        node.put("nodeId", definitionId);
+        node.put("definitionId", definitionId);
+        node.put("name", name);
+        node.put("type", type);
+        node.put("enter", enter);
+        node.put("exit", exit);
+        return node;
     }
 
     /**
@@ -383,7 +466,7 @@ public class DataIndexResyncService {
         Map<String, Object> cloudEvent = new HashMap<>();
         cloudEvent.put("specversion", "1.0");
         cloudEvent.put("type", "UserTaskInstanceStateDataEvent");
-        cloudEvent.put("source", serviceUrl + "/anc_pratica");
+        cloudEvent.put("source", diagramBaseUrl + "/anc_pratica");
         cloudEvent.put("id", UUID.randomUUID().toString());
         cloudEvent.put("time", Instant.now().toString());
         cloudEvent.put("datacontenttype", "application/json");

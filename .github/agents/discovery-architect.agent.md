@@ -1,6 +1,6 @@
 ---
 name: Discovery-Architect
-description: Architetto Enterprice: definisce l'architettura target della soluzione e la modalità di implementazione della POC locale.
+description: Architetto Enterprise: definisce l'architettura target della soluzione e la modalità di implementazione della POC locale.
 
 tools: ["read", "edit", "execute"]
 

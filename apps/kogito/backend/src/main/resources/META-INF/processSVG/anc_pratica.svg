@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:oryx="http://www.jboss.org/drools/flow/gpd"
+     width="780" height="220">
+  <!--
+    ANC - Gestione Pratica - SVG per Kogito Management Console (addon kie-addons-process-svg)
+    FORMATO: due <g bpmn2nodeid="X"> separati per ogni nodo (BACKGROUND + BORDER)
+    processNode usa il PRIMO figlio con id per ogni <g>, poi fa return.
+    Con due <g> distinti entrambi i tipi vengono registrati nella stessa NodeSummary.
+  -->
+  <rect width="780" height="220" fill="#f8f9fa" stroke="none"/>
+  <!-- START EVENT -->
+  <g id="grp_start_bg" bpmn2nodeid="start">
+    <circle id="start_bg?shapeType=BACKGROUND" cx="80" cy="110" r="22" fill="white" stroke="#888888" stroke-width="2"/>
+  </g>
+  <g id="grp_start_border" bpmn2nodeid="start">
+    <circle id="start_border?shapeType=BORDER" cx="80" cy="110" r="22" fill="none" stroke="#888888" stroke-width="2"/>
+  </g>
+  <text x="80" y="152" text-anchor="middle" font-family="Arial,sans-serif" font-size="11" fill="#333">Pratica Aperta</text>
+  <line x1="102" y1="110" x2="238" y2="110" stroke="#888888" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- USER TASK -->
+  <g id="grp_task_lavorazione_bg" bpmn2nodeid="task_lavorazione">
+    <rect id="task_lavorazione_bg?shapeType=BACKGROUND" x="240" y="70" width="160" height="80" rx="8" ry="8" fill="white" stroke="#888888" stroke-width="2"/>
+  </g>
+  <g id="grp_task_lavorazione_border" bpmn2nodeid="task_lavorazione">
+    <rect id="task_lavorazione_border?shapeType=BORDER" x="240" y="70" width="160" height="80" rx="8" ry="8" fill="none" stroke="#888888" stroke-width="2"/>
+  </g>
+  <text x="320" y="108" text-anchor="middle" font-family="Arial,sans-serif" font-size="12" font-weight="bold" fill="#333">Lavorazione Pratica</text>
+  <text x="320" y="124" text-anchor="middle" font-family="Arial,sans-serif" font-size="10" fill="#666">Human Task</text>
+  <line x1="400" y1="110" x2="538" y2="110" stroke="#888888" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- END EVENT -->
+  <g id="grp_end_pratica_bg" bpmn2nodeid="end_pratica">
+    <circle id="end_pratica_bg?shapeType=BACKGROUND" cx="560" cy="110" r="22" fill="white" stroke="#888888" stroke-width="4"/>
+  </g>
+  <g id="grp_end_pratica_border" bpmn2nodeid="end_pratica">
+    <circle id="end_pratica_border?shapeType=BORDER" cx="560" cy="110" r="22" fill="none" stroke="#888888" stroke-width="4"/>
+  </g>
+  <text x="560" y="152" text-anchor="middle" font-family="Arial,sans-serif" font-size="11" fill="#333">Pratica Chiusa</text>
+  <defs>
+    <marker id="arr" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0,10 3.5,0 7" fill="#888888"/>
+    </marker>
+  </defs>
+</svg>
